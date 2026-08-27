@@ -96,7 +96,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
               <div className="flex justify-between">
                 <span className="text-slate-500">Ödeme Şekli:</span>
                 <span className="font-medium text-slate-800">
-                  {order.paymentMethod === 'online_credit_card'
+                  {order.paymentMethod === 'alici_odemeli'
+                    ? 'Alıcı Ödemeli (Teslimatta Ödeme)'
+                    : order.paymentMethod === 'gonderici_odemeli'
+                    ? 'Gönderici Ödemeli (Alışta Ödeme)'
+                    : order.paymentMethod === 'online_credit_card'
                     ? 'Online Kredi Kartı'
                     : order.paymentMethod === 'cash_on_delivery'
                     ? 'Kapıda Nakit'

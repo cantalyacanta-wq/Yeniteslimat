@@ -10,11 +10,26 @@ export type DistrictName =
   | 'Manavgat'
   | 'Alanya';
 
-export type PackageType = 'document' | 'small_box' | 'food' | 'fragile_electronics' | 'large_box';
+export type PackageType =
+  | 'food'
+  | 'petshop'
+  | 'market'
+  | 'flower'
+  | 'other'
+  | 'document'
+  | 'small_box'
+  | 'fragile_electronics'
+  | 'large_box';
 
 export type UrgencyType = 'standard' | 'express_vip' | 'scheduled';
 
-export type PaymentMethod = 'cash_on_delivery' | 'card_on_delivery' | 'online_credit_card' | 'bank_transfer';
+export type PaymentMethod =
+  | 'gonderici_odemeli'
+  | 'alici_odemeli'
+  | 'cash_on_delivery'
+  | 'card_on_delivery'
+  | 'online_credit_card'
+  | 'bank_transfer';
 
 export type DeliveryStatus =
   | 'pending_pool'      // Havuzda bekliyor (Kurye aranıyor)

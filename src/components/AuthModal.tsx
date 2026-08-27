@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Bike, Shield, Check, Plus, ArrowRight, Phone, Mail, Building, MapPin } from 'lucide-react';
+import { X, User, Bike, Shield, Check, Plus, ArrowRight, Phone, Mail, Building, MapPin, LogOut } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, UserRole } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
@@ -10,6 +10,7 @@ export const AuthModal: React.FC = () => {
     users,
     switchUser,
     registerUser,
+    logout,
     isAuthModalOpen,
     setIsAuthModalOpen,
     setCurrentView,
@@ -188,13 +189,25 @@ export const AuthModal: React.FC = () => {
                 })}
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex justify-center">
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setIsAuthModalOpen(false);
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Oturumu Kapat</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setActiveTab('register')}
                   className="text-xs text-sky-600 hover:text-sky-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Farklı bilgilerle yeni üyelik oluştur
+                  <Plus className="w-3.5 h-3.5" /> Yeni Üyelik Oluştur
                 </button>
               </div>
             </div>

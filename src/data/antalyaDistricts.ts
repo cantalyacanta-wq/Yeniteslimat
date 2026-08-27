@@ -188,41 +188,27 @@ export const DISTRICT_DISTANCE_MATRIX: Record<DistrictName, Record<DistrictName,
 };
 
 /**
- * Calculates realistic delivery pricing, courier payout and estimated duration for Antalya intra-city.
+ * Calculates delivery pricing, courier payout and estimated duration for Antalya intra-city.
+ * Rule: Yemek / Restoran = 100 TL, all others = 150 TL.
  */
 export function calculateDeliveryEstimate(
   fromDistrict: DistrictName,
   toDistrict: DistrictName,
   packageType: string,
-  urgency: string
+  urgency?: string
 ) {
-  const km = DISTRICT_DISTANCE_MATRIX[fromDistrict]?.[toDistrict] || 10;
+  const km = DISTRICT_DISTANCE_MATRIX[fromDistrict]?.[toDistrict] || 8;
   
-  // Base cost calculation
-  // Antalya base moto courier: 120 TL + 12 TL per km
-  let basePrice = 120 + km * 14;
+  // Exact Pricing Rule:
+  // Yemek / Restoran = 100 TL, Diğerleri = 150 TL
+  const isFood = packageType === 'food';
+  const totalPrice = isFood ? 100 : 150;
+  const courierEarnings = isFood ? 80 : 120; // Kurye hakedişi
   
-  // Package type multiplier
-  let packageExtra = 0;
-  if (packageType === 'small_box') packageExtra = 20;
-  if (packageType === 'food') packageExtra = 15;
-  if (packageType === 'fragile_electronics') packageExtra = 40;
-  if (packageType === 'large_box') packageExtra = 80;
-  
-  // Urgency multiplier
-  let urgencyMultiplier = 1.0;
-  let durationMins = Math.round(15 + km * 2.2); // Base speed with traffic
-  
+  let durationMins = Math.round(15 + km * 1.8);
   if (urgency === 'express_vip') {
-    urgencyMultiplier = 1.5;
-    durationMins = Math.round(durationMins * 0.65); // faster moto priority
-  } else if (urgency === 'scheduled') {
-    urgencyMultiplier = 1.1;
+    durationMins = Math.max(15, Math.round(durationMins * 0.7));
   }
-  
-  const totalPrice = Math.round((basePrice + packageExtra) * urgencyMultiplier);
-  // Courier receives 75% of delivery fee
-  const courierEarnings = Math.round(totalPrice * 0.76);
   
   return {
     distanceKm: km,

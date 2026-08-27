@@ -12,6 +12,7 @@ import {
   Upload,
   Home,
   CheckCircle2,
+  LogOut,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -24,6 +25,7 @@ export const Navbar: React.FC = () => {
     setIsAuthModalOpen,
     exportDatabaseBackup,
     importDatabaseBackup,
+    logout,
   } = useDelivery();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -175,6 +177,16 @@ export const Navbar: React.FC = () => {
               </div>
             </button>
 
+            {/* Logout Quick Button */}
+            <button
+              type="button"
+              onClick={logout}
+              title="Oturumu Kapat"
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+
             {/* DB Export / Backup Button (desktop) */}
             <button
               type="button"
@@ -230,17 +242,31 @@ export const Navbar: React.FC = () => {
 
             {/* Role & Backup inside mobile menu */}
             <div className="pt-2 mt-2 border-t border-slate-100 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAuthModalOpen(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-800"
-              >
-                <span>Aktif Üyelik: {currentUser.name}</span>
-                <span className="text-sky-600">Değiştir &rarr;</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAuthModalOpen(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex-1 flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-800"
+                >
+                  <span className="truncate">Profil: {currentUser.name}</span>
+                  <span className="text-sky-600 text-[11px] shrink-0">Değiştir &rarr;</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Çıkış</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2 px-1">
                 <button

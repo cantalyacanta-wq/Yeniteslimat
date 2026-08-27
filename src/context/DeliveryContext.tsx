@@ -15,6 +15,7 @@ interface DeliveryContextType {
   switchRole: (role: UserRole) => void;
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
+  logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
 
@@ -314,8 +315,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, [currentUserId]);
 
-  // Helper to generate 4-digit numeric code
-  const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+  // Logout feature
+  const logout = useCallback(() => {
+    // Reset to default initial user and navigate to home
+    setCurrentUserId(INITIAL_USERS[0].id);
+    setCurrentView('home');
+    playAcceptSound();
+  }, []);
 
   // Create new delivery request
   const createNewRequest = useCallback(
@@ -343,7 +349,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const trackingCode = `ANT-${randomNum}`;
-      const deliveryCode = generateCode();
 
       const newRequest: DeliveryRequest = {
         ...params,
@@ -353,7 +358,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updatedAt: new Date().toISOString(),
         senderUserId: currentUser.id,
         status: 'pending_pool',
-        deliveryCode,
         estimatedDistanceKm: estimate.distanceKm,
         estimatedDurationMins: estimate.durationMins,
         price: estimate.price,
@@ -512,15 +516,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const demoTitles = [
       'Acil Eczane / Reçeteli İlaç Teslimatı',
-      'Yedek Anahtar ve Evrak Zarfı',
-      'Gusto Gurme Soğuk Meze Paketi',
-      'Laptop Şarj Aleti & Taşınabilir Disk',
-      'Tekstil Numune Kumaş Paketi',
-      'Gözlük ve Optik Sipariş Kutusu',
+      'Petshop Kedi Maması & Vitamin',
+      'Market & Bakkal Sipariş Poşeti',
+      'Özel Tasarım Canlı Çiçek Buketi',
+      'Sıcak Kebap & Lahmacun Menüsü',
+      'Tekstil ve Numune Koli Paketi',
     ];
 
     const randomTitle = demoTitles[Math.floor(Math.random() * demoTitles.length)];
-    const packageTypes: ('document' | 'small_box' | 'food' | 'fragile_electronics')[] = ['document', 'small_box', 'food', 'fragile_electronics'];
+    const packageTypes: ('food' | 'petshop' | 'market' | 'flower' | 'other')[] = [
+      'food',
+      'petshop',
+      'market',
+      'flower',
+      'other',
+    ];
     const randomType = packageTypes[Math.floor(Math.random() * packageTypes.length)];
 
     createNewRequest({
@@ -546,8 +556,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       packageName: randomTitle,
       packageWeightKg: parseFloat((Math.random() * 2 + 0.3).toFixed(1)),
       urgency: Math.random() > 0.5 ? 'express_vip' : 'standard',
-      noteForCourier: 'Zile basıp güvenliğe veya kapıya teslim edebilirsiniz.',
-      paymentMethod: 'card_on_delivery',
+      noteForCourier: 'Zile basıp kapıya veya güvenliğe teslim edebilirsiniz.',
+      paymentMethod: Math.random() > 0.5 ? 'gonderici_odemeli' : 'alici_odemeli',
       isPaid: false,
     });
   }, [createNewRequest]);
@@ -633,6 +643,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         switchRole,
         registerUser,
         updateCurrentUserProfile,
+        logout,
         isAuthModalOpen,
         setIsAuthModalOpen,
         requests,
