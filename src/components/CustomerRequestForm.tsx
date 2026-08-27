@@ -6,7 +6,6 @@ import {
   Phone, 
   CreditCard, 
   ArrowRight, 
-  Sparkles, 
   CheckCircle2, 
   AlertCircle,
   Bike,
@@ -59,27 +58,6 @@ export const CustomerRequestForm: React.FC = () => {
   const estimate = useMemo(() => {
     return calculateDeliveryEstimate(senderDistrict, receiverDistrict, packageType, urgency);
   }, [senderDistrict, receiverDistrict, packageType, urgency]);
-
-  // Quick autofill demo for user convenience
-  const handleQuickFill = () => {
-    setSenderDistrict('Muratpaşa');
-    setSenderNeighborhood('Şirinyalı');
-    setSenderAddress('İsmet Gökşen Cad. No: 48 D:2 (Hukuk Bürosu)');
-    setSenderName(currentUser.name || 'Mehmet Yılmaz');
-    setSenderPhone(currentUser.phone || '0532 555 12 34');
-
-    setReceiverDistrict('Konyaaltı');
-    setReceiverNeighborhood('Gürsu');
-    setReceiverAddress('Atatürk Bulvarı No: 120 Daire: 4');
-    setReceiverName('Av. Zeynep Kaya');
-    setReceiverPhone('0544 333 98 76');
-
-    setPackageType('document');
-    setPackageName('Sözleşme & Noter Evrakı');
-    setPaymentMethod('cash_on_delivery');
-    setNoteForCourier('Zile basıp güvenliğe veya kapıya teslim edebilirsiniz.');
-    setFormError(null);
-  };
 
   // Submit request to courier pool
   const handleSubmit = (e: React.FormEvent) => {
@@ -137,7 +115,7 @@ export const CustomerRequestForm: React.FC = () => {
     <div className="w-full max-w-full overflow-hidden space-y-6">
       
       {/* Top Friendly Header Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
             <span className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold shrink-0">
@@ -149,16 +127,6 @@ export const CustomerRequestForm: React.FC = () => {
             Alış ve teslimat bilgilerini girin; talebiniz anında moto kurye havuzuna düşsün.
           </p>
         </div>
-
-        {/* Quick autofill button */}
-        <button
-          type="button"
-          onClick={handleQuickFill}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold transition cursor-pointer border border-sky-200 shrink-0"
-        >
-          <Sparkles className="w-4 h-4 text-sky-600" />
-          <span>⚡ 1 Tıkla Örnek Doldur</span>
-        </button>
       </div>
 
       {/* Main Form & Live Status Layout */}

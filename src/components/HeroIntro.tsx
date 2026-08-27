@@ -21,6 +21,9 @@ export const HeroIntro: React.FC = () => {
     setCurrentView,
     currentUser,
     setCurrentUser,
+    loginUser,
+    switchUser,
+    switchRole,
     users,
     registerUser,
   } = useDelivery();
@@ -45,52 +48,72 @@ export const HeroIntro: React.FC = () => {
   const [regError, setRegError] = useState<string | null>(null);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
 
+  // Quick Login for existing roles
+  const handleQuickRoleLogin = (role: UserRole) => {
+    setLoginError(null);
+    const targetUser = users.find((u) => u.role === role);
+    if (targetUser) {
+      setEmail(targetUser.email || targetUser.phone);
+      switchUser(targetUser.id);
+      setLoginSuccess(`Hoş geldiniz, ${targetUser.name}!`);
+      setTimeout(() => {
+        setLoginSuccess(null);
+        if (role === 'customer') setCurrentView('customer');
+        else if (role === 'courier') setCurrentView('courier');
+        else setCurrentView('history');
+      }, 500);
+    } else {
+      switchRole(role);
+      setLoginSuccess(`Giriş yapıldı.`);
+      setTimeout(() => {
+        setLoginSuccess(null);
+        if (role === 'customer') setCurrentView('customer');
+        else if (role === 'courier') setCurrentView('courier');
+        else setCurrentView('history');
+      }, 500);
+    }
+  };
+
   // Handle Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
     setLoginSuccess(null);
 
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) {
-      setLoginError('Lütfen e-posta adresinizi giriniz.');
+    const cleanInput = email.trim();
+    if (!cleanInput) {
+      setLoginError('Lütfen e-posta veya telefon numaranızı giriniz.');
       return;
     }
 
-    // Match by email, name, or phone
-    const foundUser = users.find(
-      (u) =>
-        (u.email && u.email.toLowerCase() === cleanEmail) ||
-        u.phone.replace(/\s+/g, '') === cleanEmail.replace(/\s+/g, '') ||
-        u.name.toLowerCase() === cleanEmail
-    );
-
-    if (foundUser) {
-      setCurrentUser(foundUser);
-      setLoginSuccess(`Hoş geldiniz, ${foundUser.name}! Yönlendiriliyorsunuz...`);
+    const res = loginUser(cleanInput);
+    if (res.success && res.user) {
+      const u = res.user;
+      setLoginSuccess(`Hoş geldiniz, ${u.name}! Yönlendiriliyorsunuz...`);
       setTimeout(() => {
         setLoginSuccess(null);
-        if (foundUser.role === 'customer') {
+        if (u.role === 'customer') {
           setCurrentView('customer');
-        } else if (foundUser.role === 'courier') {
+        } else if (u.role === 'courier') {
           setCurrentView('courier');
+        } else {
+          setCurrentView('history');
         }
-      }, 900);
+      }, 700);
     } else {
-      // Auto-register with this email if not found, or prompt
+      // Auto-register smoothly so the user is never locked out
       const fallbackUser = registerUser({
-        name: cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Kullanıcı',
-        email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@antalyakurye.com`,
+        name: cleanInput.includes('@') ? cleanInput.split('@')[0] : cleanInput,
+        email: cleanInput.includes('@') ? cleanInput.toLowerCase() : `${cleanInput.replace(/\s+/g, '')}@antalyakurye.com`,
         phone: '0532 000 00 00',
         role: 'customer',
         district: 'Muratpaşa',
       });
-      setCurrentUser(fallbackUser);
       setLoginSuccess(`Hoş geldiniz, ${fallbackUser.name}! Giriş yapıldı.`);
       setTimeout(() => {
         setLoginSuccess(null);
         setCurrentView('customer');
-      }, 900);
+      }, 700);
     }
   };
 
@@ -279,6 +302,41 @@ export const HeroIntro: React.FC = () => {
                   <span>Giriş Yap</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+
+                {/* Quick Role Selection Shortcut */}
+                <div className="pt-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-px bg-slate-200 flex-1"></div>
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Kayıtlı Roller İle Giriş</span>
+                    <div className="h-px bg-slate-200 flex-1"></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickRoleLogin('customer')}
+                      className="p-2 rounded-xl bg-slate-50 hover:bg-teal-50 hover:text-teal-800 border border-slate-200 text-slate-700 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
+                    >
+                      <User className="w-3.5 h-3.5 text-teal-600" />
+                      <span>Müşteri</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickRoleLogin('courier')}
+                      className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 hover:text-amber-800 border border-slate-200 text-slate-700 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
+                    >
+                      <Bike className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Moto Kurye</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickRoleLogin('admin')}
+                      className="p-2 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:text-indigo-800 border border-slate-200 text-slate-700 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
+                    >
+                      <Truck className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Yönetici</span>
+                    </button>
+                  </div>
+                </div>
               </form>
 
               {/* Toggle to Register */}

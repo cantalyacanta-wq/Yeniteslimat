@@ -10,6 +10,8 @@ interface DeliveryContextType {
   currentUser: UserAccount;
   users: UserAccount[];
   switchUser: (userId: string) => void;
+  setCurrentUser: (user: UserAccount) => void;
+  loginUser: (identifier: string) => { success: boolean; user?: UserAccount; message?: string };
   switchRole: (role: UserRole) => void;
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
@@ -56,30 +58,59 @@ interface DeliveryContextType {
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-// Persistent Local Database Keys (v3)
-const STORAGE_ORDERS_KEY = 'antalya_kurye_db_v3_orders';
-const STORAGE_USERS_KEY = 'antalya_kurye_db_v3_users';
-const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_db_v3_active_user_id';
+// Persistent Local Database Keys (v4 - enhanced resilience)
+const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v4_orders';
+const STORAGE_USERS_KEY = 'antalya_kurye_database_v4_users';
+const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v4_active_user_id';
+
+// Helper to safely load and merge users ensuring initial accounts are ALWAYS preserved
+const loadPersistentUsers = (): UserAccount[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_USERS_KEY) || sessionStorage.getItem(STORAGE_USERS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Merge initial accounts if missing
+        const existingIds = new Set(parsed.map((u: UserAccount) => u.id));
+        const merged = [...parsed];
+        for (const initUser of INITIAL_USERS) {
+          if (!existingIds.has(initUser.id)) {
+            merged.push(initUser);
+          }
+        }
+        return merged;
+      }
+    }
+  } catch (e) {
+    console.warn('User storage read error:', e);
+  }
+  return INITIAL_USERS;
+};
+
+// Helper to safely load orders
+const loadPersistentOrders = (): DeliveryRequest[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_ORDERS_KEY) || sessionStorage.getItem(STORAGE_ORDERS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Orders storage read error:', e);
+  }
+  return INITIAL_REQUESTS;
+};
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Persistent Users
-  const [users, setUsers] = useState<UserAccount[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_USERS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('User storage read error:', e);
-    }
-    return INITIAL_USERS;
-  });
+  // 1. Persistent Users (Always resilient)
+  const [users, setUsers] = useState<UserAccount[]>(loadPersistentUsers);
 
   // 2. Active Authenticated User
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY);
+      const saved = localStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY) || sessionStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY);
       if (saved) return saved;
     } catch (e) {
       console.warn('Active user id read error:', e);
@@ -87,21 +118,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return INITIAL_USERS[0].id;
   });
 
-  const currentUser = users.find((u) => u.id === currentUserId) || users[0];
+  const currentUser = users.find((u) => u.id === currentUserId) || users[0] || INITIAL_USERS[0];
 
   // 3. Persistent Orders
-  const [requests, setRequests] = useState<DeliveryRequest[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_ORDERS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Orders storage read error:', e);
-    }
-    return INITIAL_REQUESTS;
-  });
+  const [requests, setRequests] = useState<DeliveryRequest[]>(loadPersistentOrders);
 
   const [couriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
   const [activeCourierId, setActiveCourierId] = useState<string>('user-courier-01');
@@ -110,10 +130,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // Sync to persistent storage immediately whenever state changes
+  // Sync to persistent storage immediately (both localStorage and sessionStorage for max durability)
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(requests));
+      const payload = JSON.stringify(requests);
+      localStorage.setItem(STORAGE_ORDERS_KEY, payload);
+      sessionStorage.setItem(STORAGE_ORDERS_KEY, payload);
     } catch (e) {
       console.warn('Failed to persist orders:', e);
     }
@@ -121,7 +143,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+      const payload = JSON.stringify(users);
+      localStorage.setItem(STORAGE_USERS_KEY, payload);
+      sessionStorage.setItem(STORAGE_USERS_KEY, payload);
     } catch (e) {
       console.warn('Failed to persist users:', e);
     }
@@ -130,14 +154,41 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, currentUserId);
+      sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, currentUserId);
     } catch (e) {
       console.warn('Failed to persist active user:', e);
     }
   }, [currentUserId]);
 
+  // Synchronize across tabs if multiple tabs are open
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_ORDERS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setRequests(parsed);
+        } catch {
+          // ignore
+        }
+      } else if (e.key === STORAGE_USERS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setUsers(parsed);
+        } catch {
+          // ignore
+        }
+      } else if (e.key === STORAGE_ACTIVE_USER_ID_KEY && e.newValue) {
+        setCurrentUserId(e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const activeCourier = couriers.find((c) => c.id === activeCourierId) || couriers[0];
 
-  // Helper to switch user
+  // Helper to switch user by ID
   const switchUser = useCallback((userId: string) => {
     const target = users.find((u) => u.id === userId);
     if (target) {
@@ -147,6 +198,70 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       playAcceptSound();
     }
+  }, [users]);
+
+  // Helper to set current user directly
+  const setCurrentUser = useCallback((user: UserAccount) => {
+    setUsers((prev) => {
+      if (!prev.some((u) => u.id === user.id)) {
+        return [user, ...prev];
+      }
+      return prev;
+    });
+    setCurrentUserId(user.id);
+    if (user.role === 'courier') {
+      setActiveCourierId(user.id);
+    }
+    playAcceptSound();
+  }, []);
+
+  // Smart Login by any identifier (email, phone, name, role)
+  const loginUser = useCallback((identifier: string): { success: boolean; user?: UserAccount; message?: string } => {
+    const clean = identifier.trim().toLowerCase();
+    const digitsOnly = clean.replace(/\D/g, '');
+
+    // 1. Direct Email Match
+    let found = users.find((u) => u.email && u.email.toLowerCase() === clean);
+
+    // 2. Email Prefix Match (e.g. "kuryeantalyam", "emre.kurye", "mehmet")
+    if (!found) {
+      found = users.find((u) => u.email && u.email.toLowerCase().split('@')[0] === clean);
+    }
+
+    // 3. Phone Match (ignoring spaces, dashes, +90)
+    if (!found && digitsOnly.length >= 7) {
+      found = users.find((u) => {
+        const uDigits = u.phone.replace(/\D/g, '');
+        return uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits);
+      });
+    }
+
+    // 4. Name Match
+    if (!found) {
+      found = users.find((u) => u.name.toLowerCase() === clean || u.name.toLowerCase().includes(clean));
+    }
+
+    // 5. Role Keyword Match
+    if (!found) {
+      if (clean === 'kurye' || clean === 'courier' || clean === 'moto' || clean === 'moto kurye') {
+        found = users.find((u) => u.role === 'courier');
+      } else if (clean === 'admin' || clean === 'yonetici' || clean === 'yönetici') {
+        found = users.find((u) => u.role === 'admin');
+      } else if (clean === 'musteri' || clean === 'müşteri' || clean === 'customer') {
+        found = users.find((u) => u.role === 'customer');
+      }
+    }
+
+    if (found) {
+      setCurrentUserId(found.id);
+      if (found.role === 'courier') {
+        setActiveCourierId(found.id);
+      }
+      playAcceptSound();
+      return { success: true, user: found };
+    }
+
+    return { success: false, message: 'Kullanıcı bulunamadı.' };
   }, [users]);
 
   // Helper to switch role by finding or creating a default user with that role
@@ -513,6 +628,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentUser,
         users,
         switchUser,
+        setCurrentUser,
+        loginUser,
         switchRole,
         registerUser,
         updateCurrentUserProfile,
