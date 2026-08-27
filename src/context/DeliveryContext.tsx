@@ -1,11 +1,22 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import confetti from 'canvas-confetti';
-import { CourierInfo, DeliveryRequest, DeliveryStatus, DistrictName } from '../types';
-import { INITIAL_COURIERS, INITIAL_REQUESTS } from '../data/mockData';
+import { CourierInfo, DeliveryRequest, DeliveryStatus, DistrictName, UserAccount, UserRole } from '../types';
+import { INITIAL_COURIERS, INITIAL_REQUESTS, INITIAL_USERS } from '../data/mockData';
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { playAcceptSound, playNewOrderSound, playSuccessSound } from '../utils/audio';
 
 interface DeliveryContextType {
+  // Users & Auth
+  currentUser: UserAccount;
+  users: UserAccount[];
+  switchUser: (userId: string) => void;
+  switchRole: (role: UserRole) => void;
+  registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
+  updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+
+  // Requests
   requests: DeliveryRequest[];
   couriers: CourierInfo[];
   activeCourier: CourierInfo;
@@ -14,63 +25,179 @@ interface DeliveryContextType {
   setActiveCourierId: (id: string) => void;
   
   // Navigation & selection
-  currentView: 'customer' | 'courier' | 'tracker' | 'map' | 'history';
-  setCurrentView: (view: 'customer' | 'courier' | 'tracker' | 'map' | 'history') => void;
+  currentView: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile';
+  setCurrentView: (view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile') => void;
   selectedTrackingId: string | null;
   setSelectedTrackingId: (id: string | null) => void;
   
   // Actions
   createNewRequest: (params: Omit<DeliveryRequest, 'id' | 'trackingCode' | 'createdAt' | 'updatedAt' | 'status' | 'deliveryCode' | 'estimatedDistanceKm' | 'estimatedDurationMins' | 'price' | 'courierEarnings'>) => DeliveryRequest;
   acceptRequest: (requestId: string, courierId?: string) => void;
-  updateStatus: (requestId: string, nextStatus: DeliveryStatus, verificationCode?: string) => { success: boolean; message?: string };
+  updateStatus: (requestId: string, nextStatus: DeliveryStatus) => { success: boolean; message?: string };
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
   cancelRequest: (requestId: string) => void;
   addDemoRequest: () => void;
+  exportDatabaseBackup: () => void;
+  importDatabaseBackup: (jsonString: string) => boolean;
   resetDefaultData: () => void;
   
   // Filtered lists
   poolRequests: DeliveryRequest[];
   activeCourierDeliveries: DeliveryRequest[];
+  myCustomerOrders: DeliveryRequest[];
   activeStats: {
     poolCount: number;
     inTransitCount: number;
     completedTodayCount: number;
     courierEarningsToday: number;
+    myOrdersCount: number;
   };
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'antalya_kurye_orders_v2';
-const COURIER_KEY = 'antalya_kurye_active_user_v2';
+// Persistent Local Database Keys (v3)
+const STORAGE_ORDERS_KEY = 'antalya_kurye_db_v3_orders';
+const STORAGE_USERS_KEY = 'antalya_kurye_db_v3_users';
+const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_db_v3_active_user_id';
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // 1. Persistent Users
+  const [users, setUsers] = useState<UserAccount[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_USERS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('User storage read error:', e);
+    }
+    return INITIAL_USERS;
+  });
+
+  // 2. Active Authenticated User
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY);
+      if (saved) return saved;
+    } catch (e) {
+      console.warn('Active user id read error:', e);
+    }
+    return INITIAL_USERS[0].id;
+  });
+
+  const currentUser = users.find((u) => u.id === currentUserId) || users[0];
+
+  // 3. Persistent Orders
   const [requests, setRequests] = useState<DeliveryRequest[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(STORAGE_ORDERS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
-      console.warn('Storage read error:', e);
+      console.warn('Orders storage read error:', e);
     }
     return INITIAL_REQUESTS;
   });
 
   const [couriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
-  const [activeCourierId, setActiveCourierId] = useState<string>('kurye-01');
+  const [activeCourierId, setActiveCourierId] = useState<string>('user-courier-01');
   const [isCourierOnline, setIsCourierOnline] = useState<boolean>(true);
-  const [currentView, setCurrentView] = useState<'customer' | 'courier' | 'tracker' | 'map' | 'history'>('customer');
+  const [currentView, setCurrentView] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile'>('home');
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // Sync to LocalStorage
+  // Sync to persistent storage immediately whenever state changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+      localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(requests));
     } catch (e) {
-      console.warn('Storage write error:', e);
+      console.warn('Failed to persist orders:', e);
     }
   }, [requests]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    } catch (e) {
+      console.warn('Failed to persist users:', e);
+    }
+  }, [users]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, currentUserId);
+    } catch (e) {
+      console.warn('Failed to persist active user:', e);
+    }
+  }, [currentUserId]);
+
   const activeCourier = couriers.find((c) => c.id === activeCourierId) || couriers[0];
+
+  // Helper to switch user
+  const switchUser = useCallback((userId: string) => {
+    const target = users.find((u) => u.id === userId);
+    if (target) {
+      setCurrentUserId(target.id);
+      if (target.role === 'courier') {
+        setActiveCourierId(target.id);
+      }
+      playAcceptSound();
+    }
+  }, [users]);
+
+  // Helper to switch role by finding or creating a default user with that role
+  const switchRole = useCallback((role: UserRole) => {
+    const matchingUser = users.find((u) => u.role === role);
+    if (matchingUser) {
+      setCurrentUserId(matchingUser.id);
+      if (role === 'courier') {
+        setActiveCourierId(matchingUser.id);
+      }
+    } else {
+      // create a default user for this role
+      const newUser: UserAccount = {
+        id: `user-${role}-${Date.now()}`,
+        name: role === 'courier' ? 'Yeni Moto Kurye' : role === 'admin' ? 'Sistem Yöneticisi' : 'Yeni Müşteri',
+        phone: '0532 000 00 00',
+        email: `${role}@antalyakurye.com`,
+        role,
+        createdAt: new Date().toISOString(),
+      };
+      setUsers((prev) => [...prev, newUser]);
+      setCurrentUserId(newUser.id);
+    }
+    playAcceptSound();
+  }, [users]);
+
+  // Register a new user
+  const registerUser = useCallback((userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>): UserAccount => {
+    const newUser: UserAccount = {
+      ...userData,
+      id: `user-${userData.role}-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      totalOrders: 0,
+      totalEarnings: 0,
+    };
+
+    setUsers((prev) => [newUser, ...prev]);
+    setCurrentUserId(newUser.id);
+    if (newUser.role === 'courier') {
+      setActiveCourierId(newUser.id);
+    }
+    playSuccessSound();
+    return newUser;
+  }, []);
+
+  // Update current user profile
+  const updateCurrentUserProfile = useCallback((data: Partial<UserAccount>) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === currentUserId ? { ...u, ...data } : u))
+    );
+  }, [currentUserId]);
 
   // Helper to generate 4-digit numeric code
   const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -109,6 +236,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         trackingCode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        senderUserId: currentUser.id,
         status: 'pending_pool',
         deliveryCode,
         estimatedDistanceKm: estimate.distanceKm,
@@ -118,20 +246,37 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       };
 
       setRequests((prev) => [newRequest, ...prev]);
-      playNewOrderSound();
       
-      // Auto-set tracking ID
+      // Update customer total orders
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id ? { ...u, totalOrders: (u.totalOrders || 0) + 1 } : u
+        )
+      );
+
+      playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
 
       return newRequest;
     },
-    []
+    [currentUser.id]
   );
 
   // Courier accepts order
   const acceptRequest = useCallback(
     (requestId: string, courierId?: string) => {
-      const selectedCourier = couriers.find((c) => c.id === (courierId || activeCourierId)) || activeCourier;
+      const targetCourierId = courierId || currentUser.id || activeCourierId;
+      const courierObj: CourierInfo = {
+        id: currentUser.id,
+        name: currentUser.name,
+        phone: currentUser.phone,
+        vehicleType: currentUser.vehicleType || 'Honda PCX 125',
+        plate: currentUser.plate || '07 ANT 07',
+        rating: 4.95,
+        totalDeliveries: (currentUser.totalOrders || 0) + 1,
+        currentLat: 36.8860,
+        currentLng: 30.7065,
+      };
 
       setRequests((prev) =>
         prev.map((req) => {
@@ -139,7 +284,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return {
               ...req,
               status: 'courier_assigned',
-              assignedCourier: selectedCourier,
+              assignedCourier: courierObj,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -149,20 +294,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       playAcceptSound();
     },
-    [activeCourierId, couriers, activeCourier]
+    [currentUser, activeCourierId]
   );
 
-  // Update status with optional security code check for completion
+  // Update status without needing verification code
   const updateStatus = useCallback(
-    (requestId: string, nextStatus: DeliveryStatus, verificationCode?: string) => {
+    (requestId: string, nextStatus: DeliveryStatus) => {
       const targetReq = requests.find((r) => r.id === requestId);
       if (!targetReq) return { success: false, message: 'Sipariş bulunamadı.' };
 
       if (nextStatus === 'delivered') {
-        if (verificationCode && verificationCode.trim() !== targetReq.deliveryCode) {
-          return { success: false, message: 'Hatalı teslimat onay kodu! Müşteriden 4 haneli kodu alınız.' };
-        }
-        
         // Success celebration
         playSuccessSound();
         try {
@@ -173,7 +314,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             colors: ['#0284c7', '#10b981', '#f59e0b', '#6366f1'],
           });
         } catch {
-          // ignore in environments without canvas
+          // ignore
+        }
+
+        // Update courier earnings & deliveries
+        if (targetReq.assignedCourier?.id) {
+          const cId = targetReq.assignedCourier.id;
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.id === cId
+                ? {
+                    ...u,
+                    totalOrders: (u.totalOrders || 0) + 1,
+                    totalEarnings: (u.totalEarnings || 0) + (targetReq.courierEarnings || 0),
+                  }
+                : u
+            )
+          );
         }
       }
 
@@ -280,10 +437,52 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [createNewRequest]);
 
-  // Reset to default mock
+  // Export database backup as JSON
+  const exportDatabaseBackup = useCallback(() => {
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      orders: requests,
+      users,
+      activeUserId: currentUserId,
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `antalya_kurye_yedek_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [requests, users, currentUserId]);
+
+  // Import database backup
+  const importDatabaseBackup = useCallback((jsonString: string) => {
+    try {
+      const data = JSON.parse(jsonString);
+      if (data.orders && Array.isArray(data.orders)) {
+        setRequests(data.orders);
+      }
+      if (data.users && Array.isArray(data.users)) {
+        setUsers(data.users);
+      }
+      if (data.activeUserId) {
+        setCurrentUserId(data.activeUserId);
+      }
+      playSuccessSound();
+      return true;
+    } catch (e) {
+      console.error('Import failed:', e);
+      return false;
+    }
+  }, []);
+
+  // Reset to default mock data safely
   const resetDefaultData = useCallback(() => {
     setRequests(INITIAL_REQUESTS);
-    localStorage.removeItem(STORAGE_KEY);
+    setUsers(INITIAL_USERS);
+    setCurrentUserId(INITIAL_USERS[0].id);
+    localStorage.removeItem(STORAGE_ORDERS_KEY);
+    localStorage.removeItem(STORAGE_USERS_KEY);
+    localStorage.removeItem(STORAGE_ACTIVE_USER_ID_KEY);
     playAcceptSound();
   }, []);
 
@@ -291,8 +490,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
   const activeCourierDeliveries = requests.filter(
     (r) =>
-      r.assignedCourier?.id === activeCourier.id &&
+      r.assignedCourier?.id === currentUser.id &&
       (r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination')
+  );
+
+  const myCustomerOrders = requests.filter(
+    (r) => r.senderUserId === currentUser.id || currentUser.role === 'admin'
   );
 
   const completedTodayCount = requests.filter((r) => r.status === 'delivered').length;
@@ -301,12 +504,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   ).length;
 
   const courierEarningsToday = requests
-    .filter((r) => r.assignedCourier?.id === activeCourier.id && r.status === 'delivered')
+    .filter((r) => r.assignedCourier?.id === currentUser.id && r.status === 'delivered')
     .reduce((acc, curr) => acc + (curr.courierEarnings || 0), 0);
 
   return (
     <DeliveryContext.Provider
       value={{
+        currentUser,
+        users,
+        switchUser,
+        switchRole,
+        registerUser,
+        updateCurrentUserProfile,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
         requests,
         couriers,
         activeCourier,
@@ -323,14 +534,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         rateDelivery,
         cancelRequest,
         addDemoRequest,
+        exportDatabaseBackup,
+        importDatabaseBackup,
         resetDefaultData,
         poolRequests,
         activeCourierDeliveries,
+        myCustomerOrders,
         activeStats: {
           poolCount: poolRequests.length,
           inTransitCount,
           completedTodayCount,
           courierEarningsToday,
+          myOrdersCount: myCustomerOrders.length,
         },
       }}
     >

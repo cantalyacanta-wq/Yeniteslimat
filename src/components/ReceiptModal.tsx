@@ -120,7 +120,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Elektronik Doğrulanmış Taşıma İrsaliyesi</span>
               </div>
-              <span className="font-mono">KOD: {order.deliveryCode}</span>
+              <span className="font-mono text-slate-500">Antalya Kurye Express</span>
             </div>
           </div>
         </div>

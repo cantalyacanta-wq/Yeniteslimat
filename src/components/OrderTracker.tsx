@@ -7,7 +7,6 @@ import {
   ShieldCheck, 
   Phone, 
   MessageSquare, 
-  KeyRound, 
   CheckCircle2, 
   Star, 
   Share2, 
@@ -91,7 +90,7 @@ export const OrderTracker: React.FC = () => {
     { title: 'Kurye Atandı', desc: 'Paketi almaya gidiyor' },
     { title: 'Paket Alındı', desc: 'Teslimat adresine yolda' },
     { title: 'Adrese Ulaşıldı', desc: 'Kapıda teslim aşaması' },
-    { title: 'Teslim Edildi', desc: 'Güvenli kodla tamamlandı' },
+    { title: 'Teslim Edildi', desc: 'Alıcıya ulaştırıldı' },
   ];
 
   return (
@@ -205,27 +204,6 @@ export const OrderTracker: React.FC = () => {
                       {steps[currentStep]?.title} - {steps[currentStep]?.desc}
                     </p>
                   </div>
-                </div>
-              </div>
-
-              {/* 4-Digit Security Code Banner */}
-              <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 sm:p-5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md shadow-orange-500/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
-                    <KeyRound className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-xs uppercase font-bold tracking-wider text-amber-100 block">
-                      Teslimat Güvenlik Onay Kodu
-                    </span>
-                    <p className="text-xs text-white/90">
-                      Paketi teslim alırken kuryeye iletmeniz gereken 4 haneli kod:
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white text-slate-900 rounded-xl px-5 py-2 text-center font-mono text-2xl sm:text-3xl font-extrabold tracking-widest shadow-inner">
-                  {currentOrder.deliveryCode}
                 </div>
               </div>
             </div>

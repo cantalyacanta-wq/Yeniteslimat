@@ -1,8 +1,58 @@
-import { CourierInfo, DeliveryRequest } from '../types';
+import { CourierInfo, DeliveryRequest, UserAccount } from '../types';
+
+export const INITIAL_USERS: UserAccount[] = [
+  {
+    id: 'user-customer-01',
+    name: 'Mehmet Yılmaz',
+    phone: '0532 555 12 34',
+    email: 'mehmet@antalyahukuk.com',
+    role: 'customer',
+    companyName: 'Yılmaz Hukuk & Danışmanlık',
+    district: 'Muratpaşa',
+    createdAt: '2026-01-15T09:00:00.000Z',
+    totalOrders: 14,
+  },
+  {
+    id: 'user-courier-01',
+    name: 'Emre Çelik',
+    phone: '0532 456 78 90',
+    email: 'emre.kurye@antalyakurye.com',
+    role: 'courier',
+    vehicleType: 'Honda PCX 125',
+    plate: '07 BKR 412',
+    district: 'Muratpaşa',
+    createdAt: '2026-01-10T08:30:00.000Z',
+    totalOrders: 842,
+    totalEarnings: 38400,
+  },
+  {
+    id: 'user-courier-02',
+    name: 'Mustafa Yıldız',
+    phone: '0544 321 65 43',
+    email: 'mustafa.yildiz@antalyakurye.com',
+    role: 'courier',
+    vehicleType: 'Yamaha NMAX 155',
+    plate: '07 ANT 885',
+    district: 'Konyaaltı',
+    createdAt: '2026-02-01T10:15:00.000Z',
+    totalOrders: 615,
+    totalEarnings: 29500,
+  },
+  {
+    id: 'user-admin-01',
+    name: 'Antalya Express Yönetim',
+    phone: '0850 707 07 07',
+    email: 'kuryeantalyam@gmail.com',
+    role: 'admin',
+    companyName: 'Antalya Kurye Express A.Ş.',
+    district: 'Muratpaşa',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
 
 export const INITIAL_COURIERS: CourierInfo[] = [
   {
-    id: 'kurye-01',
+    id: 'user-courier-01',
     name: 'Emre Çelik',
     phone: '0532 456 78 90',
     vehicleType: 'Honda PCX 125',
@@ -13,7 +63,7 @@ export const INITIAL_COURIERS: CourierInfo[] = [
     currentLng: 30.7065, // Muratpaşa center
   },
   {
-    id: 'kurye-02',
+    id: 'user-courier-02',
     name: 'Mustafa Yıldız',
     phone: '0544 321 65 43',
     vehicleType: 'Yamaha NMAX 155',
@@ -53,6 +103,7 @@ export const INITIAL_REQUESTS: DeliveryRequest[] = [
     trackingCode: 'ANT-9842',
     createdAt: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    senderUserId: 'user-customer-01',
     sender: {
       district: 'Muratpaşa',
       neighborhood: 'Şirinyalı',

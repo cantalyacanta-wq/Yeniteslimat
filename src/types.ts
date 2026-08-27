@@ -24,6 +24,24 @@ export type DeliveryStatus =
   | 'delivered'         // Teslim edildi
   | 'cancelled';        // İptal edildi
 
+export type UserRole = 'customer' | 'courier' | 'admin';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: UserRole;
+  companyName?: string;
+  district?: DistrictName;
+  vehicleType?: 'Honda PCX 125' | 'Yamaha NMAX 155' | 'Elektrikli Moto' | 'Panelvan Araç';
+  plate?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  totalOrders?: number;
+  totalEarnings?: number;
+}
+
 export interface LocationInfo {
   district: DistrictName;
   neighborhood: string;
@@ -54,6 +72,9 @@ export interface DeliveryRequest {
   createdAt: string;
   updatedAt: string;
   
+  // Sender User info (if logged in)
+  senderUserId?: string;
+  
   // Locations
   sender: LocationInfo;
   receiver: LocationInfo;
@@ -81,7 +102,7 @@ export interface DeliveryRequest {
   assignedCourier?: CourierInfo;
   pickupTime?: string;
   deliveryTime?: string;
-  deliveryCode: string; // 4-digit confirmation code, e.g. "7294"
+  deliveryCode?: string; // Optional confirmation code
   
   // Rating
   customerRating?: number;
