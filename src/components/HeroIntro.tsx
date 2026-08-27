@@ -11,9 +11,14 @@ import {
   Phone,
   Bike,
   CheckCircle2,
+  Navigation,
+  Radio,
+  PhoneCall,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
-import { UserRole, DistrictName } from '../types';
+import { UserRole, DistrictName, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
 
 export const HeroIntro: React.FC = () => {
@@ -26,9 +31,21 @@ export const HeroIntro: React.FC = () => {
     switchRole,
     users,
     registerUser,
+    requests,
+    setSelectedTrackingId,
+    cancelRequest,
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
+
+  // Active order for customer
+  const activeCustomerOrder = requests.find(
+    (r) =>
+      (r.senderUserId === currentUser.id || r.sender.contactPhone === currentUser.phone) &&
+      r.status !== 'delivered' &&
+      r.status !== 'cancelled'
+  ) || (currentUser.role === 'customer' && requests.length > 0 && requests[0].status !== 'delivered' && requests[0].status !== 'cancelled' ? requests[0] : null);
 
   // Login form state
   const [email, setEmail] = useState('');
@@ -185,35 +202,145 @@ export const HeroIntro: React.FC = () => {
               </p>
             </div>
 
-            {/* 3 Feature Bullets */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
-                  <Package className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-slate-200">
-                  Tek tıkla paket talebi oluştur
-                </span>
-              </div>
+            {/* Active Order Card or 3 Feature Bullets */}
+            {activeCustomerOrder ? (
+              <div className="space-y-3 pt-2">
+                <div className={`p-5 rounded-3xl border shadow-xl transition-all space-y-4 ${
+                  activeCustomerOrder.status === 'courier_assigned' || activeCustomerOrder.status === 'picked_up'
+                    ? 'bg-gradient-to-br from-slate-950 via-teal-950 to-slate-900 border-teal-500/50 text-white shadow-teal-500/10'
+                    : 'bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 border-sky-500/40 text-white'
+                }`}>
+                  {/* Status header with pulse */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative flex items-center justify-center">
+                        <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping"></span>
+                        <span className="w-2 h-2 rounded-full bg-amber-500 absolute"></span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-teal-300 block">Canlı Aktif Siparişiniz</span>
+                        <h4 className="text-xs sm:text-sm font-extrabold text-white">
+                          {activeCustomerOrder.status === 'pending_pool' && '🛵 Havuzda Kurye Aranıyor...'}
+                          {activeCustomerOrder.status === 'courier_assigned' && '🎉 Kurye Talebinizi Kabul Etti!'}
+                          {activeCustomerOrder.status === 'picked_up' && '📦 Paket Alındı, Teslimata Gidiyor'}
+                        </h4>
+                      </div>
+                    </div>
+                    <span className="font-mono text-xs font-black bg-white/15 px-2.5 py-1 rounded-lg border border-white/20">
+                      {activeCustomerOrder.trackingCode}
+                    </span>
+                  </div>
 
-              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-medium text-slate-200">
-                  Kurye havuzundan otomatik eşleşme
-                </span>
-              </div>
+                  {/* Courier details if accepted */}
+                  {activeCustomerOrder.assignedCourier ? (
+                    <div className="p-3.5 rounded-2xl bg-teal-900/40 border border-teal-500/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center font-black text-sm shrink-0">
+                          <Bike className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-xs text-white">{activeCustomerOrder.assignedCourier.name}</span>
+                            <span className="text-[10px] bg-teal-400/20 text-teal-300 px-1 py-0.2 rounded font-semibold">Kurye</span>
+                          </div>
+                          <p className="text-[11px] text-teal-200/80">
+                            {activeCustomerOrder.assignedCourier.vehicleType} • <span className="font-mono">{activeCustomerOrder.assignedCourier.plate}</span>
+                          </p>
+                        </div>
+                      </div>
 
-              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
-                  <User className="w-5 h-5" />
+                      <a
+                        href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs shrink-0"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5" />
+                        <span>Ara</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5 text-xs text-slate-300">
+                      <Radio className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                      <span>Antalya moto kurye havuzunda en yakın sürücüyle eşleşiyor...</span>
+                    </div>
+                  )}
+
+                  {/* Animated step bar */}
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-semibold">
+                      <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400 font-bold' : 'text-slate-400'}>Havuzda</span>
+                      <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-teal-300 font-bold' : 'text-slate-400'}>Kurye Yolda</span>
+                      <span className={activeCustomerOrder.status === 'picked_up' ? 'text-sky-300 font-bold' : 'text-slate-400'}>Teslimat</span>
+                    </div>
+                    <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-400 via-teal-400 to-emerald-400 rounded-full transition-all duration-500"
+                        style={{
+                          width:
+                            activeCustomerOrder.status === 'pending_pool'
+                              ? '33%'
+                              : activeCustomerOrder.status === 'courier_assigned'
+                              ? '66%'
+                              : '100%',
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                      className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>İptal</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTrackingId(activeCustomerOrder.id);
+                        setCurrentView('tracker');
+                      }}
+                      className="flex-1 py-2 bg-teal-500 hover:bg-teal-600 active:scale-98 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-md shadow-teal-500/20 flex items-center justify-center gap-1.5"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Canlı Haritada İzle ➔</span>
+                    </button>
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-slate-200">
-                  Anlık takip ve durum bildirimleri
-                </span>
               </div>
-            </div>
+            ) : (
+              /* 3 Feature Bullets */
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                  <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-200">
+                    Tek tıkla paket talebi oluştur
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                  <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-200">
+                    Kurye havuzundan otomatik eşleşme
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+                  <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-200">
+                    Anlık takip ve durum bildirimleri
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer inside Left Section */}
@@ -528,6 +655,47 @@ export const HeroIntro: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Confirmation Modal for Customer Cancellation */}
+      {confirmCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-slate-900">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Siparişi İptal Et</h3>
+                <p className="text-xs text-slate-500">{confirmCancelModal.trackingCode} numaralı talebiniz</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Bu siparişi iptal etmek istediğinizden emin misiniz? Sipariş kurye havuzundan kaldırılacaktır.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCancelModal(null)}
+                className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelRequest(confirmCancelModal.id);
+                  setConfirmCancelModal(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-sm"
+              >
+                Evet, İptal Et
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

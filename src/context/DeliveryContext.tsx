@@ -39,6 +39,7 @@ interface DeliveryContextType {
   updateStatus: (requestId: string, nextStatus: DeliveryStatus) => { success: boolean; message?: string };
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
   cancelRequest: (requestId: string) => void;
+  releaseRequestBackToPool: (requestId: string) => void;
   addDemoRequest: () => void;
   exportDatabaseBackup: () => void;
   importDatabaseBackup: (jsonString: string) => boolean;
@@ -491,7 +492,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, []);
 
-  // Cancel order
+  // Cancel order (by customer or admin)
   const cancelRequest = useCallback((requestId: string) => {
     setRequests((prev) =>
       prev.map((req) => {
@@ -505,6 +506,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return req;
       })
     );
+  }, []);
+
+  // Courier releases task before picking up -> drops back to pool
+  const releaseRequestBackToPool = useCallback((requestId: string) => {
+    setRequests((prev) =>
+      prev.map((req) => {
+        if (req.id === requestId) {
+          return {
+            ...req,
+            status: 'pending_pool',
+            assignedCourier: undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return req;
+      })
+    );
+    playAcceptSound();
   }, []);
 
   // Add realistic demo request to test pool
@@ -661,6 +680,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateStatus,
         rateDelivery,
         cancelRequest,
+        releaseRequestBackToPool,
         addDemoRequest,
         exportDatabaseBackup,
         importDatabaseBackup,

@@ -14,7 +14,9 @@ import {
   Package, 
   AlertCircle,
   Copy,
-  Check
+  Check,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -26,7 +28,8 @@ export const OrderTracker: React.FC = () => {
     selectedTrackingId, 
     setSelectedTrackingId, 
     rateDelivery,
-    setCurrentView 
+    setCurrentView,
+    cancelRequest 
   } = useDelivery();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +37,7 @@ export const OrderTracker: React.FC = () => {
   const [feedbackText, setFeedbackText] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   // Active or selected order
   const currentOrder = requests.find(
@@ -145,67 +149,92 @@ export const OrderTracker: React.FC = () => {
                         ⚡ VIP Jet Moto
                       </span>
                     )}
+                    {currentOrder.status === 'cancelled' && (
+                      <span className="text-xs font-bold bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full">
+                        ✕ İptal Edildi
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     Oluşturulma: {new Date(currentOrder.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} • Antalya İçi
                   </p>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-xs text-slate-500 font-medium block">Tahmini Varış Süresi</span>
-                  <span className="text-2xl font-black text-orange-600">
-                    {currentOrder.status === 'delivered' ? 'Tamamlandı' : `${currentOrder.estimatedDurationMins} Dakika`}
-                  </span>
-                </div>
-              </div>
+                <div className="flex items-center gap-3">
+                  {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelOpen(true)}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Siparişi İptal Et</span>
+                    </button>
+                  )}
 
-              {/* Step Timeline */}
-              <div className="relative mb-6">
-                <div className="hidden sm:grid grid-cols-5 gap-2 text-center relative z-10">
-                  {steps.map((step, idx) => {
-                    const isDone = idx <= currentStep;
-                    const isCurrent = idx === currentStep;
-
-                    return (
-                      <div key={idx} className="flex flex-col items-center">
-                        <div
-                          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition duration-200 ${
-                            isDone
-                              ? 'bg-orange-600 text-white ring-4 ring-orange-100'
-                              : 'bg-slate-100 text-slate-400'
-                          } ${isCurrent ? 'animate-pulse' : ''}`}
-                        >
-                          {isDone ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
-                        </div>
-                        <span className={`text-xs font-bold mt-2 ${isDone ? 'text-slate-900' : 'text-slate-400'}`}>
-                          {step.title}
-                        </span>
-                        <span className="text-[10px] text-slate-500 mt-0.5 leading-tight">
-                          {step.desc}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Progress bar line */}
-                <div className="hidden sm:block absolute top-4.5 left-8 right-8 h-1 bg-slate-100 -z-0">
-                  <div
-                    className="h-full bg-orange-500 transition-all duration-500"
-                    style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-                  ></div>
-                </div>
-
-                {/* Mobile vertical status */}
-                <div className="sm:hidden space-y-3">
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs">
-                    <span className="font-bold text-orange-900 block">Güncel Durum:</span>
-                    <p className="text-orange-800 font-medium mt-0.5">
-                      {steps[currentStep]?.title} - {steps[currentStep]?.desc}
-                    </p>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-500 font-medium block">Tahmini Varış Süresi</span>
+                    <span className="text-2xl font-black text-orange-600">
+                      {currentOrder.status === 'delivered' ? 'Tamamlandı' : currentOrder.status === 'cancelled' ? 'İptal' : `${currentOrder.estimatedDurationMins} Dakika`}
+                    </span>
                   </div>
                 </div>
               </div>
+
+              {/* Step Timeline or Cancelled Notice */}
+              {currentOrder.status === 'cancelled' ? (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>Bu sipariş iptal edilmiştir. Yeni bir gönderi için ana sayfadan veya müşteri panelinden talep oluşturabilirsiniz.</span>
+                </div>
+              ) : (
+                <div className="relative mb-6">
+                  <div className="hidden sm:grid grid-cols-5 gap-2 text-center relative z-10">
+                    {steps.map((step, idx) => {
+                      const isDone = idx <= currentStep;
+                      const isCurrent = idx === currentStep;
+
+                      return (
+                        <div key={idx} className="flex flex-col items-center">
+                          <div
+                            className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition duration-200 ${
+                              isDone
+                                ? 'bg-orange-600 text-white ring-4 ring-orange-100'
+                                : 'bg-slate-100 text-slate-400'
+                            } ${isCurrent ? 'animate-pulse' : ''}`}
+                          >
+                            {isDone ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                          </div>
+                          <span className={`text-xs font-bold mt-2 ${isDone ? 'text-slate-900' : 'text-slate-400'}`}>
+                            {step.title}
+                          </span>
+                          <span className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                            {step.desc}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Progress bar line */}
+                  <div className="hidden sm:block absolute top-4.5 left-8 right-8 h-1 bg-slate-100 -z-0">
+                    <div
+                      className="h-full bg-orange-500 transition-all duration-500"
+                      style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
+                    ></div>
+                  </div>
+
+                  {/* Mobile vertical status */}
+                  <div className="sm:hidden space-y-3">
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs">
+                      <span className="font-bold text-orange-900 block">Güncel Durum:</span>
+                      <p className="text-orange-800 font-medium mt-0.5">
+                        {steps[currentStep]?.title} - {steps[currentStep]?.desc}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Address Route Details */}
@@ -403,6 +432,46 @@ export const OrderTracker: React.FC = () => {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
           <p className="text-sm text-slate-600">Sipariş bulunamadı. Lütfen takip kodunuzu kontrol ediniz.</p>
+        </div>
+      )}
+      {/* Confirmation Modal for Customer Cancellation */}
+      {confirmCancelOpen && currentOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Siparişi İptal Et</h3>
+                <p className="text-xs text-slate-500">{currentOrder.trackingCode} numaralı sipariş</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Bu siparişi iptal etmek istediğinizden emin misiniz? Sipariş sistemden kaldırılacak ve atanmış kurye bilgilendirilecektir.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCancelOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelRequest(currentOrder.id);
+                  setConfirmCancelOpen(false);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-sm"
+              >
+                Evet, İptal Et
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
