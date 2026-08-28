@@ -7,6 +7,8 @@
     width: 100%;
     margin: 0;
     padding: 0;
+    background-color: #021814;
+    color: #f1f5f9;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -15,18 +17,18 @@
   }
 }
 
-/* Custom smooth scrollbar */
+/* Custom smooth dark emerald scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #011511;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #064e3b;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #059669;
 }

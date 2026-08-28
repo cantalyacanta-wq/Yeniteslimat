@@ -16,14 +16,14 @@ const MainContent: React.FC = () => {
     <div className="w-full max-w-full overflow-hidden">
       {/* If Home view, show ONLY Hero Intro with integrated Membership & Login portal */}
       {currentView === 'home' && (
-        <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
+        <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
           <HeroIntro />
         </main>
       )}
 
       {/* Dynamic Tab Views */}
       {currentView !== 'home' && (
-        <main className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
           {currentView === 'customer' && <CustomerRequestForm />}
           {currentView === 'courier' && <CourierPool />}
           {currentView === 'tracker' && <OrderTracker />}
@@ -37,7 +37,7 @@ const MainContent: React.FC = () => {
 export default function App() {
   return (
     <DeliveryProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-sky-500 selection:text-white w-full max-w-full overflow-x-hidden">
+      <div className="min-h-screen bg-gradient-to-b from-[#021814] via-[#03241e] to-[#011410] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden m-0 p-0">
         {/* Responsive Navbar */}
         <Navbar />
 
@@ -50,23 +50,23 @@ export default function App() {
         <AuthModal />
 
         {/* Minimal Responsive Footer */}
-        <footer className="border-t border-slate-200 bg-white mt-12 py-6 text-xs text-slate-500 w-full max-w-full">
+        <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
           <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-              <div className="w-5 h-5 rounded-md bg-sky-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
+              <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
                 <Bike className="w-3.5 h-3.5" />
               </div>
-              <span className="font-bold text-slate-900">Antalya Kurye Express</span>
-              <span className="text-slate-400">© 2026 Antalya İçi 30-45 Dk Moto Kurye</span>
+              <span className="font-bold text-white">Antalya Kurye Express</span>
+              <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye</span>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 text-slate-600 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
+            <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
               <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Hızlı ve Güvenilir Teslimat</span>
               </span>
               <span className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>30-45 Dk Moto Kurye</span>
               </span>
             </div>

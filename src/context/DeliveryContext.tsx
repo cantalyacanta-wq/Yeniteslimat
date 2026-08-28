@@ -11,7 +11,7 @@ interface DeliveryContextType {
   users: UserAccount[];
   switchUser: (userId: string) => void;
   setCurrentUser: (user: UserAccount) => void;
-  loginUser: (identifier: string) => { success: boolean; user?: UserAccount; message?: string };
+  loginUser: (identifier: string, passwordInput?: string) => { success: boolean; user?: UserAccount; message?: string };
   switchRole: (role: UserRole) => void;
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
@@ -60,10 +60,30 @@ interface DeliveryContextType {
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-// Persistent Local Database Keys (v4 - enhanced resilience)
-const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v4_orders';
-const STORAGE_USERS_KEY = 'antalya_kurye_database_v4_users';
-const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v4_active_user_id';
+// Persistent Local Database Keys (v5 - with password security & view persistence)
+const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v5_orders';
+const STORAGE_USERS_KEY = 'antalya_kurye_database_v5_users';
+const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v5_active_user_id';
+const STORAGE_CURRENT_VIEW_KEY = 'antalya_kurye_database_v5_current_view';
+
+// Helper to safely determine initial view from URL hash or localStorage
+const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile' => {
+  try {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(hash)) {
+        return hash as any;
+      }
+      const saved = localStorage.getItem(STORAGE_CURRENT_VIEW_KEY) || sessionStorage.getItem(STORAGE_CURRENT_VIEW_KEY);
+      if (saved && ['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(saved)) {
+        return saved as any;
+      }
+    }
+  } catch (e) {
+    console.warn('Initial view load error:', e);
+  }
+  return 'home';
+};
 
 // Helper to safely load and merge users ensuring initial accounts are ALWAYS preserved
 const loadPersistentUsers = (): UserAccount[] => {
@@ -74,7 +94,10 @@ const loadPersistentUsers = (): UserAccount[] => {
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Merge initial accounts if missing
         const existingIds = new Set(parsed.map((u: UserAccount) => u.id));
-        const merged = [...parsed];
+        const merged: UserAccount[] = parsed.map((u: UserAccount) => ({
+          ...u,
+          password: u.password || '123456',
+        }));
         for (const initUser of INITIAL_USERS) {
           if (!existingIds.has(initUser.id)) {
             merged.push(initUser);
@@ -128,11 +151,46 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [couriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
   const [activeCourierId, setActiveCourierId] = useState<string>('user-courier-01');
   const [isCourierOnline, setIsCourierOnline] = useState<boolean>(true);
-  const [currentView, setCurrentView] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile'>('home');
+  
+  // 4. Persistent Current View (Preserved across page refreshes!)
+  const [currentView, setCurrentViewInternal] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile'>(getInitialView);
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // Sync to persistent storage immediately (both localStorage and sessionStorage for max durability)
+  // Set Current View with persistence and URL hash sync
+  const setCurrentView = useCallback((view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile') => {
+    setCurrentViewInternal(view);
+    try {
+      localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, view);
+      sessionStorage.setItem(STORAGE_CURRENT_VIEW_KEY, view);
+      if (typeof window !== 'undefined') {
+        const targetHash = view === 'home' ? '' : `#${view}`;
+        if (window.location.hash !== targetHash) {
+          window.history.replaceState(null, '', targetHash || window.location.pathname);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to save current view:', e);
+    }
+  }, []);
+
+  // Listen to hash changes in window
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(hash)) {
+        setCurrentViewInternal(hash as any);
+        localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, hash);
+      } else if (!hash) {
+        setCurrentViewInternal('home');
+        localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Sync to persistent storage immediately
   useEffect(() => {
     try {
       const payload = JSON.stringify(requests);
@@ -181,6 +239,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       } else if (e.key === STORAGE_ACTIVE_USER_ID_KEY && e.newValue) {
         setCurrentUserId(e.newValue);
+      } else if (e.key === STORAGE_CURRENT_VIEW_KEY && e.newValue) {
+        setCurrentViewInternal(e.newValue as any);
       }
     };
 
@@ -217,15 +277,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, []);
 
-  // Smart Login by any identifier (email, phone, name, role)
-  const loginUser = useCallback((identifier: string): { success: boolean; user?: UserAccount; message?: string } => {
+  // Strict Login by identifier (email/phone) AND password
+  const loginUser = useCallback((identifier: string, passwordInput?: string): { success: boolean; user?: UserAccount; message?: string } => {
     const clean = identifier.trim().toLowerCase();
     const digitsOnly = clean.replace(/\D/g, '');
 
     // 1. Direct Email Match
     let found = users.find((u) => u.email && u.email.toLowerCase() === clean);
 
-    // 2. Email Prefix Match (e.g. "kuryeantalyam", "emre.kurye", "mehmet")
+    // 2. Email Prefix Match
     if (!found) {
       found = users.find((u) => u.email && u.email.toLowerCase().split('@')[0] === clean);
     }
@@ -240,33 +300,40 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 4. Name Match
     if (!found) {
-      found = users.find((u) => u.name.toLowerCase() === clean || u.name.toLowerCase().includes(clean));
+      found = users.find((u) => u.name.toLowerCase() === clean);
     }
 
-    // 5. Role Keyword Match
     if (!found) {
-      if (clean === 'kurye' || clean === 'courier' || clean === 'moto' || clean === 'moto kurye') {
-        found = users.find((u) => u.role === 'courier');
-      } else if (clean === 'admin' || clean === 'yonetici' || clean === 'yönetici') {
-        found = users.find((u) => u.role === 'admin');
-      } else if (clean === 'musteri' || clean === 'müşteri' || clean === 'customer') {
-        found = users.find((u) => u.role === 'customer');
+      return { success: false, message: 'Bu e-posta veya telefon numarasına ait kayıtlı hesap bulunamadı.' };
+    }
+
+    // STRICT PASSWORD VERIFICATION
+    if (passwordInput !== undefined) {
+      const userExpectedPassword = (found.password || '123456').trim();
+      const enteredPassword = passwordInput.trim();
+
+      if (!enteredPassword) {
+        return { success: false, message: 'Lütfen şifrenizi giriniz.' };
+      }
+
+      if (userExpectedPassword !== enteredPassword) {
+        return { 
+          success: false, 
+          message: 'Girdiğiniz şifre hatalıdır! Lütfen şifrenizi kontrol edip tekrar deneyiniz.' 
+        };
       }
     }
 
-    if (found) {
-      setCurrentUserId(found.id);
-      if (found.role === 'courier') {
-        setActiveCourierId(found.id);
-      }
-      playAcceptSound();
-      return { success: true, user: found };
+    // Password matches! Log in
+    setCurrentUserId(found.id);
+    if (found.role === 'courier') {
+      setActiveCourierId(found.id);
     }
-
-    return { success: false, message: 'Kullanıcı bulunamadı.' };
+    playAcceptSound();
+    return { success: true, user: found };
   }, [users]);
 
-  // Helper to switch role by finding or creating a default user with that role
+  // Helper to switch role by finding user with that role
   const switchRole = useCallback((role: UserRole) => {
     const matchingUser = users.find((u) => u.role === role);
     if (matchingUser) {
@@ -281,6 +348,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         name: role === 'courier' ? 'Yeni Moto Kurye' : role === 'admin' ? 'Sistem Yöneticisi' : 'Yeni Müşteri',
         phone: '0532 000 00 00',
         email: `${role}@antalyakurye.com`,
+        password: '123456',
         role,
         createdAt: new Date().toISOString(),
       };
@@ -290,10 +358,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, [users]);
 
-  // Register a new user
+  // Register a new user with password
   const registerUser = useCallback((userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>): UserAccount => {
     const newUser: UserAccount = {
       ...userData,
+      password: userData.password?.trim() || '123456',
       id: `user-${userData.role}-${Date.now()}`,
       createdAt: new Date().toISOString(),
       totalOrders: 0,
