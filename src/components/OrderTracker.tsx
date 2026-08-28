@@ -308,13 +308,13 @@ export const OrderTracker: React.FC = () => {
                       {currentOrder.assignedCourier.name.split(' ')[0][0]}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm">
+                      <h4 className="font-bold text-emerald-100 text-sm">
                         {currentOrder.assignedCourier.name}
                       </h4>
-                      <p className="text-xs text-slate-500">
-                        {currentOrder.assignedCourier.vehicleType} • <span className="font-mono">{currentOrder.assignedCourier.plate}</span>
+                      <p className="text-xs text-emerald-300/80 font-mono">
+                        {currentOrder.assignedCourier.phone}
                       </p>
-                      <div className="flex items-center gap-1 text-xs text-amber-600 font-semibold mt-0.5">
+                      <div className="flex items-center gap-1 text-xs text-amber-400 font-semibold mt-0.5">
                         ⭐ {currentOrder.assignedCourier.rating} ({currentOrder.assignedCourier.totalDeliveries} teslimat)
                       </div>
                     </div>

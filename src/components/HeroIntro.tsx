@@ -52,10 +52,7 @@ export const HeroIntro: React.FC = () => {
       r.status !== 'delivered' &&
       r.status !== 'cancelled' &&
       (r.senderUserId === currentUser.id ||
-        r.sender.contactPhone === currentUser.phone ||
-        currentUser.role === 'customer' ||
-        currentUser.role === 'admin' ||
-        requests.length > 0)
+        (currentUser.phone && r.sender.contactPhone === currentUser.phone))
   );
 
   // Active order to display
@@ -288,14 +285,11 @@ export const HeroIntro: React.FC = () => {
                       {activeCustomerOrder.assignedCourier.name}
                     </span>
                     <span className="text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">
-                      Görevli Kurye
+                      Görevli Moto Kurye
                     </span>
                   </div>
                   <p className="text-xs text-emerald-200/80 mt-0.5">
-                    {activeCustomerOrder.assignedCourier.vehicleType} • Plaka:{' '}
-                    <span className="font-mono font-bold text-white">
-                      {activeCustomerOrder.assignedCourier.plate}
-                    </span>
+                    İletişim: <span className="font-mono font-bold text-white">{activeCustomerOrder.assignedCourier.phone}</span>
                   </p>
                 </div>
               </div>

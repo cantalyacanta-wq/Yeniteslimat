@@ -86,7 +86,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
               <div className="flex justify-between">
                 <span className="text-slate-500">Kurye Sürücüsü:</span>
                 <span className="font-medium text-slate-800">
-                  {order.assignedCourier ? `${order.assignedCourier.name} (${order.assignedCourier.plate})` : 'Havuzda Bekliyor'}
+                  {order.assignedCourier ? `${order.assignedCourier.name} (${order.assignedCourier.phone})` : 'Havuzda Bekliyor'}
                 </span>
               </div>
               <div className="flex justify-between">

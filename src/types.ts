@@ -50,12 +50,11 @@ export interface UserAccount {
   role: UserRole;
   companyName?: string;
   district?: DistrictName;
-  vehicleType?: 'Honda PCX 125' | 'Yamaha NMAX 155' | 'Elektrikli Moto' | 'Panelvan Araç';
-  plate?: string;
   avatarUrl?: string;
   createdAt: string;
   totalOrders?: number;
   totalEarnings?: number;
+  isOnline?: boolean;
 }
 
 export interface LocationInfo {
@@ -73,9 +72,9 @@ export interface CourierInfo {
   id: string;
   name: string;
   phone: string;
+  email?: string;
+  district?: DistrictName;
   photoUrl?: string;
-  vehicleType: 'Honda PCX 125' | 'Yamaha NMAX 155' | 'Elektrikli Moto' | 'Panelvan Araç';
-  plate: string;
   rating: number;
   totalDeliveries: number;
   currentLat?: number;

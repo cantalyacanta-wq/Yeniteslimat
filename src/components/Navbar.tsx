@@ -53,24 +53,49 @@ export const Navbar: React.FC = () => {
   };
 
   interface NavItem {
-    id: 'home' | 'customer' | 'courier';
+    id: 'home' | 'customer' | 'courier' | 'tracker' | 'admin' | 'history';
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: number | null;
     badgeColor?: string;
   }
 
-  const navItems: NavItem[] = [
-    { id: 'home', label: 'Ana Sayfa', icon: Home, badge: null, badgeColor: '' },
-    { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
-    {
-      id: 'courier',
-      label: 'Kurye Havuzu',
-      icon: Bike,
-      badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
-      badgeColor: 'bg-amber-500 text-white',
-    },
-  ];
+  // Dynamic Navigation Items strictly tailored by Role
+  const navItems: NavItem[] = React.useMemo(() => {
+    if (currentUser.role === 'courier') {
+      // Couriers see ONLY courier pool / active tasks, NEVER "Paket Gönder"
+      return [
+        {
+          id: 'courier',
+          label: 'Kurye Havuzu',
+          icon: Bike,
+          badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
+          badgeColor: 'bg-amber-500 text-white',
+        },
+      ];
+    }
+
+    if (currentUser.role === 'admin') {
+      return [
+        { id: 'admin', label: 'Yönetim Paneli', icon: Shield, badge: null, badgeColor: '' },
+        {
+          id: 'courier',
+          label: 'Kurye Havuzu',
+          icon: Bike,
+          badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
+          badgeColor: 'bg-amber-500 text-white',
+        },
+        { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
+      ];
+    }
+
+    // Default Customer view
+    return [
+      { id: 'home', label: 'Ana Sayfa', icon: Home, badge: null, badgeColor: '' },
+      { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
+      { id: 'tracker', label: 'Sipariş Takibi', icon: Search, badge: null, badgeColor: '' },
+    ];
+  }, [currentUser.role, activeStats.poolCount]);
 
   return (
     <header className="sticky top-0 z-40 bg-[#021c17]/95 backdrop-blur-md border-b border-emerald-900/60 shadow-lg w-full max-w-full text-white">
@@ -80,7 +105,13 @@ export const Navbar: React.FC = () => {
           {/* Logo */}
           <div
             onClick={() => {
-              setCurrentView('home');
+              if (currentUser.role === 'courier') {
+                setCurrentView('courier');
+              } else if (currentUser.role === 'admin') {
+                setCurrentView('admin');
+              } else {
+                setCurrentView('home');
+              }
               setMobileMenuOpen(false);
             }}
             className="flex items-center gap-2.5 cursor-pointer select-none group min-w-0"
@@ -105,12 +136,12 @@ export const Navbar: React.FC = () => {
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentView === item.id;
+              const isActive = currentView === item.id || (item.id === 'admin' && currentView === 'history');
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => setCurrentView(item.id as any)}
                   className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
                     isActive
                       ? 'bg-emerald-900/70 text-emerald-300 border border-emerald-700/40 shadow-xs'
@@ -134,18 +165,13 @@ export const Navbar: React.FC = () => {
             })}
           </nav>
 
-          {/* Right Section: Role / Profile Button & DB tools */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Right Section: User Info Badge & Direct Logout Button */}
+          <div className="flex items-center gap-2">
             
-            {/* Role / Profile Trigger Button */}
-            <button
-              type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-emerald-800/60 bg-[#03241d] hover:bg-[#042d25] transition cursor-pointer text-xs text-white"
-              title="Rolü veya Profili Değiştir"
-            >
+            {/* User Profile Badge (Informational only, no quick switcher modal) */}
+            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-800/60 bg-[#03241d] text-xs text-white">
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 ${
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 font-bold text-[11px] ${
                   currentUser.role === 'customer'
                     ? 'bg-emerald-600'
                     : currentUser.role === 'courier'
@@ -153,16 +179,10 @@ export const Navbar: React.FC = () => {
                     : 'bg-teal-600'
                 }`}
               >
-                {currentUser.role === 'customer' ? (
-                  <User className="w-3.5 h-3.5" />
-                ) : currentUser.role === 'courier' ? (
-                  <Bike className="w-3.5 h-3.5" />
-                ) : (
-                  <Shield className="w-3.5 h-3.5" />
-                )}
+                {currentUser.name.split(' ')[0][0]}
               </div>
               <div className="text-left hidden xs:block">
-                <div className="font-bold text-white text-xs truncate max-w-[100px] sm:max-w-[120px]">
+                <div className="font-bold text-white text-xs truncate max-w-[100px] sm:max-w-[130px]">
                   {currentUser.name}
                 </div>
                 <div className="text-[10px] text-emerald-400 font-medium capitalize">
@@ -173,23 +193,24 @@ export const Navbar: React.FC = () => {
                     : 'Yönetici'}
                 </div>
               </div>
-            </button>
+            </div>
 
             {/* Logout Quick Button */}
             <button
               type="button"
               onClick={logout}
               title="Oturumu Kapat"
-              className="p-1.5 text-emerald-400/80 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-bold transition cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Çıkış</span>
             </button>
 
             {/* DB Export / Backup Button (desktop) */}
             <button
               type="button"
               onClick={exportDatabaseBackup}
-              title="Veritabanını Yedekle (Kalıcı JSON)"
+              title="Veritabanını Yedekle (JSON)"
               className="hidden lg:flex p-1.5 text-emerald-400/80 hover:text-white hover:bg-emerald-900/50 rounded-lg transition cursor-pointer"
             >
               <Download className="w-4 h-4" />
@@ -207,18 +228,18 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu (Guaranteed no overflow) */}
+        {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-emerald-900/60 py-3 space-y-1 bg-[#021c17] max-w-full">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentView === item.id;
+              const isActive = currentView === item.id || (item.id === 'admin' && currentView === 'history');
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    setCurrentView(item.id);
+                    setCurrentView(item.id as any);
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
@@ -238,31 +259,20 @@ export const Navbar: React.FC = () => {
               );
             })}
 
-            {/* Role & Backup inside mobile menu */}
+            {/* Mobile Footer with Logout & Backup */}
             <div className="pt-2 mt-2 border-t border-emerald-900/50 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAuthModalOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex-1 flex items-center justify-between px-3 py-2 bg-[#03241d] rounded-lg text-xs font-bold text-white border border-emerald-800/40"
-                >
-                  <span className="truncate">Profil: {currentUser.name}</span>
-                  <span className="text-emerald-400 text-[11px] shrink-0">Değiştir &rarr;</span>
-                </button>
-
+              <div className="flex items-center justify-between px-3 py-2 bg-[#03241d] rounded-xl text-xs text-white border border-emerald-800/40">
+                <span className="font-bold">{currentUser.name} ({currentUser.role === 'customer' ? 'Müşteri' : currentUser.role === 'courier' ? 'Kurye' : 'Yönetici'})</span>
                 <button
                   type="button"
                   onClick={() => {
                     logout();
                     setMobileMenuOpen(false);
                   }}
-                  className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer border border-rose-900/40"
+                  className="px-2.5 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-rose-800/60"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Çıkış</span>
+                  <LogOut className="w-3 h-3" />
+                  <span>Çıkış Yap</span>
                 </button>
               </div>
 

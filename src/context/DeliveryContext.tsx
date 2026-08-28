@@ -9,6 +9,7 @@ interface DeliveryContextType {
   // Users & Auth
   currentUser: UserAccount;
   users: UserAccount[];
+  courierUsers: UserAccount[];
   switchUser: (userId: string) => void;
   setCurrentUser: (user: UserAccount) => void;
   loginUser: (identifier: string, passwordInput?: string) => { success: boolean; user?: UserAccount; message?: string };
@@ -16,8 +17,9 @@ interface DeliveryContextType {
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
   logout: () => void;
-  isAuthModalOpen: boolean;
-  setIsAuthModalOpen: (open: boolean) => void;
+  addCourier: (data: { name: string; phone: string; email: string; password?: string; district?: DistrictName }) => UserAccount;
+  deleteCourier: (courierId: string) => void;
+  updateCourier: (courierId: string, data: Partial<UserAccount>) => void;
 
   // Requests
   requests: DeliveryRequest[];
@@ -28,8 +30,8 @@ interface DeliveryContextType {
   setActiveCourierId: (id: string) => void;
   
   // Navigation & selection
-  currentView: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile';
-  setCurrentView: (view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile') => void;
+  currentView: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile';
+  setCurrentView: (view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile') => void;
   selectedTrackingId: string | null;
   setSelectedTrackingId: (id: string | null) => void;
   
@@ -55,6 +57,7 @@ interface DeliveryContextType {
     completedTodayCount: number;
     courierEarningsToday: number;
     myOrdersCount: number;
+    courierCount: number;
   };
 }
 
@@ -142,12 +145,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isCourierOnline, setIsCourierOnline] = useState<boolean>(true);
   
   // 4. Persistent Current View (Preserved across page refreshes!)
-  const [currentView, setCurrentViewInternal] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile'>(getInitialView);
+  const [currentView, setCurrentViewInternal] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile'>(getInitialView as any);
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   // Set Current View with persistence and URL history pushState for mobile back-button support
-  const setCurrentView = useCallback((view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile') => {
+  const setCurrentView = useCallback((view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile') => {
     setCurrentViewInternal(view);
     try {
       localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, view);
@@ -168,7 +170,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     const handleNavigationChange = () => {
       const hash = window.location.hash.replace('#', '').trim().toLowerCase();
-      if (['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(hash)) {
+      if (['home', 'customer', 'courier', 'tracker', 'history', 'admin', 'profile'].includes(hash)) {
         setCurrentViewInternal(hash as any);
         localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, hash);
       } else {
@@ -379,13 +381,47 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
   }, [currentUserId]);
 
+  // Admin add courier
+  const addCourier = useCallback((data: { name: string; phone: string; email: string; password?: string; district?: DistrictName }): UserAccount => {
+    const newCourier: UserAccount = {
+      id: `user-courier-${Date.now()}`,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email.trim().toLowerCase(),
+      password: data.password?.trim() || '123',
+      role: 'courier',
+      district: data.district || 'Muratpaşa',
+      createdAt: new Date().toISOString(),
+      totalOrders: 0,
+      totalEarnings: 0,
+      isOnline: true,
+    };
+    setUsers((prev) => [newCourier, ...prev]);
+    playSuccessSound();
+    return newCourier;
+  }, []);
+
+  // Admin delete courier
+  const deleteCourier = useCallback((courierId: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== courierId));
+    if (currentUserId === courierId) {
+      setCurrentUserId(INITIAL_USERS[0].id);
+    }
+    playAcceptSound();
+  }, [currentUserId]);
+
+  // Admin update courier
+  const updateCourier = useCallback((courierId: string, data: Partial<UserAccount>) => {
+    setUsers((prev) => prev.map((u) => (u.id === courierId ? { ...u, ...data } : u)));
+    playAcceptSound();
+  }, []);
+
   // Logout feature
   const logout = useCallback(() => {
-    // Reset to default initial user and navigate to home
     setCurrentUserId(INITIAL_USERS[0].id);
     setCurrentView('home');
     playAcceptSound();
-  }, []);
+  }, [setCurrentView]);
 
   // Create new delivery request
   const createNewRequest = useCallback(
@@ -453,8 +489,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         id: currentUser.id,
         name: currentUser.name,
         phone: currentUser.phone,
-        vehicleType: currentUser.vehicleType || 'Honda PCX 125',
-        plate: currentUser.plate || '07 ANT 07',
+        email: currentUser.email,
+        district: currentUser.district,
         rating: 4.95,
         totalDeliveries: (currentUser.totalOrders || 0) + 1,
         currentLat: 36.8860,
@@ -705,6 +741,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (r) => r.senderUserId === currentUser.id || currentUser.role === 'admin'
   );
 
+  const courierUsers = users.filter((u) => u.role === 'courier');
+
   const completedTodayCount = requests.filter((r) => r.status === 'delivered').length;
   const inTransitCount = requests.filter(
     (r) => r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination'
@@ -719,6 +757,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         currentUser,
         users,
+        courierUsers,
         switchUser,
         setCurrentUser,
         loginUser,
@@ -726,8 +765,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         registerUser,
         updateCurrentUserProfile,
         logout,
-        isAuthModalOpen,
-        setIsAuthModalOpen,
+        addCourier,
+        deleteCourier,
+        updateCourier,
         requests,
         couriers,
         activeCourier,
@@ -757,6 +797,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           completedTodayCount,
           courierEarningsToday,
           myOrdersCount: myCustomerOrders.length,
+          courierCount: courierUsers.length,
         },
       }}
     >

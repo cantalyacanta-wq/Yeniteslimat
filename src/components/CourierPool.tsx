@@ -98,7 +98,7 @@ export const CourierPool: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-emerald-300/80 truncate">
-              {currentUser.vehicleType || 'Honda PCX 125'} • Plaka: <span className="font-mono font-semibold text-white">{currentUser.plate || '07 ANT 07'}</span>
+              {currentUser.phone} • {currentUser.district || 'Antalya'}
             </p>
           </div>
         </div>

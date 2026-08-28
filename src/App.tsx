@@ -2,22 +2,28 @@ import React from 'react';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { Navbar } from './components/Navbar';
 import { HeroIntro } from './components/HeroIntro';
-import { AuthModal } from './components/AuthModal';
 import { CustomerRequestForm } from './components/CustomerRequestForm';
 import { CourierPool } from './components/CourierPool';
 import { OrderTracker } from './components/OrderTracker';
 import { OrderHistory } from './components/OrderHistory';
+import { AdminManagement } from './components/AdminManagement';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentView } = useDelivery();
+  const { currentView, currentUser } = useDelivery();
 
   return (
     <div className="w-full max-w-full overflow-hidden">
-      {/* If Home view, show ONLY Hero Intro with integrated Membership & Login portal */}
+      {/* Home View */}
       {currentView === 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          <HeroIntro />
+          {currentUser.role === 'courier' ? (
+            <CourierPool />
+          ) : currentUser.role === 'admin' ? (
+            <AdminManagement />
+          ) : (
+            <HeroIntro />
+          )}
         </main>
       )}
 
@@ -27,7 +33,9 @@ const MainContent: React.FC = () => {
           {currentView === 'customer' && <CustomerRequestForm />}
           {currentView === 'courier' && <CourierPool />}
           {currentView === 'tracker' && <OrderTracker />}
-          {currentView === 'history' && <OrderHistory />}
+          {(currentView === 'history' || currentView === 'admin') && (
+            currentUser.role === 'admin' ? <AdminManagement /> : <OrderHistory />
+          )}
         </main>
       )}
     </div>
@@ -45,9 +53,6 @@ export default function App() {
         <div className="flex-1 w-full max-w-full">
           <MainContent />
         </div>
-
-        {/* Role & Membership Modal */}
-        <AuthModal />
 
         {/* Minimal Responsive Footer */}
         <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
