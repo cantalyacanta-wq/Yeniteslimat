@@ -21,6 +21,16 @@ interface DeliveryContextType {
   deleteCourier: (courierId: string) => void;
   updateCourier: (courierId: string, data: Partial<UserAccount>) => void;
 
+  // Auth Modal Controls
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  authModalTab: 'login' | 'register' | 'courier_login' | 'admin_login';
+  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'admin_login') => void;
+  authModalNotice: string | null;
+  setAuthModalNotice: (notice: string | null) => void;
+  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'admin_login', notice?: string | null) => void;
+  closeAuthModal: () => void;
+
   // Requests
   requests: DeliveryRequest[];
   couriers: CourierInfo[];
@@ -152,6 +162,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentView, setCurrentViewInternal] = useState<'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile'>(getInitialView as any);
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
 
+  // 5. Global Auth Modal State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'admin_login'>('login');
+  const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
+
+  const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
+    setAuthModalTab(tab);
+    setAuthModalNotice(notice);
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+    setAuthModalNotice(null);
+  }, []);
+
   // Set Current View with persistence and URL history pushState for mobile back-button support
   const setCurrentView = useCallback((view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'admin' | 'profile') => {
     setCurrentViewInternal(view);
@@ -187,6 +213,37 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       window.removeEventListener('popstate', handleNavigationChange);
       window.removeEventListener('hashchange', handleNavigationChange);
+    };
+  }, []);
+
+  // Real-time multi-tab and local storage sync
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_ORDERS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setRequests(parsed);
+          }
+        } catch (err) {
+          console.warn('Sync orders parse error:', err);
+        }
+      }
+      if (e.key === STORAGE_USERS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setUsers(parsed);
+          }
+        } catch (err) {
+          console.warn('Sync users parse error:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -794,6 +851,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addCourier,
         deleteCourier,
         updateCourier,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        authModalTab,
+        setAuthModalTab,
+        authModalNotice,
+        setAuthModalNotice,
+        openAuthModal,
+        closeAuthModal,
         requests,
         couriers,
         activeCourier,

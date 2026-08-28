@@ -26,6 +26,7 @@ export const Navbar: React.FC = () => {
     exportDatabaseBackup,
     importDatabaseBackup,
     logout,
+    openAuthModal,
   } = useDelivery();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,7 +137,13 @@ export const Navbar: React.FC = () => {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setCurrentView(item.id as any)}
+                  onClick={() => {
+                    if (item.id === 'customer' && (currentUser.id === 'user-guest-01' || !currentUser.email)) {
+                      openAuthModal('login', 'Kurye çağırmak ve sipariş oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
+                      return;
+                    }
+                    setCurrentView(item.id as any);
+                  }}
                   className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
                     isActive
                       ? 'bg-emerald-900/70 text-emerald-300 border border-emerald-700/40 shadow-xs'
@@ -205,15 +212,28 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              /* If Guest / Not Logged In */
-              <button
-                type="button"
-                onClick={() => setCurrentView('home')}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md shadow-emerald-600/30"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Giriş Yap</span>
-              </button>
+              /* If Guest / Not Logged In -> Direct Courier Login + Giriş Yap Buttons */
+              <div className="flex items-center gap-1.5">
+                {/* Dedicated Courier Login Button in Header */}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('courier_login')}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-600/70 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95"
+                >
+                  <Bike className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Kurye Girişi</span>
+                </button>
+
+                {/* General Login / Register Button */}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login')}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-md shadow-emerald-600/30 active:scale-95"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Giriş Yap</span>
+                </button>
+              </div>
             )}
 
             {/* DB Export / Backup Button (desktop) */}
@@ -249,6 +269,11 @@ export const Navbar: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => {
+                    if (item.id === 'customer' && (currentUser.id === 'user-guest-01' || !currentUser.email)) {
+                      openAuthModal('login', 'Kurye çağırmak ve sipariş oluşturmak için lütfen üye girişi yapınız veya kayıt olunuz.');
+                      setMobileMenuOpen(false);
+                      return;
+                    }
                     setCurrentView(item.id as any);
                     setMobileMenuOpen(false);
                   }}
@@ -287,17 +312,31 @@ export const Navbar: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCurrentView('home');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Giriş Yap / Kayıt Ol</span>
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openAuthModal('courier_login');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-amber-950/90 hover:bg-amber-900 text-amber-200 border border-amber-600/70 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Bike className="w-4 h-4 text-amber-400" />
+                    <span>🏍️ Moto Kurye Girişi</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openAuthModal('login');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Müşteri Girişi / Kayıt Ol</span>
+                  </button>
+                </div>
               )}
 
               <div className="flex items-center gap-2 px-1">

@@ -39,6 +39,7 @@ export const HeroIntro: React.FC = () => {
     setSelectedTrackingId,
     cancelRequest,
     acceptRequest,
+    openAuthModal,
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -483,7 +484,13 @@ export const HeroIntro: React.FC = () => {
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setCurrentView('customer')}
+                onClick={() => {
+                  if (currentUser.id === 'user-guest-01' || !currentUser.email) {
+                    openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz. Misafir talebi kabul edilmemektedir.');
+                  } else {
+                    setCurrentView('customer');
+                  }
+                }}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
               >
                 <Plus className="w-5 h-5" />

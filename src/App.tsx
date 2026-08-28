@@ -7,6 +7,7 @@ import { CourierPool } from './components/CourierPool';
 import { OrderTracker } from './components/OrderTracker';
 import { OrderHistory } from './components/OrderHistory';
 import { AdminManagement } from './components/AdminManagement';
+import { AuthModal } from './components/AuthModal';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -39,6 +40,9 @@ export default function App() {
   return (
     <DeliveryProvider>
       <div className="min-h-screen bg-gradient-to-b from-[#021814] via-[#03241e] to-[#011410] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden m-0 p-0">
+        {/* Global Auth Modal */}
+        <AuthModal />
+
         {/* Responsive Navbar */}
         <Navbar />
 
