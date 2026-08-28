@@ -18,6 +18,12 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  Plus,
+  Copy,
+  Check,
+  Clock,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest } from '../types';
@@ -27,27 +33,36 @@ export const HeroIntro: React.FC = () => {
   const {
     setCurrentView,
     currentUser,
-    setCurrentUser,
     loginUser,
-    switchUser,
-    switchRole,
-    users,
     registerUser,
     requests,
     setSelectedTrackingId,
     cancelRequest,
+    acceptRequest,
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [selectedActiveOrderId, setSelectedActiveOrderId] = useState<string | null>(null);
 
-  // Active order for customer
-  const activeCustomerOrder = requests.find(
+  // Active customer orders (pending, assigned, picked up, near destination)
+  const activeOrders = requests.filter(
     (r) =>
-      (r.senderUserId === currentUser.id || r.sender.contactPhone === currentUser.phone) &&
       r.status !== 'delivered' &&
-      r.status !== 'cancelled'
-  ) || (currentUser.role === 'customer' && requests.length > 0 && requests[0].status !== 'delivered' && requests[0].status !== 'cancelled' ? requests[0] : null);
+      r.status !== 'cancelled' &&
+      (r.senderUserId === currentUser.id ||
+        r.sender.contactPhone === currentUser.phone ||
+        currentUser.role === 'customer' ||
+        currentUser.role === 'admin' ||
+        requests.length > 0)
+  );
+
+  // Active order to display
+  const activeCustomerOrder = 
+    (selectedActiveOrderId ? activeOrders.find((r) => r.id === selectedActiveOrderId) : null) ||
+    activeOrders[0] ||
+    null;
 
   // Login form state
   const [email, setEmail] = useState('');
@@ -63,39 +78,15 @@ export const HeroIntro: React.FC = () => {
   const [regRole, setRegRole] = useState<UserRole>('customer');
   const [regDistrict, setRegDistrict] = useState<DistrictName>('Muratpaşa');
   const [regCompany, setRegCompany] = useState('');
-  const [regVehicle, setRegVehicle] = useState('Honda Activa - 07 MTO 01');
   const [regPassword, setRegPassword] = useState('');
   const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
   const [regError, setRegError] = useState<string | null>(null);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
 
-  // Quick Login for existing demo roles with verified credentials
-  const handleQuickRoleLogin = (role: UserRole) => {
-    setLoginError(null);
-    const targetUser = users.find((u) => u.role === role);
-    if (targetUser) {
-      setEmail(targetUser.email || targetUser.phone);
-      setPassword(targetUser.password || '123456');
-      const res = loginUser(targetUser.email || targetUser.phone, targetUser.password || '123456');
-      if (res.success && res.user) {
-        setLoginSuccess(`Hoş geldiniz, ${res.user.name}!`);
-        setTimeout(() => {
-          setLoginSuccess(null);
-          if (role === 'customer') setCurrentView('customer');
-          else if (role === 'courier') setCurrentView('courier');
-          else setCurrentView('history');
-        }, 500);
-      }
-    } else {
-      switchRole(role);
-      setLoginSuccess(`Giriş yapıldı.`);
-      setTimeout(() => {
-        setLoginSuccess(null);
-        if (role === 'customer') setCurrentView('customer');
-        else if (role === 'courier') setCurrentView('courier');
-        else setCurrentView('history');
-      }, 500);
-    }
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   // Handle Strict Login
@@ -126,7 +117,7 @@ export const HeroIntro: React.FC = () => {
         } else if (u.role === 'courier') {
           setCurrentView('courier');
         } else {
-          setCurrentView('history');
+          setCurrentView('home');
         }
       }, 600);
     } else {
@@ -153,17 +144,11 @@ export const HeroIntro: React.FC = () => {
       return;
     }
     if (regPassword.length < 4) {
-      setRegError('Şifreniz en az 4 karakter uzunluğunda olmalıdır.');
+      setRegError('Şifreniz en az 4 karakter olmalıdır.');
       return;
     }
     if (regPassword !== regPasswordConfirm) {
-      setRegError('Belirlediğiniz şifreler birbiriyle eşleşmiyor. Lütfen kontrol ediniz.');
-      return;
-    }
-
-    // Check if email already exists
-    if (users.some((u) => u.email.toLowerCase() === regEmail.trim().toLowerCase())) {
-      setRegError('Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen giriş yapınız.');
+      setRegError('Belirlediğiniz şifreler eşleşmiyor.');
       return;
     }
 
@@ -175,10 +160,9 @@ export const HeroIntro: React.FC = () => {
       role: regRole,
       district: regDistrict,
       companyName: regRole === 'customer' ? regCompany.trim() || undefined : undefined,
-      vehicleInfo: regRole === 'courier' ? regVehicle.trim() || undefined : undefined,
     });
 
-    setRegSuccess(`Tebrikler ${newUser.name}! Hesabınız oluşturuldu ve giriş yapıldı.`);
+    setRegSuccess(`Tebrikler ${newUser.name}! Hesabınız oluşturuldu.`);
     setTimeout(() => {
       setRegSuccess(null);
       if (newUser.role === 'customer') {
@@ -189,17 +173,293 @@ export const HeroIntro: React.FC = () => {
     }, 800);
   };
 
+  // =========================================================================
+  // SCENARIO 1: CUSTOMER HAS ACTIVE ORDER(S)
+  // Clean, focused single view with ONLY active order radar & "+ Yeni Gönderi Oluştur" button
+  // =========================================================================
+  if (activeCustomerOrder) {
+    return (
+      <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+        
+        {/* Top Action Bar with "+ Yeni Gönderi Oluştur" Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 shadow-xl text-white">
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center">
+              <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute"></span>
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-white">
+                Canlı Aktif Sipariş Takibi
+              </h2>
+              <p className="text-xs text-emerald-300/80">
+                {activeOrders.length > 1
+                  ? `Toplam ${activeOrders.length} aktif siparişiniz bulunuyor.`
+                  : 'Siparişinizin anlık durumu aşağıda canlı olarak güncellenmektedir.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Primary "+ Yeni Gönderi Oluştur" Button */}
+          <button
+            type="button"
+            onClick={() => setCurrentView('customer')}
+            className="px-5 py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Yeni Gönderi Oluştur</span>
+          </button>
+        </div>
+
+        {/* Multi-Order Switcher Tabs (if more than 1 active order) */}
+        {activeOrders.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {activeOrders.map((ord, idx) => (
+              <button
+                key={ord.id}
+                type="button"
+                onClick={() => setSelectedActiveOrderId(ord.id)}
+                className={`px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer border ${
+                  activeCustomerOrder.id === ord.id
+                    ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+                    : 'bg-[#021813] text-emerald-300/80 border-emerald-800/60 hover:bg-[#03241d]'
+                }`}
+              >
+                <span className="font-mono">{ord.trackingCode}</span>
+                <span className="text-[11px] font-normal">({ord.receiver.district})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Focused Live Active Order Radar Card */}
+        <div className="w-full bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 p-5 sm:p-8 shadow-2xl text-white space-y-6">
+          
+          {/* Radar Header */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-900/70 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shadow-inner shrink-0">
+                <Radio className="w-6 h-6 animate-pulse text-emerald-400" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
+                  Aktif Gönderi Durumu
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  {activeCustomerOrder.status === 'pending_pool' && '🛵 Havuzda Kurye Bekliyor...'}
+                  {activeCustomerOrder.status === 'courier_assigned' && '🎉 Kurye Atandı, Paketi Almaya Gidiyor'}
+                  {activeCustomerOrder.status === 'picked_up' && '📦 Paket Alındı, Teslimat Adresine Yolda'}
+                  {activeCustomerOrder.status === 'near_destination' && '📍 Kurye Teslimat Adresine Ulaştı'}
+                </h3>
+              </div>
+            </div>
+
+            {/* Tracking Code with Copy Button */}
+            <div className="flex items-center gap-2 bg-[#011410] px-3 py-1.5 rounded-2xl border border-emerald-800/60">
+              <span className="text-xs text-emerald-300 font-medium">Takip No:</span>
+              <span className="font-mono text-xs sm:text-sm font-black text-amber-400">
+                {activeCustomerOrder.trackingCode}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopyCode(activeCustomerOrder.trackingCode)}
+                className="p-1 text-emerald-400 hover:text-white transition cursor-pointer"
+                title="Kodu Kopyala"
+              >
+                {copiedCode === activeCustomerOrder.trackingCode ? (
+                  <Check className="w-4 h-4 text-emerald-300" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Assigned Courier Card (if courier has accepted) */}
+          {activeCustomerOrder.assignedCourier ? (
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#011813] border border-emerald-600/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-base shadow-md shrink-0">
+                  <Bike className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-sm sm:text-base text-white">
+                      {activeCustomerOrder.assignedCourier.name}
+                    </span>
+                    <span className="text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">
+                      Görevli Kurye
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-200/80 mt-0.5">
+                    {activeCustomerOrder.assignedCourier.vehicleType} • Plaka:{' '}
+                    <span className="font-mono font-bold text-white">
+                      {activeCustomerOrder.assignedCourier.plate}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct Call Button */}
+              <a
+                href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
+                className="px-5 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 shrink-0"
+              >
+                <PhoneCall className="w-4 h-4 animate-bounce" />
+                <span>Kuryeyi Ara: {activeCustomerOrder.assignedCourier.phone}</span>
+              </a>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-[#011813] border border-emerald-800/60 flex items-center gap-3 text-xs text-emerald-200/90">
+              <Radio className="w-5 h-5 text-emerald-400 animate-pulse shrink-0" />
+              <span>
+                Talebiniz kurye havuzunda yayınlandı. Size en yakın moto kurye görevi kabul ettiğinde bilgileri ve canlı konumu burada görünecektir.
+              </span>
+            </div>
+          )}
+
+          {/* Progress Timeline */}
+          <div className="space-y-2 bg-[#011813] p-4 sm:p-5 rounded-2xl border border-emerald-800/40">
+            <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
+              <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400' : 'text-emerald-400'}>
+                1. Kurye Havuzunda
+              </span>
+              <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-amber-400' : activeCustomerOrder.status === 'picked_up' ? 'text-emerald-400' : 'text-emerald-700'}>
+                2. Paketi Almaya Gidiyor
+              </span>
+              <span className={activeCustomerOrder.status === 'picked_up' ? 'text-amber-400' : 'text-emerald-700'}>
+                3. Teslimata Yolda
+              </span>
+            </div>
+
+            <div className="w-full bg-emerald-950 h-2 rounded-full overflow-hidden border border-emerald-800/40">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
+                style={{
+                  width:
+                    activeCustomerOrder.status === 'pending_pool'
+                      ? '33%'
+                      : activeCustomerOrder.status === 'courier_assigned'
+                      ? '66%'
+                      : '100%',
+                }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Route & Delivery Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Sender (Pickup) */}
+            <div className="bg-[#011410] p-4 rounded-2xl border border-emerald-800/50 space-y-2 text-xs">
+              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                <Package className="w-4 h-4 shrink-0" />
+                1. Alış Noktası (Gönderen)
+              </span>
+              <div className="space-y-1 text-emerald-100">
+                <p className="font-extrabold text-sm text-white">{activeCustomerOrder.sender.contactName}</p>
+                <p className="text-emerald-300 font-semibold">{activeCustomerOrder.sender.district}</p>
+                <p className="text-emerald-200/80 break-words">{activeCustomerOrder.sender.addressDetail}</p>
+                <p className="text-emerald-400 font-mono pt-1">Tel: {activeCustomerOrder.sender.contactPhone}</p>
+              </div>
+            </div>
+
+            {/* Receiver (Delivery) */}
+            <div className="bg-[#011410] p-4 rounded-2xl border border-emerald-800/50 space-y-2 text-xs">
+              <span className="font-bold text-teal-400 flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 shrink-0" />
+                2. Teslim Noktası (Alıcı)
+              </span>
+              <div className="space-y-1 text-emerald-100">
+                <p className="font-extrabold text-sm text-white">{activeCustomerOrder.receiver.contactName}</p>
+                <p className="text-teal-300 font-semibold">{activeCustomerOrder.receiver.district}</p>
+                <p className="text-emerald-200/80 break-words">{activeCustomerOrder.receiver.addressDetail}</p>
+                <p className="text-teal-400 font-mono pt-1">Tel: {activeCustomerOrder.receiver.contactPhone}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Package Info & Action Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-emerald-800/50">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-bold">
+                📦 {activeCustomerOrder.packageName}
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-amber-950 border border-amber-600/50 text-amber-300 font-extrabold">
+                {activeCustomerOrder.price} ₺ • {activeCustomerOrder.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'}
+              </span>
+            </div>
+
+            {/* Cancel Order Button */}
+            {activeCustomerOrder.status === 'pending_pool' && (
+              <button
+                type="button"
+                onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                className="px-4 py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-auto"
+              >
+                <X className="w-4 h-4" />
+                <span>Talebi İptal Et</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Cancel Confirmation Modal */}
+        {confirmCancelModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-[#022019] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-700/60 space-y-4 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-900/60 text-rose-300 border border-rose-600/50 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Siparişi İptal Et</h3>
+                  <p className="text-xs text-rose-200/80">Bu kurye talebini iptal etmek istediğinize emin misiniz?</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#011410] rounded-xl border border-emerald-800/60 text-xs text-emerald-200">
+                <p><strong>Takip No:</strong> {confirmCancelModal.trackingCode}</p>
+                <p><strong>Alıcı:</strong> {confirmCancelModal.receiver.contactName} ({confirmCancelModal.receiver.district})</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancelModal(null)}
+                  className="px-4 py-2.5 rounded-xl text-emerald-300 hover:bg-emerald-900/40 font-bold text-xs cursor-pointer transition"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelRequest(confirmCancelModal.id);
+                    setConfirmCancelModal(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-md"
+                >
+                  Evet, İptal Et
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // SCENARIO 2: NO ACTIVE ORDER (Landing / Login / Call Courier screen)
+  // =========================================================================
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-2 sm:p-4">
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 grid grid-cols-1 lg:grid-cols-12 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410]">
         
-        {/* LEFT / TOP DARK SECTION (Matching screenshots exactly) */}
+        {/* LEFT SECTION */}
         <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between text-white relative overflow-hidden">
-          {/* Subtle glow background */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
           <div className="relative z-10 space-y-8">
+            
             {/* Logo and Brand Header */}
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
@@ -211,7 +471,7 @@ export const HeroIntro: React.FC = () => {
               </div>
             </div>
 
-            {/* Main Headline & Paragraph */}
+            {/* Main Headline */}
             <div className="space-y-3.5 pt-2">
               <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
                 Paketlerinizi hızlı ve güvenli şekilde gönderin
@@ -221,148 +481,36 @@ export const HeroIntro: React.FC = () => {
               </p>
             </div>
 
-            {/* Active Order Card or 3 Feature Bullets */}
-            {activeCustomerOrder ? (
-              <div className="space-y-3 pt-2">
-                <div className={`p-5 rounded-3xl border shadow-xl transition-all space-y-4 ${
-                  activeCustomerOrder.status === 'courier_assigned' || activeCustomerOrder.status === 'picked_up'
-                    ? 'bg-gradient-to-br from-[#011a15] via-[#022a21] to-[#011410] border-emerald-500/50 text-white shadow-emerald-500/10'
-                    : 'bg-gradient-to-br from-[#011a15] via-[#03231c] to-[#011410] border-emerald-700/40 text-white'
-                }`}>
-                  {/* Status header with pulse */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="relative flex items-center justify-center">
-                        <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 absolute"></span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 block">Canlı Aktif Siparişiniz</span>
-                        <h4 className="text-xs sm:text-sm font-extrabold text-white">
-                          {activeCustomerOrder.status === 'pending_pool' && '🛵 Havuzda Kurye Aranıyor...'}
-                          {activeCustomerOrder.status === 'courier_assigned' && '🎉 Kurye Talebinizi Kabul Etti!'}
-                          {activeCustomerOrder.status === 'picked_up' && '📦 Paket Alındı, Teslimata Gidiyor'}
-                        </h4>
-                      </div>
-                    </div>
-                    <span className="font-mono text-xs font-black bg-white/15 px-2.5 py-1 rounded-lg border border-white/20">
-                      {activeCustomerOrder.trackingCode}
-                    </span>
-                  </div>
+            {/* Primary Action Button: "Hemen Kurye Çağır" */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setCurrentView('customer')}
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Hemen Yeni Kurye Çağır</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
 
-                  {/* Courier details if accepted */}
-                  {activeCustomerOrder.assignedCourier ? (
-                    <div className="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-600/30 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shrink-0">
-                          <Bike className="w-5 h-5 animate-pulse" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-xs text-white">{activeCustomerOrder.assignedCourier.name}</span>
-                            <span className="text-[10px] bg-emerald-400/20 text-emerald-300 px-1 py-0.2 rounded font-semibold">Kurye</span>
-                          </div>
-                          <p className="text-[11px] text-emerald-200/80">
-                            {activeCustomerOrder.assignedCourier.vehicleType} • <span className="font-mono">{activeCustomerOrder.assignedCourier.plate}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <a
-                        href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
-                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs shrink-0"
-                      >
-                        <PhoneCall className="w-3.5 h-3.5" />
-                        <span>Ara</span>
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2.5 text-xs text-emerald-200/80">
-                      <Radio className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
-                      <span>Antalya moto kurye havuzunda en yakın sürücüyle eşleşiyor...</span>
-                    </div>
-                  )}
-
-                  {/* Animated step bar */}
-                  <div className="space-y-1.5">
-                    <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-semibold">
-                      <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400 font-bold' : 'text-emerald-400/70'}>Havuzda</span>
-                      <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-emerald-300 font-bold' : 'text-emerald-400/70'}>Kurye Yolda</span>
-                      <span className={activeCustomerOrder.status === 'picked_up' ? 'text-teal-300 font-bold' : 'text-emerald-400/70'}>Teslimat</span>
-                    </div>
-                    <div className="w-full bg-white/15 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-400 rounded-full transition-all duration-500"
-                        style={{
-                          width:
-                            activeCustomerOrder.status === 'pending_pool'
-                              ? '33%'
-                              : activeCustomerOrder.status === 'courier_assigned'
-                              ? '66%'
-                              : '100%',
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmCancelModal(activeCustomerOrder)}
-                      className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>İptal</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedTrackingId(activeCustomerOrder.id);
-                        setCurrentView('tracker');
-                      }}
-                      className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 active:scale-98 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>Canlı Haritada İzle ➔</span>
-                    </button>
-                  </div>
-                </div>
+            {/* 3 Simple Feature Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <span className="text-xs font-bold text-emerald-300 block">⚡ Jet Teslimat</span>
+                <span className="text-[11px] text-emerald-200/70">30-45 Dakika</span>
               </div>
-            ) : (
-              /* 3 Feature Bullets */
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Package className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-emerald-100">
-                    Tek tıkla paket talebi oluştur
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-emerald-100">
-                    Kurye havuzundan otomatik eşleşme
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm font-medium text-emerald-100">
-                    Anlık takip ve durum bildirimleri
-                  </span>
-                </div>
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <span className="text-xs font-bold text-emerald-300 block">🛡️ Güvenli Taşıma</span>
+                <span className="text-[11px] text-emerald-200/70">Teyitli & Korumalı</span>
               </div>
-            )}
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <span className="text-xs font-bold text-emerald-300 block">📍 Canlı Radar</span>
+                <span className="text-[11px] text-emerald-200/70">Anlık Takip</span>
+              </div>
+            </div>
           </div>
 
-          {/* Footer inside Left Section */}
           <div className="pt-8 relative z-10">
             <p className="text-xs text-emerald-400/70">
               © 2026 Antalya Kurye — Tüm hakları saklıdır
@@ -370,22 +518,20 @@ export const HeroIntro: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT / BOTTOM DARK GREEN FORM CARD (Matching screenshots exactly) */}
+        {/* RIGHT LOGIN/REGISTER CARD */}
         <div className="lg:col-span-5 bg-[#03231d] border-t lg:border-t-0 lg:border-l border-emerald-800/50 p-6 sm:p-10 flex flex-col justify-center shadow-xl text-white">
           {mode === 'login' ? (
-            /* LOGIN VIEW */
             <div className="w-full max-w-sm mx-auto space-y-6">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                   Hoş geldiniz
                 </h2>
                 <p className="text-sm text-emerald-300/80 mt-1">
-                  Devam etmek için giriş yapın
+                  Müşteri veya kurye hesabınıza giriş yapın
                 </p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
-                {/* E-posta */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-emerald-200">
                     E-posta veya Telefon
@@ -406,14 +552,10 @@ export const HeroIntro: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Şifre */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-emerald-200">
-                      Şifre
-                    </label>
-                    <span className="text-[10px] text-emerald-400/70 font-mono">Demo: 123456</span>
-                  </div>
+                  <label className="block text-xs font-semibold text-emerald-200">
+                    Şifre
+                  </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
                     <input
@@ -437,7 +579,6 @@ export const HeroIntro: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Login Errors / Success */}
                 {loginError && (
                   <div className="p-3 bg-rose-950/60 border border-rose-600/60 text-rose-200 rounded-xl text-xs font-medium">
                     {loginError}
@@ -451,54 +592,17 @@ export const HeroIntro: React.FC = () => {
                   </div>
                 )}
 
-                {/* Giriş Yap Button */}
                 <button
                   type="submit"
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-98 text-white font-bold text-sm rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-98"
                 >
+                  <LogIn className="w-4 h-4" />
                   <span>Giriş Yap</span>
-                  <ArrowRight className="w-4 h-4" />
                 </button>
-
-                {/* Quick Role Selection Shortcut */}
-                <div className="pt-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="h-px bg-emerald-800/60 flex-1"></div>
-                    <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Hızlı Rol Seçimi</span>
-                    <div className="h-px bg-emerald-800/60 flex-1"></div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickRoleLogin('customer')}
-                      className="p-2 rounded-xl bg-[#021813] hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-200 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
-                    >
-                      <User className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Müşteri</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickRoleLogin('courier')}
-                      className="p-2 rounded-xl bg-[#021813] hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-200 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
-                    >
-                      <Bike className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Moto Kurye</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickRoleLogin('admin')}
-                      className="p-2 rounded-xl bg-[#021813] hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-200 text-xs font-bold transition flex flex-col items-center gap-1 cursor-pointer"
-                    >
-                      <Truck className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Yönetici</span>
-                    </button>
-                  </div>
-                </div>
               </form>
 
-              {/* Toggle to Register */}
-              <div className="text-center pt-2">
-                <p className="text-xs sm:text-sm text-emerald-300/80">
+              <div className="pt-2 text-center border-t border-emerald-800/40">
+                <p className="text-xs text-emerald-300/80">
                   Hesabınız yok mu?{' '}
                   <button
                     type="button"
@@ -506,156 +610,113 @@ export const HeroIntro: React.FC = () => {
                       setMode('register');
                       setLoginError(null);
                     }}
-                    className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                    className="font-bold text-white hover:underline cursor-pointer ml-1"
                   >
-                    Kayıt olun
+                    Hemen Kayıt Olun
                   </button>
                 </p>
               </div>
             </div>
           ) : (
-            /* REGISTER VIEW */
-            <div className="w-full max-w-sm mx-auto space-y-4">
+            <div className="w-full max-w-sm mx-auto space-y-5">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Kayıt Olun
-                </h2>
-                <p className="text-sm text-emerald-300/80 mt-0.5">
-                  Antalya Kurye sistemine katılın
-                </p>
+                <h2 className="text-2xl font-bold text-white tracking-tight">Hesap Oluştur</h2>
+                <p className="text-xs text-emerald-300/80 mt-1">Hızlıca kayıt olup gönderi oluşturun</p>
               </div>
 
-              <form onSubmit={handleRegister} className="space-y-3">
-                {/* Role selection */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-[#021813] rounded-xl border border-emerald-800/60">
-                  <button
-                    type="button"
-                    onClick={() => setRegRole('customer')}
-                    className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                      regRole === 'customer'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-emerald-300/70 hover:text-white'
-                    }`}
-                  >
-                    Müşteri (Gönderici)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRegRole('courier')}
-                    className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                      regRole === 'courier'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-emerald-300/70 hover:text-white'
-                    }`}
-                  >
-                    Moto Kurye (Taşıyıcı)
-                  </button>
-                </div>
-
-                {/* Ad Soyad */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    Ad Soyad
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      required
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      placeholder="Ad Soyad"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium"
-                    />
+              <form onSubmit={handleRegister} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-200 mb-1">Hesap Türü</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRegRole('customer')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                        regRole === 'customer'
+                          ? 'bg-emerald-600 text-white border-emerald-400'
+                          : 'bg-[#021813] text-emerald-300 border-emerald-800/60'
+                      }`}
+                    >
+                      Müşteri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRegRole('courier')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                        regRole === 'courier'
+                          ? 'bg-emerald-600 text-white border-emerald-400'
+                          : 'bg-[#021813] text-emerald-300 border-emerald-800/60'
+                      }`}
+                    >
+                      Kurye
+                    </button>
                   </div>
                 </div>
 
-                {/* E-posta */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    E-posta
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3" />
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-200 mb-1">Ad Soyad</label>
+                  <input
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Adınız Soyadınız"
+                    className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-200 mb-1">E-posta</label>
                     <input
                       type="email"
                       required
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="ornek@email.com"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium"
+                      placeholder="ornek@mail.com"
+                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400"
                     />
                   </div>
-                </div>
-
-                {/* Telefon */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    Telefon Numarası
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3" />
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Telefon</label>
                     <input
                       type="tel"
+                      required
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="0532 123 45 67"
-                      className="w-full pl-10 pr-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium"
+                      placeholder="05XX XXX XX XX"
+                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
                     />
                   </div>
                 </div>
 
-                {/* İlçe */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    Antalya İlçesi
-                  </label>
-                  <select
-                    value={regDistrict}
-                    onChange={(e) => setRegDistrict(e.target.value as DistrictName)}
-                    className="w-full px-3 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium cursor-pointer"
-                  >
-                    {Object.values(ANTALYA_DISTRICTS).map((d) => (
-                      <option key={d.name} value={d.name} className="bg-[#021813] text-white">
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Şifre */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-emerald-200">
-                      Şifre
-                    </label>
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Şifre</label>
                     <input
                       type="password"
                       required
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium font-mono"
+                      placeholder="••••"
+                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-emerald-200">
-                      Şifre Tekrar
-                    </label>
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Şifre Tekrar</label>
                     <input
                       type="password"
                       required
                       value={regPasswordConfirm}
                       onChange={(e) => setRegPasswordConfirm(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 font-medium font-mono"
+                      placeholder="••••"
+                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
                     />
                   </div>
                 </div>
 
-                {/* Error/Success */}
                 {regError && (
-                  <div className="p-2.5 bg-rose-950/60 border border-rose-600/60 text-rose-200 rounded-xl text-xs font-medium">
+                  <div className="p-2.5 bg-rose-950/60 border border-rose-600/60 text-rose-200 rounded-xl text-xs">
                     {regError}
                   </div>
                 )}
@@ -667,18 +728,16 @@ export const HeroIntro: React.FC = () => {
                   </div>
                 )}
 
-                {/* Submit Register Button */}
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25"
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Kayıt Ol</span>
+                  <span>Kayıt Ol & Giriş Yap</span>
                 </button>
               </form>
 
-              {/* Toggle to Login */}
-              <div className="text-center pt-1">
+              <div className="pt-2 text-center border-t border-emerald-800/40">
                 <p className="text-xs text-emerald-300/80">
                   Zaten hesabınız var mı?{' '}
                   <button
@@ -687,9 +746,9 @@ export const HeroIntro: React.FC = () => {
                       setMode('login');
                       setRegError(null);
                     }}
-                    className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                    className="font-bold text-white hover:underline cursor-pointer ml-1"
                   >
-                    Giriş yapın
+                    Giriş Yapın
                   </button>
                 </p>
               </div>
@@ -698,47 +757,6 @@ export const HeroIntro: React.FC = () => {
         </div>
 
       </div>
-
-      {/* Confirmation Modal for Customer Cancellation */}
-      {confirmCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#02241d] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-700/60 space-y-4 text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-rose-950/80 border border-rose-600/40 text-rose-400 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-white">Siparişi İptal Et</h3>
-                <p className="text-xs text-emerald-400/80">{confirmCancelModal.trackingCode} numaralı talebiniz</p>
-              </div>
-            </div>
-
-            <p className="text-xs text-emerald-100/80 leading-relaxed">
-              Bu siparişi iptal etmek istediğinizden emin misiniz? Sipariş kurye havuzundan kaldırılacaktır.
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmCancelModal(null)}
-                className="px-4 py-2.5 rounded-xl text-emerald-300 hover:bg-emerald-900/60 font-bold text-xs cursor-pointer transition border border-emerald-800/40"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  cancelRequest(confirmCancelModal.id);
-                  setConfirmCancelModal(null);
-                }}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-sm"
-              >
-                Evet, İptal Et
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
