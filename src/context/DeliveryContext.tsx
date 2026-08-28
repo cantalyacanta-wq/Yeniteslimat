@@ -95,6 +95,10 @@ const loadPersistentUsers = (): UserAccount[] => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        const hasGuest = parsed.some((u: UserAccount) => u.id === 'user-guest-01');
+        if (!hasGuest) {
+          return [INITIAL_USERS[0], ...parsed];
+        }
         return parsed;
       }
     }
@@ -416,12 +420,34 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, []);
 
-  // Logout feature
+  // Logout feature - cleanly resets to guest customer & classic home view
   const logout = useCallback(() => {
-    setCurrentUserId(INITIAL_USERS[0].id);
+    let guestUser = users.find((u) => u.id === 'user-guest-01') || INITIAL_USERS[0];
+    if (!guestUser) {
+      guestUser = {
+        id: 'user-guest-01',
+        name: 'Misafir Müşteri',
+        phone: '',
+        email: '',
+        password: '',
+        role: 'customer',
+        district: 'Muratpaşa',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+      setUsers((prev) => [guestUser, ...prev]);
+    }
+    setCurrentUserId(guestUser.id);
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, guestUser.id);
+      sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, guestUser.id);
+      localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
+      sessionStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
+    } catch (e) {
+      console.warn('Logout storage write error:', e);
+    }
     setCurrentView('home');
     playAcceptSound();
-  }, [setCurrentView]);
+  }, [users, setCurrentView]);
 
   // Create new delivery request
   const createNewRequest = useCallback(

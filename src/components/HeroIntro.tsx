@@ -51,6 +51,8 @@ export const HeroIntro: React.FC = () => {
     (r) =>
       r.status !== 'delivered' &&
       r.status !== 'cancelled' &&
+      currentUser.role === 'customer' &&
+      currentUser.id !== 'user-guest-01' &&
       (r.senderUserId === currentUser.id ||
         (currentUser.phone && r.sender.contactPhone === currentUser.phone))
   );
@@ -113,6 +115,8 @@ export const HeroIntro: React.FC = () => {
           setCurrentView('customer');
         } else if (u.role === 'courier') {
           setCurrentView('courier');
+        } else if (u.role === 'admin') {
+          setCurrentView('admin');
         } else {
           setCurrentView('home');
         }

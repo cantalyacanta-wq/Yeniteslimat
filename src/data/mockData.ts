@@ -2,6 +2,16 @@ import { CourierInfo, DeliveryRequest, UserAccount } from '../types';
 
 export const INITIAL_USERS: UserAccount[] = [
   {
+    id: 'user-guest-01',
+    name: 'Misafir Müşteri',
+    phone: '',
+    email: '',
+    password: '',
+    role: 'customer',
+    district: 'Muratpaşa',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
     id: 'user-admin-01',
     name: 'Antalya Kurye Yönetim',
     phone: '0532 000 00 00',

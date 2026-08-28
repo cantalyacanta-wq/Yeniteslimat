@@ -10,20 +10,14 @@ import { AdminManagement } from './components/AdminManagement';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentView, currentUser } = useDelivery();
+  const { currentView } = useDelivery();
 
   return (
     <div className="w-full max-w-full overflow-hidden">
-      {/* Home View */}
+      {/* Home View - Always the Classic Homepage */}
       {currentView === 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          {currentUser.role === 'courier' ? (
-            <CourierPool />
-          ) : currentUser.role === 'admin' ? (
-            <AdminManagement />
-          ) : (
-            <HeroIntro />
-          )}
+          <HeroIntro />
         </main>
       )}
 
@@ -33,9 +27,8 @@ const MainContent: React.FC = () => {
           {currentView === 'customer' && <CustomerRequestForm />}
           {currentView === 'courier' && <CourierPool />}
           {currentView === 'tracker' && <OrderTracker />}
-          {(currentView === 'history' || currentView === 'admin') && (
-            currentUser.role === 'admin' ? <AdminManagement /> : <OrderHistory />
-          )}
+          {currentView === 'admin' && <AdminManagement />}
+          {currentView === 'history' && <OrderHistory />}
         </main>
       )}
     </div>
