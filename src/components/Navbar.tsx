@@ -53,7 +53,7 @@ export const Navbar: React.FC = () => {
   };
 
   interface NavItem {
-    id: 'home' | 'customer' | 'courier' | 'tracker' | 'history';
+    id: 'home' | 'customer' | 'courier';
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: number | null;
@@ -70,8 +70,6 @@ export const Navbar: React.FC = () => {
       badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
       badgeColor: 'bg-amber-500 text-white',
     },
-    { id: 'tracker', label: 'Kargo Takip', icon: Search, badge: null, badgeColor: '' },
-    { id: 'history', label: 'Geçmiş & Kayıtlar', icon: History, badge: null, badgeColor: '' },
   ];
 
   return (

@@ -60,11 +60,11 @@ interface DeliveryContextType {
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-// Persistent Local Database Keys (v5 - with password security & view persistence)
-const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v5_orders';
-const STORAGE_USERS_KEY = 'antalya_kurye_database_v5_users';
-const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v5_active_user_id';
-const STORAGE_CURRENT_VIEW_KEY = 'antalya_kurye_database_v5_current_view';
+// Persistent Local Database Keys (v6 - clean state, locked address support & browser history sync)
+const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v6_orders';
+const STORAGE_USERS_KEY = 'antalya_kurye_database_v6_users';
+const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v6_active_user_id';
+const STORAGE_CURRENT_VIEW_KEY = 'antalya_kurye_database_v6_current_view';
 
 // Helper to safely determine initial view from URL hash or localStorage
 const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile' => {
@@ -85,25 +85,14 @@ const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'histor
   return 'home';
 };
 
-// Helper to safely load and merge users ensuring initial accounts are ALWAYS preserved
+// Helper to safely load and merge users ensuring clean state
 const loadPersistentUsers = (): UserAccount[] => {
   try {
     const saved = localStorage.getItem(STORAGE_USERS_KEY) || sessionStorage.getItem(STORAGE_USERS_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Merge initial accounts if missing
-        const existingIds = new Set(parsed.map((u: UserAccount) => u.id));
-        const merged: UserAccount[] = parsed.map((u: UserAccount) => ({
-          ...u,
-          password: u.password || '123456',
-        }));
-        for (const initUser of INITIAL_USERS) {
-          if (!existingIds.has(initUser.id)) {
-            merged.push(initUser);
-          }
-        }
-        return merged;
+        return parsed;
       }
     }
   } catch (e) {
@@ -157,7 +146,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [selectedTrackingId, setSelectedTrackingId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // Set Current View with persistence and URL hash sync
+  // Set Current View with persistence and URL history pushState for mobile back-button support
   const setCurrentView = useCallback((view: 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile') => {
     setCurrentViewInternal(view);
     try {
@@ -165,8 +154,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       sessionStorage.setItem(STORAGE_CURRENT_VIEW_KEY, view);
       if (typeof window !== 'undefined') {
         const targetHash = view === 'home' ? '' : `#${view}`;
-        if (window.location.hash !== targetHash) {
-          window.history.replaceState(null, '', targetHash || window.location.pathname);
+        const currentHash = window.location.hash;
+        if (currentHash !== targetHash) {
+          window.history.pushState({ view }, '', targetHash || window.location.pathname);
         }
       }
     } catch (e) {
@@ -174,20 +164,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  // Listen to hash changes in window
+  // Listen to popstate and hashchange events for browser / mobile back button
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleNavigationChange = () => {
       const hash = window.location.hash.replace('#', '').trim().toLowerCase();
       if (['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(hash)) {
         setCurrentViewInternal(hash as any);
         localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, hash);
-      } else if (!hash) {
+      } else {
         setCurrentViewInternal('home');
         localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
       }
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleNavigationChange);
+    window.addEventListener('hashchange', handleNavigationChange);
+    return () => {
+      window.removeEventListener('popstate', handleNavigationChange);
+      window.removeEventListener('hashchange', handleNavigationChange);
+    };
   }, []);
 
   // Sync to persistent storage immediately
