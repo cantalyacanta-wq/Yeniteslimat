@@ -239,6 +239,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           console.warn('Sync users parse error:', err);
         }
       }
+      if (e.key === STORAGE_ACTIVE_USER_ID_KEY && e.newValue) {
+        setCurrentUserId(e.newValue);
+      }
+      if (e.key === STORAGE_CURRENT_VIEW_KEY && e.newValue) {
+        setCurrentViewInternal(e.newValue as any);
+      }
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -276,34 +282,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Failed to persist active user:', e);
     }
   }, [currentUserId]);
-
-  // Synchronize across tabs if multiple tabs are open
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_ORDERS_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) setRequests(parsed);
-        } catch {
-          // ignore
-        }
-      } else if (e.key === STORAGE_USERS_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) setUsers(parsed);
-        } catch {
-          // ignore
-        }
-      } else if (e.key === STORAGE_ACTIVE_USER_ID_KEY && e.newValue) {
-        setCurrentUserId(e.newValue);
-      } else if (e.key === STORAGE_CURRENT_VIEW_KEY && e.newValue) {
-        setCurrentViewInternal(e.newValue as any);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
 
   const activeCourier = couriers.find((c) => c.id === activeCourierId) || couriers[0];
 
@@ -610,36 +588,42 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Courier accepts order
   const acceptRequest = useCallback(
     (requestId: string, courierId?: string) => {
-      const targetCourierId = courierId || currentUser.id || activeCourierId;
+      const isActualCourier = currentUser.role === 'courier';
       const courierObj: CourierInfo = {
-        id: currentUser.id,
-        name: currentUser.name,
-        phone: currentUser.phone,
-        email: currentUser.email,
-        district: currentUser.district,
+        id: isActualCourier ? currentUser.id : 'user-courier-01',
+        name: isActualCourier ? currentUser.name : 'Ahmet Yılmaz (Kurye)',
+        phone: isActualCourier ? currentUser.phone : '0544 111 22 33',
+        email: isActualCourier ? currentUser.email : 'ahmet@antalyakurye.com',
+        district: currentUser.district || 'Muratpaşa',
         rating: 4.95,
         totalDeliveries: (currentUser.totalOrders || 0) + 1,
         currentLat: 36.8860,
         currentLng: 30.7065,
       };
 
-      setRequests((prev) =>
-        prev.map((req) => {
+      setRequests((prev) => {
+        const updated = prev.map((req) => {
           if (req.id === requestId) {
             return {
               ...req,
-              status: 'courier_assigned',
+              status: 'courier_assigned' as const,
               assignedCourier: courierObj,
               updatedAt: new Date().toISOString(),
             };
           }
           return req;
-        })
-      );
+        });
+        try {
+          const payload = JSON.stringify(updated);
+          localStorage.setItem(STORAGE_ORDERS_KEY, payload);
+          sessionStorage.setItem(STORAGE_ORDERS_KEY, payload);
+        } catch {}
+        return updated;
+      });
 
       playAcceptSound();
     },
-    [currentUser, activeCourierId]
+    [currentUser]
   );
 
   // Update status without needing verification code
