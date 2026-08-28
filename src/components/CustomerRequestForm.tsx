@@ -218,12 +218,6 @@ export const CustomerRequestForm: React.FC = () => {
     e.preventDefault();
     if (isSubmitting) return; // Prevent duplicate clicks
 
-    // Strict guest check: Only registered customers can create requests
-    if (currentUser.id === 'user-guest-01' || !currentUser.email) {
-      openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz. Misafir talebi kabul edilmemektedir.');
-      return;
-    }
-
     if (!senderAddress.trim() || !senderName.trim() || !senderPhone.trim()) {
       setFormError('Lütfen paketin alınacağı açık adres, isim ve telefon bilgisini giriniz.');
       return;
@@ -285,60 +279,6 @@ export const CustomerRequestForm: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  // If user is guest / not logged in, show mandatory membership requirement screen
-  if (currentUser.id === 'user-guest-01' || !currentUser.email) {
-    return (
-      <div className="w-full max-w-full overflow-hidden space-y-6">
-        <div className="bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] rounded-3xl border border-emerald-800/60 p-6 shadow-xl text-white">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-2xl bg-emerald-600/80 text-emerald-200 border border-emerald-500/40 flex items-center justify-center text-base font-bold shrink-0 shadow-md">
-              <Package className="w-5 h-5" />
-            </span>
-            <span>Antalya İçi Kurye Çağır</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-emerald-300/80 mt-1">
-            Alış ve teslimat bilgilerini girin; talebiniz anında moto kurye havuzuna düşsün.
-          </p>
-        </div>
-
-        <div className="max-w-xl mx-auto bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 p-8 sm:p-10 shadow-2xl text-center space-y-6 text-white">
-          <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-lg">
-            <Lock className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              Üyelik / Giriş Zorunludur
-            </h2>
-            <p className="text-xs sm:text-sm text-emerald-200/80 leading-relaxed max-w-md mx-auto">
-              Güvenli teslimat ve anlık kurye takibi için misafir siparişleri kabul edilmemektedir. Hemen üye olun veya hesabınıza giriş yaparak kuryenizi çağırın.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => openAuthModal('login', 'Kurye talebi oluşturmak için lütfen giriş yapınız.')}
-              className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <User className="w-4 h-4" />
-              <span>Giriş Yap</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openAuthModal('register', 'Kurye talebi oluşturmak için lütfen ücretsiz kayıt olunuz.')}
-              className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Zap className="w-4 h-4 text-amber-300" />
-              <span>Ücretsiz Kayıt Ol</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6">

@@ -506,7 +506,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, [users, setCurrentView]);
 
-  // Create new delivery request
+  // Create new delivery request - Guaranteed to fall into courier pool immediately
   const createNewRequest = useCallback(
     (
       params: Omit<
@@ -533,35 +533,78 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const trackingCode = `ANT-${randomNum}`;
 
+      // If user is guest or has no email, automatically establish an active customer profile
+      let effectiveUserId = currentUser.id;
+      if (effectiveUserId === 'user-guest-01' || !currentUser.email) {
+        effectiveUserId = `user-cust-${Date.now()}`;
+        const autoCustomer: UserAccount = {
+          id: effectiveUserId,
+          name: params.sender.contactName.trim() || 'Müşteri',
+          phone: params.sender.contactPhone.trim() || '0532 000 00 00',
+          email: `${params.sender.contactName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'musteri'}_${randomNum}@antalyakurye.com`,
+          password: '123',
+          role: 'customer',
+          district: params.sender.district || 'Muratpaşa',
+          createdAt: new Date().toISOString(),
+          totalOrders: 1,
+          totalEarnings: 0,
+        };
+        setUsers((prev) => [autoCustomer, ...prev.filter((u) => u.id !== autoCustomer.id)]);
+        setCurrentUserId(effectiveUserId);
+        try {
+          localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
+          sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
+        } catch {}
+      }
+
       const newRequest: DeliveryRequest = {
         ...params,
-        id: `req-${Date.now()}`,
+        id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         trackingCode,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        senderUserId: currentUser.id,
-        status: 'pending_pool',
+        senderUserId: effectiveUserId,
+        status: 'pending_pool', // ALWAYS starts in pool waiting for courier
         estimatedDistanceKm: estimate.distanceKm,
         estimatedDurationMins: estimate.durationMins,
         price: estimate.price,
         courierEarnings: estimate.courierEarnings,
       };
 
-      setRequests((prev) => [newRequest, ...prev]);
+      // 1. Immediately update state
+      setRequests((prev) => {
+        const updated = [newRequest, ...prev.filter((r) => r.id !== newRequest.id)];
+        try {
+          const payload = JSON.stringify(updated);
+          localStorage.setItem(STORAGE_ORDERS_KEY, payload);
+          sessionStorage.setItem(STORAGE_ORDERS_KEY, payload);
+        } catch (err) {
+          console.warn('Direct order storage write error:', err);
+        }
+        return updated;
+      });
       
-      // Update customer total orders
+      // 2. Update customer total orders
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === currentUser.id ? { ...u, totalOrders: (u.totalOrders || 0) + 1 } : u
+          u.id === effectiveUserId ? { ...u, totalOrders: (u.totalOrders || 0) + 1 } : u
         )
       );
 
+      // 3. Audio & Global Dispatch
       playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('storage'));
+        try {
+          window.dispatchEvent(new CustomEvent('antalya_new_pool_order', { detail: newRequest }));
+        } catch {}
+      }
+
       return newRequest;
     },
-    [currentUser.id]
+    [currentUser]
   );
 
   // Courier accepts order
@@ -816,7 +859,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
   const activeCourierDeliveries = requests.filter(
     (r) =>
-      r.assignedCourier?.id === currentUser.id &&
+      (r.assignedCourier?.id === currentUser.id || 
+       currentUser.role === 'admin' || 
+       (currentUser.role === 'courier' && (!r.assignedCourier || r.assignedCourier.id === currentUser.id || r.assignedCourier.id === 'user-courier-01'))) &&
       (r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination')
   );
 
