@@ -31,7 +31,6 @@ export const CourierPool: React.FC = () => {
     acceptRequest,
     updateStatus,
     releaseRequestBackToPool,
-    addDemoRequest,
     activeStats,
   } = useDelivery();
 
@@ -184,16 +183,6 @@ export const CourierPool: React.FC = () => {
                 Müşterilerin oluşturduğu ve kurye kabulü bekleyen canlı siparişler.
               </p>
             </div>
-
-            {/* Test Order Helper */}
-            <button
-              type="button"
-              onClick={addDemoRequest}
-              className="px-3.5 py-1.5 bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-300 border border-emerald-700/60 text-xs font-semibold rounded-xl transition cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Test Talebi Oluştur</span>
-            </button>
           </div>
 
           {poolRequests.length === 0 ? (
@@ -202,19 +191,11 @@ export const CourierPool: React.FC = () => {
                 <Clock className="w-7 h-7 animate-pulse" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-base font-extrabold text-white">Şu anda havuzda bekleyen paket yok</h4>
+                <h4 className="text-base font-extrabold text-white">Şu anda havuzda bekleyen müşteri paketi yok</h4>
                 <p className="text-xs text-emerald-300/80 max-w-md mx-auto">
-                  Müşteriler paket gönderdiğinde burada gerçek zamanlı olarak listelenecektir. Test etmek için aşağıdaki butona tıklayabilirsiniz.
+                  Müşteriler paket gönderim talebi oluşturduğunda anında burada canlı olarak listelenecektir.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={addDemoRequest}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition cursor-pointer shadow-lg shadow-emerald-600/30 inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Hemen Test Siparişi Ekle</span>
-              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

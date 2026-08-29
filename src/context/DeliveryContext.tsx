@@ -169,13 +169,11 @@ const loadPersistentOrders = (): DeliveryRequest[] => {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Ensure sample orders exist if all were cleared
-            const orderMap = new Map<string, DeliveryRequest>();
-            INITIAL_REQUESTS.forEach((req) => orderMap.set(req.id, req));
-            parsed.forEach((req: DeliveryRequest) => {
-              if (req && req.id) orderMap.set(req.id, req);
-            });
-            return Array.from(orderMap.values());
+            // Filter out old legacy sample requests so only real customer orders are shown
+            const realOrders = parsed.filter(
+              (r: DeliveryRequest) => r && r.id && !r.id.startsWith('req-sample-')
+            );
+            return realOrders;
           }
         } catch {}
       }
@@ -183,7 +181,7 @@ const loadPersistentOrders = (): DeliveryRequest[] => {
   } catch (e) {
     console.warn('Orders storage read error:', e);
   }
-  return INITIAL_REQUESTS;
+  return [];
 };
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
