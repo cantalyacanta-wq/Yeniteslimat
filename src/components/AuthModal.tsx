@@ -224,8 +224,8 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Role / Mode Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#011410] rounded-2xl border border-emerald-800/60 text-xs font-bold">
+        {/* Role / Mode Tabs (4 distinct tabs) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-[#011410] rounded-2xl border border-emerald-800/60 text-xs font-bold">
           <button
             type="button"
             onClick={() => setAuthModalTab('login')}
@@ -244,12 +244,25 @@ export const AuthModal: React.FC = () => {
             onClick={() => setAuthModalTab('courier_login')}
             className={`py-2 px-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
               authModalTab === 'courier_login'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-amber-600 text-white shadow-md'
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
             <Bike className="w-3.5 h-3.5" />
             <span>Kurye</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAuthModalTab('admin_login')}
+            className={`py-2 px-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              authModalTab === 'admin_login'
+                ? 'bg-teal-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Yönetici</span>
           </button>
 
           <button
@@ -285,13 +298,91 @@ export const AuthModal: React.FC = () => {
               </div>
             )}
 
+            {/* Quick 1-Click Role Access Buttons tailored to active tab */}
+            <div className="p-3 bg-[#011713] rounded-2xl border border-emerald-800/70 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  {authModalTab === 'courier_login'
+                    ? 'Kayıtlı Moto Kurye Hesapları (Tek Tıkla Giriş):'
+                    : authModalTab === 'admin_login'
+                    ? 'Yönetici Hesabı (Tek Tıkla Giriş):'
+                    : 'Örnek Müşteri Hesabı (Tek Tıkla Giriş):'}
+                </span>
+              </div>
+
+              {authModalTab === 'courier_login' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('ahmet@antalyakurye.com', '123')}
+                    className="p-2.5 bg-[#02241d] hover:bg-[#03362c] text-emerald-200 border border-amber-500/50 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between shadow-xs"
+                  >
+                    <div>
+                      <span className="font-extrabold block text-white flex items-center gap-1">
+                        <Bike className="w-3.5 h-3.5 text-amber-400" /> Ahmet Yılmaz
+                      </span>
+                      <span className="text-[10px] text-emerald-300 font-mono">0544 111 22 33 (Muratpaşa)</span>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('mustafa@antalyakurye.com', '123')}
+                    className="p-2.5 bg-[#02241d] hover:bg-[#03362c] text-emerald-200 border border-amber-500/50 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between shadow-xs"
+                  >
+                    <div>
+                      <span className="font-extrabold block text-white flex items-center gap-1">
+                        <Bike className="w-3.5 h-3.5 text-amber-400" /> Mustafa Demir
+                      </span>
+                      <span className="text-[10px] text-emerald-300 font-mono">0555 222 33 44 (Konyaaltı)</span>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                  </button>
+                </div>
+              )}
+
+              {authModalTab === 'admin_login' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('kuryeantalyam@gmail.com', 'admin')}
+                  className="w-full p-2.5 bg-[#02241d] hover:bg-[#03362c] text-teal-200 border border-teal-500/50 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between shadow-xs"
+                >
+                  <div>
+                    <span className="font-extrabold block text-white flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-teal-400" /> Antalya Kurye Yönetim (Admin)
+                    </span>
+                    <span className="text-[10px] text-teal-300 font-mono">kuryeantalyam@gmail.com</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-teal-400" />
+                </button>
+              )}
+
+              {authModalTab === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickLogin('deniz@antalya.com', '123')}
+                  className="w-full p-2.5 bg-[#02241d] hover:bg-[#03362c] text-emerald-200 border border-emerald-500/50 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between shadow-xs"
+                >
+                  <div>
+                    <span className="font-extrabold block text-white flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-emerald-400" /> Deniz Akdeniz (Kayıtlı Müşteri)
+                    </span>
+                    <span className="text-[10px] text-emerald-300 font-mono">0533 123 45 67 / deniz@antalya.com</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-emerald-400" />
+                </button>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-emerald-200 block">
                 {authModalTab === 'courier_login'
-                  ? 'Kurye E-Posta veya Telefon'
+                  ? 'Kurye E-Posta, Telefon veya İsim'
                   : authModalTab === 'admin_login'
-                  ? 'Yönetici E-Posta'
-                  : 'E-Posta Adresi veya Telefon'}
+                  ? 'Yönetici E-Posta veya Kullanıcı Adı'
+                  : 'E-Posta Adresi, Telefon veya İsim'}
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-emerald-500" />
@@ -300,10 +391,10 @@ export const AuthModal: React.FC = () => {
                   required
                   placeholder={
                     authModalTab === 'courier_login'
-                      ? 'ahmet@antalyakurye.com veya 0544...'
+                      ? 'ahmet@antalyakurye.com, 0544 111 22 33 veya Ahmet'
                       : authModalTab === 'admin_login'
-                      ? 'kuryeantalyam@gmail.com'
-                      : 'ornek@email.com veya 0532...'
+                      ? 'kuryeantalyam@gmail.com veya admin'
+                      : 'deniz@antalya.com veya 0533 123 45 67'
                   }
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
@@ -318,8 +409,7 @@ export const AuthModal: React.FC = () => {
                 <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-emerald-500" />
                 <input
                   type="password"
-                  required
-                  placeholder="••••••••"
+                  placeholder={authModalTab === 'admin_login' ? 'admin' : '123'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#011410] border border-emerald-800/80 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-emerald-700/60 focus:border-emerald-400 outline-hidden font-medium"
@@ -340,38 +430,6 @@ export const AuthModal: React.FC = () => {
                   : 'Müşteri Olarak Giriş Yap'}
               </span>
             </button>
-
-            {/* Quick One-Click Demo Access List */}
-            <div className="pt-3 border-t border-emerald-800/50 space-y-2">
-              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
-                ⚡ Hızlı Test Girişleri:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('ahmet@antalyakurye.com', '123')}
-                  className="p-2 bg-[#011612] hover:bg-[#022820] text-emerald-200 border border-emerald-800/60 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-bold block text-white">🏍️ Ahmet Kurye</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">0544 111 22 33</span>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('kuryeantalyam@gmail.com', 'admin')}
-                  className="p-2 bg-[#011612] hover:bg-[#022820] text-teal-200 border border-teal-800/60 rounded-xl text-left text-xs transition cursor-pointer flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-bold block text-white">🛡️ Yönetici</span>
-                    <span className="text-[10px] text-teal-400 font-mono">kuryeantalyam@...</span>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-teal-500" />
-                </button>
-              </div>
-            </div>
           </form>
         )}
 

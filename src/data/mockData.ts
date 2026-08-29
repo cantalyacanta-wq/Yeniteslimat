@@ -48,6 +48,16 @@ export const INITIAL_USERS: UserAccount[] = [
     totalEarnings: 2150,
     isOnline: true,
   },
+  {
+    id: 'user-customer-sample-1',
+    name: 'Deniz Akdeniz (Müşteri)',
+    phone: '0533 123 45 67',
+    email: 'deniz@antalya.com',
+    password: '123',
+    role: 'customer',
+    district: 'Muratpaşa',
+    createdAt: '2026-01-04T00:00:00.000Z',
+  },
 ];
 
 export const INITIAL_COURIERS: CourierInfo[] = [
