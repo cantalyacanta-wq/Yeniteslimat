@@ -1,0 +1,14 @@
+export const firebaseConfig = {
+  projectId: "ringed-block-jdw25",
+  appId: "1:120490913482:web:81205548e8707e5c17ce33",
+  apiKey: "AIzaSyA0LZDucLLGbpPcRitRqpdMg1v6D1Epgwo",
+  authDomain: "ringed-block-jdw25.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-antalyakuryeexpr-2c4fd8fd-f44c-4d53-ad73-e640951dadc7",
+  storageBucket: "ringed-block-jdw25.firebasestorage.app",
+  messagingSenderId: "120490913482",
+  measurementId: "",
+  oAuthClientId: "120490913482-0jd002n94j5t3d84urecm23b0o9d5q4v.apps.googleusercontent.com",
+  recaptchaSiteKey: ""
+};
+
+export default firebaseConfig;

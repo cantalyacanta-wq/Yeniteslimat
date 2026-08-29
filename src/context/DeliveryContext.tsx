@@ -4,6 +4,14 @@ import { CourierInfo, DeliveryRequest, DeliveryStatus, DistrictName, UserAccount
 import { INITIAL_COURIERS, INITIAL_REQUESTS, INITIAL_USERS } from '../data/mockData';
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { playAcceptSound, playNewOrderSound, playSuccessSound } from '../utils/audio';
+import {
+  subscribeToDeliveryRequests,
+  subscribeToUsers,
+  saveRequestToFirestore,
+  updateRequestInFirestore,
+  saveUserToFirestore,
+  deleteUserFromFirestore,
+} from '../services/firestoreService';
 
 interface DeliveryContextType {
   // Users & Auth
@@ -223,64 +231,84 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const prevPoolCountRef = React.useRef<number>(0);
 
   // =========================================================================
-  // REAL-TIME SERVER SYNC (Cross-Device Data Synchronization)
+  // REAL-TIME FIRESTORE & SERVER SYNC (Cross-Device Cloud Synchronization)
   // =========================================================================
-  const syncWithServer = useCallback(async () => {
-    try {
-      const res = await fetch('/api/sync');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && data.success) {
-        if (Array.isArray(data.requests)) {
-          setRequests((prev) => {
-            // Check if any new pending requests arrived for couriers
-            const newPool = data.requests.filter((r: DeliveryRequest) => r.status === 'pending_pool');
-            if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
-              // Play new order chime if pool orders increased
-              try {
-                playNewOrderSound();
-              } catch {}
-            }
-            prevPoolCountRef.current = newPool.length;
-
-            // Only update state if length or items changed
-            if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
-              try {
-                localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
-              } catch {}
-              return data.requests;
-            }
-            return prev;
-          });
-        }
-
-        if (Array.isArray(data.users) && data.users.length > 0) {
-          setUsers((prev) => {
-            if (JSON.stringify(prev) !== JSON.stringify(data.users)) {
-              try {
-                localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(data.users));
-              } catch {}
-              return data.users;
-            }
-            return prev;
-          });
-        }
-
-        if (Array.isArray(data.couriers) && data.couriers.length > 0) {
-          setCouriers(data.couriers);
-        }
-      }
-    } catch (err) {
-      // Quietly handle network or offline errors
-    }
-  }, []);
-
-  // Poll server every 2.5 seconds so other devices receive new customer orders immediately
   useEffect(() => {
+    // 1. Cloud Firestore Real-time Listener for instant cross-device updates
+    const unsubscribeRequests = subscribeToDeliveryRequests((cloudRequests) => {
+      if (cloudRequests && cloudRequests.length > 0) {
+        setRequests((prev) => {
+          const newPool = cloudRequests.filter((r) => r.status === 'pending_pool');
+          if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
+            try {
+              playNewOrderSound();
+            } catch {}
+          }
+          prevPoolCountRef.current = newPool.length;
+
+          try {
+            localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(cloudRequests));
+          } catch {}
+          return cloudRequests;
+        });
+      }
+    });
+
+    const unsubscribeUsers = subscribeToUsers((cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setUsers((prev) => {
+          const userMap = new Map();
+          INITIAL_USERS.forEach((u) => userMap.set(u.id, u));
+          prev.forEach((u) => userMap.set(u.id, u));
+          cloudUsers.forEach((u) => userMap.set(u.id, { ...(userMap.get(u.id) || {}), ...u }));
+          const merged = Array.from(userMap.values());
+          try {
+            localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+
+    // 2. Also poll Express API as additional resilient fallback
+    const syncWithServer = async () => {
+      try {
+        const res = await fetch('/api/sync');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.success) {
+          if (Array.isArray(data.requests) && data.requests.length > 0) {
+            setRequests((prev) => {
+              const newPool = data.requests.filter((r: DeliveryRequest) => r.status === 'pending_pool');
+              if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
+                try {
+                  playNewOrderSound();
+                } catch {}
+              }
+              prevPoolCountRef.current = newPool.length;
+
+              if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
+                try {
+                  localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
+                } catch {}
+                return data.requests;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (e) {}
+    };
+
     syncWithServer();
-    const interval = setInterval(syncWithServer, 2500);
-    return () => clearInterval(interval);
-  }, [syncWithServer]);
+    const interval = setInterval(syncWithServer, 2000);
+
+    return () => {
+      unsubscribeRequests();
+      unsubscribeUsers();
+      clearInterval(interval);
+    };
+  }, []);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
@@ -550,6 +578,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       totalEarnings: 0,
     };
 
+    // 1. Local state update
     setUsers((prev) => [newUser, ...prev]);
     setCurrentUserId(newUser.id);
     if (newUser.role === 'courier') {
@@ -557,7 +586,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     playSuccessSound();
 
-    // Async sync to server
+    // 2. Cloud Firestore Real-time Persistence
+    saveUserToFirestore(newUser).catch((e) => console.warn('Firestore user save err:', e));
+
+    // 3. Async sync to server
     fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -570,7 +602,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Update current user profile
   const updateCurrentUserProfile = useCallback((data: Partial<UserAccount>) => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === currentUserId ? { ...u, ...data } : u))
+      prev.map((u) => {
+        if (u.id === currentUserId) {
+          const updated = { ...u, ...data };
+          saveUserToFirestore(updated).catch(() => {});
+          return updated;
+        }
+        return u;
+      })
     );
     fetch(`/api/users/${currentUserId}`, {
       method: 'PATCH',
@@ -597,6 +636,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers((prev) => [newCourier, ...prev]);
     playSuccessSound();
 
+    saveUserToFirestore(newCourier).catch(() => {});
+
     fetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -614,6 +655,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     playAcceptSound();
 
+    deleteUserFromFirestore(courierId).catch(() => {});
+
     fetch(`/api/users/${courierId}`, {
       method: 'DELETE',
     }).catch((e) => console.warn('Failed to delete courier on server:', e));
@@ -621,7 +664,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Admin update courier
   const updateCourier = useCallback((courierId: string, data: Partial<UserAccount>) => {
-    setUsers((prev) => prev.map((u) => (u.id === courierId ? { ...u, ...data } : u)));
+    setUsers((prev) => prev.map((u) => {
+      if (u.id === courierId) {
+        const updated = { ...u, ...data };
+        saveUserToFirestore(updated).catch(() => {});
+        return updated;
+      }
+      return u;
+    }));
     playAcceptSound();
 
     fetch(`/api/users/${courierId}`, {
@@ -755,22 +805,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
 
-      // 4. Send to Server Backend for Cross-Device Sync
+      // 4. Send to Cloud Firestore for Immediate Cross-Device Real-Time Sync
+      saveRequestToFirestore(newRequest).catch((e) => console.warn('Firestore request save error:', e));
+
+      // 5. Send to Server Backend for Cross-Device Sync
       fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRequest),
-      })
-        .then((res) => res.json())
-        .then(() => {
-          // Trigger immediate sync
-          syncWithServer();
-        })
-        .catch((e) => console.warn('Failed to push new order to server:', e));
+      }).catch((e) => console.warn('Failed to push new order to server:', e));
 
       return newRequest;
     },
-    [currentUser, syncWithServer]
+    [currentUser]
   );
 
   // Courier accepts order
@@ -789,6 +836,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentLng: 30.7065,
       };
 
+      const now = new Date().toISOString();
+
       setRequests((prev) => {
         const updated = prev.map((req) => {
           if (req.id === requestId) {
@@ -796,7 +845,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               ...req,
               status: 'courier_assigned' as const,
               assignedCourier: courierObj,
-              updatedAt: new Date().toISOString(),
+              updatedAt: now,
             };
           }
           return req;
@@ -811,16 +860,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       playAcceptSound();
 
+      // Cloud Firestore sync
+      updateRequestInFirestore(requestId, {
+        status: 'courier_assigned',
+        assignedCourier: courierObj,
+        updatedAt: now,
+      }).catch(() => {});
+
       // Backend sync
       fetch(`/api/requests/${requestId}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courierId: courierObj.id }),
-      })
-        .then(() => syncWithServer())
-        .catch((e) => console.warn('Failed to sync accept order:', e));
+      }).catch((e) => console.warn('Failed to sync accept order:', e));
     },
-    [currentUser, syncWithServer]
+    [currentUser]
   );
 
   // Update status without needing verification code
@@ -853,15 +907,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (targetReq.assignedCourier?.id) {
           const cId = targetReq.assignedCourier.id;
           setUsers((prev) =>
-            prev.map((u) =>
-              u.id === cId
-                ? {
-                    ...u,
-                    totalOrders: (u.totalOrders || 0) + 1,
-                    totalEarnings: (u.totalEarnings || 0) + (targetReq.courierEarnings || 0),
-                  }
-                : u
-            )
+            prev.map((u) => {
+              if (u.id === cId) {
+                const updated = {
+                  ...u,
+                  totalOrders: (u.totalOrders || 0) + 1,
+                  totalEarnings: (u.totalEarnings || 0) + (targetReq.courierEarnings || 0),
+                };
+                saveUserToFirestore(updated).catch(() => {});
+                return updated;
+              }
+              return u;
+            })
           );
         }
       }
@@ -878,67 +935,71 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })
       );
 
+      // Cloud Firestore sync
+      updateRequestInFirestore(requestId, updates).catch(() => {});
+
       // Backend sync
       fetch(`/api/requests/${requestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
-      })
-        .then(() => syncWithServer())
-        .catch((e) => console.warn('Failed to sync status update:', e));
+      }).catch((e) => console.warn('Failed to sync status update:', e));
 
       return { success: true };
     },
-    [requests, syncWithServer]
+    [requests]
   );
 
   // Rating
   const rateDelivery = useCallback((requestId: string, rating: number, feedback: string) => {
+    const updates = { customerRating: rating, customerFeedback: feedback, updatedAt: new Date().toISOString() };
     setRequests((prev) =>
       prev.map((req) => {
         if (req.id === requestId) {
           return {
             ...req,
-            customerRating: rating,
-            customerFeedback: feedback,
-            updatedAt: new Date().toISOString(),
+            ...updates,
           };
         }
         return req;
       })
     );
 
+    updateRequestInFirestore(requestId, updates).catch(() => {});
+
     fetch(`/api/requests/${requestId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerRating: rating, customerFeedback: feedback }),
+      body: JSON.stringify(updates),
     }).catch((e) => console.warn('Failed to sync rating:', e));
   }, []);
 
   // Cancel order (by customer or admin)
   const cancelRequest = useCallback((requestId: string) => {
+    const now = new Date().toISOString();
     setRequests((prev) =>
       prev.map((req) => {
         if (req.id === requestId) {
           return {
             ...req,
             status: 'cancelled',
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
           };
         }
         return req;
       })
     );
 
+    updateRequestInFirestore(requestId, { status: 'cancelled', updatedAt: now }).catch(() => {});
+
     fetch(`/api/requests/${requestId}/cancel`, {
       method: 'POST',
-    })
-      .then(() => syncWithServer())
-      .catch((e) => console.warn('Failed to cancel request on server:', e));
-  }, [syncWithServer]);
+    }).catch((e) => console.warn('Failed to cancel request on server:', e));
+  }, []);
 
   // Courier releases task before picking up -> drops back to pool
   const releaseRequestBackToPool = useCallback((requestId: string) => {
+    const now = new Date().toISOString();
     setRequests((prev) =>
       prev.map((req) => {
         if (req.id === requestId) {
@@ -946,7 +1007,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...req,
             status: 'pending_pool',
             assignedCourier: undefined,
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
           };
         }
         return req;
@@ -954,12 +1015,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
     playAcceptSound();
 
+    updateRequestInFirestore(requestId, {
+      status: 'pending_pool',
+      assignedCourier: undefined,
+      updatedAt: now,
+    }).catch(() => {});
+
     fetch(`/api/requests/${requestId}/release`, {
       method: 'POST',
-    })
-      .then(() => syncWithServer())
-      .catch((e) => console.warn('Failed to release request on server:', e));
-  }, [syncWithServer]);
+    }).catch((e) => console.warn('Failed to release request on server:', e));
+  }, []);
 
   // Add realistic demo request to test pool
   const addDemoRequest = useCallback(() => {
@@ -1057,16 +1122,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             requests: data.orders || requests,
           },
         }),
-      })
-        .then(() => syncWithServer())
-        .catch(() => {});
+      }).catch(() => {});
 
       return true;
     } catch (e) {
       console.error('Import failed:', e);
       return false;
     }
-  }, [users, requests, syncWithServer]);
+  }, [users, requests]);
 
   // Reset to default mock data safely
   const resetDefaultData = useCallback(() => {
@@ -1087,10 +1150,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           requests: INITIAL_REQUESTS,
         },
       }),
-    })
-      .then(() => syncWithServer())
-      .catch(() => {});
-  }, [syncWithServer]);
+    }).catch(() => {});
+  }, []);
 
   // Filtered queries
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
