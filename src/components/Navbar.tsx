@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
 import {
-  Send,
   Bike,
-  Search,
-  History,
   Menu,
   X,
   User,
   Shield,
-  Download,
-  Upload,
   Home,
   CheckCircle2,
   LogOut,
@@ -24,38 +19,11 @@ export const Navbar: React.FC = () => {
     setCurrentView,
     activeStats,
     currentUser,
-    users,
-    switchUser,
-    exportDatabaseBackup,
-    importDatabaseBackup,
     logout,
     openAuthModal,
   } = useDelivery();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        const ok = importDatabaseBackup(content);
-        if (ok) {
-          setImportStatus('Veritabanı yüklendi!');
-          setTimeout(() => setImportStatus(null), 3000);
-        } else {
-          setImportStatus('Hatalı dosya formatı.');
-          setTimeout(() => setImportStatus(null), 3000);
-        }
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
 
   interface NavItem {
     id: 'home' | 'customer' | 'courier' | 'tracker' | 'admin' | 'history';
@@ -91,15 +59,12 @@ export const Navbar: React.FC = () => {
           badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
           badgeColor: 'bg-amber-500 text-white font-extrabold animate-pulse',
         },
-        { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
       ];
     }
 
-    // Default Customer / Visitor view (Customers cannot access Courier Pool)
+    // Default Customer / Visitor view: Clean single-brand navigation
     return [
       { id: 'home', label: 'Ana Sayfa', icon: Home, badge: null, badgeColor: '' },
-      { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
-      { id: 'tracker', label: 'Sipariş Takibi', icon: Search, badge: null, badgeColor: '' },
     ];
   }, [currentUser.role, activeStats.poolCount]);
 
@@ -141,12 +106,10 @@ export const Navbar: React.FC = () => {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    setCurrentView(item.id as any);
-                  }}
-                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  onClick={() => setCurrentView(item.id as any)}
+                  className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
                     isActive
-                      ? 'bg-emerald-900/70 text-emerald-300 border border-emerald-700/40 shadow-xs'
+                      ? 'bg-emerald-800 text-white shadow-md'
                       : 'text-emerald-100/75 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
@@ -236,16 +199,6 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* DB Export / Backup Button (desktop) */}
-            <button
-              type="button"
-              onClick={exportDatabaseBackup}
-              title="Veritabanını Yedekle (JSON)"
-              className="hidden lg:flex p-1.5 text-emerald-400/80 hover:text-white hover:bg-emerald-900/50 rounded-lg transition cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-            </button>
-
             {/* Mobile Menu Toggle Button */}
             <button
               type="button"
@@ -289,7 +242,7 @@ export const Navbar: React.FC = () => {
               );
             })}
 
-            {/* Mobile Footer with Logout/Login & Backup */}
+            {/* Mobile Footer with Logout/Login */}
             <div className="pt-2 mt-2 border-t border-emerald-900/50 flex flex-col gap-2">
               {currentUser.id !== 'user-guest-01' && currentUser.email ? (
                 <div className="flex items-center justify-between px-3 py-2 bg-[#03241d] rounded-xl text-xs text-white border border-emerald-800/40">
@@ -331,32 +284,6 @@ export const Navbar: React.FC = () => {
                     <LogIn className="w-4 h-4" />
                     <span>Müşteri Girişi / Kayıt Ol</span>
                   </button>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 px-1">
-                <button
-                  type="button"
-                  onClick={exportDatabaseBackup}
-                  className="flex-1 py-1.5 px-2 bg-[#03241d] hover:bg-[#042d25] text-emerald-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 border border-emerald-800/40"
-                >
-                  <Download className="w-3.5 h-3.5" /> Yedek İndir
-                </button>
-                <label className="flex-1 py-1.5 px-2 bg-[#03241d] hover:bg-[#042d25] text-emerald-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 cursor-pointer border border-emerald-800/40">
-                  <Upload className="w-3.5 h-3.5" /> Yedek Yükle
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportFile}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {importStatus && (
-                <div className="text-center text-xs font-bold text-emerald-400 py-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 inline mr-1" />
-                  {importStatus}
                 </div>
               )}
             </div>

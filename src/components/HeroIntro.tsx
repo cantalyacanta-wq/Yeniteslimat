@@ -25,11 +25,15 @@ import {
   ShieldCheck,
   AlertTriangle,
   Star,
-  Sparkles
+  Sparkles,
+  Search,
+  History,
+  FileText
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
-import { UserRole, DistrictName, DeliveryRequest } from '../types';
+import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
+import { ReceiptModal } from './ReceiptModal';
 
 export const HeroIntro: React.FC = () => {
   const {
@@ -42,7 +46,6 @@ export const HeroIntro: React.FC = () => {
     cancelRequest,
     acceptRequest,
     openAuthModal,
-    switchUser,
     rateDelivery,
   } = useDelivery();
 
@@ -53,6 +56,8 @@ export const HeroIntro: React.FC = () => {
   const [ratingVal, setRatingVal] = useState(5);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [hideDeliveredCard, setHideDeliveredCard] = useState(false);
+  const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
 
   // Restore last customer order ID & contact phone from persistent storage
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
@@ -135,17 +140,15 @@ export const HeroIntro: React.FC = () => {
       setTimeout(() => {
         setLoginSuccess(null);
         if (u.role === 'customer') {
-          setCurrentView('customer');
+          setCurrentView('home');
         } else if (u.role === 'courier') {
           setCurrentView('courier');
         } else if (u.role === 'admin') {
           setCurrentView('admin');
-        } else {
-          setCurrentView('home');
         }
-      }, 600);
+      }, 500);
     } else {
-      setLoginError(res.message || 'Giriş yapılamadı. E-posta ve şifrenizi kontrol ediniz.');
+      setLoginError(res.error || 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.');
     }
   };
 
@@ -159,53 +162,89 @@ export const HeroIntro: React.FC = () => {
       setRegError('Lütfen ad ve soyadınızı giriniz.');
       return;
     }
+
     if (!regEmail.trim()) {
       setRegError('Lütfen e-posta adresinizi giriniz.');
       return;
     }
-    if (!regPassword.trim()) {
-      setRegError('Lütfen hesabınız için bir şifre belirleyiniz.');
+
+    if (!regPhone.trim()) {
+      setRegError('Lütfen telefon numaranızı giriniz.');
       return;
     }
-    if (regPassword.length < 4) {
+
+    if (!regPassword || regPassword.length < 4) {
       setRegError('Şifreniz en az 4 karakter olmalıdır.');
       return;
     }
+
     if (regPassword !== regPasswordConfirm) {
-      setRegError('Belirlediğiniz şifreler eşleşmiyor.');
+      setRegError('Girdiğiniz şifreler birbiriyle eşleşmiyor.');
       return;
     }
 
     const newUser = registerUser({
       name: regName.trim(),
-      email: regEmail.trim().toLowerCase(),
-      phone: regPhone.trim() || '0532 000 00 00',
-      password: regPassword.trim(),
+      email: regEmail.trim(),
+      phone: regPhone.trim(),
       role: regRole,
       district: regDistrict,
-      companyName: regRole === 'customer' ? regCompany.trim() || undefined : undefined,
+      company: regCompany.trim() || undefined,
+      password: regPassword.trim(),
     });
 
-    setRegSuccess(`Tebrikler ${newUser.name}! Hesabınız oluşturuldu.`);
+    setRegSuccess('Hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...');
     setTimeout(() => {
       setRegSuccess(null);
       if (newUser.role === 'customer') {
-        setCurrentView('customer');
+        setCurrentView('home');
       } else {
         setCurrentView('courier');
       }
     }, 800);
   };
 
+  const getStatusBadge = (status: DeliveryStatus) => {
+    switch (status) {
+      case 'pending_pool':
+        return <span className="text-[10px] font-bold bg-amber-900/80 text-amber-300 border border-amber-600/50 px-2 py-0.5 rounded-full">Havuzda Bekliyor</span>;
+      case 'courier_assigned':
+        return <span className="text-[10px] font-bold bg-blue-900/80 text-blue-300 border border-blue-600/50 px-2 py-0.5 rounded-full">Kurye Yolda (Alış)</span>;
+      case 'picked_up':
+        return <span className="text-[10px] font-bold bg-indigo-900/80 text-indigo-300 border border-indigo-600/50 px-2 py-0.5 rounded-full">Dağıtımda</span>;
+      case 'near_destination':
+        return <span className="text-[10px] font-bold bg-purple-900/80 text-purple-300 border border-purple-600/50 px-2 py-0.5 rounded-full">Teslimat Adresinde</span>;
+      case 'delivered':
+        return <span className="text-[10px] font-bold bg-emerald-900/80 text-emerald-300 border border-emerald-500/50 px-2 py-0.5 rounded-full">Teslim Edildi</span>;
+      default:
+        return <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">{status}</span>;
+    }
+  };
+
+  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && Boolean(currentUser.email);
+
+  // Filter history items for logged-in customer
+  const filteredDeliveredOrders = deliveredOrders.filter((req) => {
+    if (!historySearchQuery.trim()) return true;
+    const q = historySearchQuery.toLowerCase();
+    return (
+      (req.trackingCode || '').toLowerCase().includes(q) ||
+      (req.packageName || '').toLowerCase().includes(q) ||
+      (req.receiver?.contactName || '').toLowerCase().includes(q) ||
+      (req.receiver?.district || '').toLowerCase().includes(q) ||
+      (req.sender?.district || '').toLowerCase().includes(q)
+    );
+  });
+
   // =========================================================================
   // SCENARIO 1: CUSTOMER HAS ACTIVE ORDER(S)
-  // Clean, focused single view with ONLY active order radar & "+ Yeni Gönderi Oluştur" button
+  // Clean, focused single view with ONLY active order radar & "+ Yeni Paket" button
   // =========================================================================
   if (activeCustomerOrder) {
     return (
       <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
         
-        {/* Top Action Bar with "+ Yeni Gönderi Oluştur" Button */}
+        {/* Top Action Bar with "+ Yeni Paket" Button */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 shadow-xl text-white">
           <div className="flex items-center gap-3">
             <div className="relative flex items-center justify-center">
@@ -224,14 +263,14 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* Primary "+ Yeni Gönderi Oluştur" Button */}
+          {/* Primary "+ Yeni Paket" Button */}
           <button
             type="button"
             onClick={() => setCurrentView('customer')}
             className="px-5 py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Yeni Gönderi Oluştur</span>
+            <span>+ Yeni Paket</span>
           </button>
         </div>
 
@@ -249,104 +288,115 @@ export const HeroIntro: React.FC = () => {
                     : 'bg-[#021813] text-emerald-300/80 border-emerald-800/60 hover:bg-[#03241d]'
                 }`}
               >
-                <span className="font-mono">{ord.trackingCode}</span>
-                <span className="text-[11px] font-normal">({ord.receiver.district})</span>
+                <span>Paket #{idx + 1}</span>
+                <span className="font-mono text-[11px] opacity-80">({ord.trackingCode})</span>
               </button>
             ))}
           </div>
         )}
 
-        {/* Focused Live Active Order Radar Card */}
-        <div className="w-full bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 p-5 sm:p-8 shadow-2xl text-white space-y-6">
+        {/* Main Live Tracking Box */}
+        <div className="bg-gradient-to-br from-[#021f19] via-[#032920] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-6 text-white">
           
-          {/* Radar Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
+          {/* Header with Tracking Code */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-900/70 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shadow-inner shrink-0">
-                <Radio className="w-6 h-6 animate-pulse text-emerald-400" />
+              <div className="w-11 h-11 rounded-2xl bg-emerald-600/80 text-emerald-200 border border-emerald-400/40 flex items-center justify-center font-extrabold text-base shadow-md">
+                <Bike className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block">
-                  Aktif Gönderi Durumu
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white">
-                  {activeCustomerOrder.status === 'pending_pool' && '🛵 Havuzda Kurye Bekliyor...'}
-                  {activeCustomerOrder.status === 'courier_assigned' && '🎉 Kurye Atandı, Paketi Almaya Gidiyor'}
-                  {activeCustomerOrder.status === 'picked_up' && '📦 Paket Alındı, Teslimat Adresine Yolda'}
-                  {activeCustomerOrder.status === 'near_destination' && '📍 Kurye Teslimat Adresine Ulaştı'}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-emerald-400/80 font-bold uppercase tracking-wider">Takip Kodu:</span>
+                  <span className="font-mono font-extrabold text-amber-400 text-sm">{activeCustomerOrder.trackingCode}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyCode(activeCustomerOrder.trackingCode)}
+                    className="p-1 hover:text-emerald-300 text-emerald-500 transition cursor-pointer"
+                    title="Kodu Kopyala"
+                  >
+                    {copiedCode === activeCustomerOrder.trackingCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
+                  {activeCustomerOrder.sender.district} ➔ {activeCustomerOrder.receiver.district}
                 </h3>
               </div>
             </div>
 
-            {/* Tracking Code with Copy Button */}
-            <div className="flex items-center gap-2 bg-[#011410] px-3 py-1.5 rounded-2xl border border-emerald-800/60">
-              <span className="text-xs text-emerald-300 font-medium">Takip No:</span>
-              <span className="font-mono text-xs sm:text-sm font-black text-amber-400">
-                {activeCustomerOrder.trackingCode}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleCopyCode(activeCustomerOrder.trackingCode)}
-                className="p-1 text-emerald-400 hover:text-white transition cursor-pointer"
-                title="Kodu Kopyala"
-              >
-                {copiedCode === activeCustomerOrder.trackingCode ? (
-                  <Check className="w-4 h-4 text-emerald-300" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </button>
+            {/* Status Pill */}
+            <div>
+              {activeCustomerOrder.status === 'pending_pool' && (
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-amber-950/80 text-amber-300 border border-amber-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                  <span>Kurye Havuzunda Aranıyor</span>
+                </div>
+              )}
+              {activeCustomerOrder.status === 'courier_assigned' && (
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-950/80 text-blue-300 border border-blue-600/60 rounded-xl text-xs font-extrabold shadow-sm">
+                  <Bike className="w-4 h-4 text-blue-400" />
+                  <span>Kurye Paketi Almaya Geliyor</span>
+                </div>
+              )}
+              {activeCustomerOrder.status === 'picked_up' && (
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-teal-950/80 text-teal-300 border border-teal-600/60 rounded-xl text-xs font-extrabold shadow-sm">
+                  <Package className="w-4 h-4 text-teal-400" />
+                  <span>Paket Alındı, Teslimata Yolda</span>
+                </div>
+              )}
+              {activeCustomerOrder.status === 'near_destination' && (
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-purple-950/80 text-purple-300 border border-purple-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-bounce">
+                  <Navigation className="w-4 h-4 text-purple-400" />
+                  <span>Kurye Teslimat Noktasına Ulaştı</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Assigned Courier Card (if courier has accepted) */}
+          {/* Assigned Courier Banner (if assigned) */}
           {activeCustomerOrder.assignedCourier ? (
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#011813] border border-emerald-600/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-base shadow-md shrink-0">
-                  <Bike className="w-6 h-6 animate-pulse" />
+            <div className="bg-[#022e23] border border-emerald-700/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-md">
+                  {activeCustomerOrder.assignedCourier.name.split(' ')[0][0]}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm sm:text-base text-white">
-                      {activeCustomerOrder.assignedCourier.name}
-                    </span>
-                    <span className="text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold border border-emerald-500/30">
-                      Görevli Moto Kurye
+                    <span className="font-extrabold text-sm text-white">{activeCustomerOrder.assignedCourier.name}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[10px] font-bold">
+                      ⭐ {activeCustomerOrder.assignedCourier.rating.toFixed(1)}
                     </span>
                   </div>
-                  <p className="text-xs text-emerald-200/80 mt-0.5">
-                    İletişim: <span className="font-mono font-bold text-white">{activeCustomerOrder.assignedCourier.phone}</span>
+                  <p className="text-emerald-300/90 text-[11px] font-medium">
+                    🏍️ {activeCustomerOrder.assignedCourier.vehiclePlate || '07 KUR 34'} • {activeCustomerOrder.assignedCourier.phone}
                   </p>
                 </div>
               </div>
 
-              {/* Direct Call Button */}
-              <a
-                href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
-                className="px-5 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 shrink-0"
-              >
-                <PhoneCall className="w-4 h-4 animate-bounce" />
-                <span>Kuryeyi Ara: {activeCustomerOrder.assignedCourier.phone}</span>
-              </a>
+              {activeCustomerOrder.assignedCourier.phone && (
+                <a
+                  href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md self-start sm:self-auto"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Kuryeyi Ara</span>
+                </a>
+              )}
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-[#011813] border border-emerald-800/60 flex items-center gap-3 text-xs text-emerald-200/90">
-              <Radio className="w-5 h-5 text-emerald-400 animate-pulse shrink-0" />
-              <span>
-                Talebiniz kurye havuzunda yayınlandı. Size en yakın moto kurye görevi kabul ettiğinde bilgileri ve canlı konumu burada görünecektir.
-              </span>
+            <div className="bg-amber-950/40 border border-amber-600/40 rounded-2xl p-3.5 text-xs text-amber-200 flex items-center gap-2.5">
+              <Radio className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+              <span>Talebiniz kurye havuzunda yayınlandı. Antalya genelindeki aktif kuryelerden onay bekleniyor.</span>
             </div>
           )}
 
-          {/* 4-Stage Progress Timeline */}
-          <div className="space-y-2.5 bg-[#011813] p-4 sm:p-5 rounded-2xl border border-emerald-800/40">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold">
+          {/* 4-Step Visual Progress Bar */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 text-center text-[10px] sm:text-xs font-bold">
               <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400 font-black' : 'text-emerald-400'}>
                 1. Talep Alındı
               </span>
               <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-amber-400 font-black' : ['picked_up', 'near_destination', 'delivered'].includes(activeCustomerOrder.status) ? 'text-emerald-400' : 'text-emerald-700'}>
-                2. Kurye Atandı
+                2. Kurye Yolda (Alış)
               </span>
               <span className={['picked_up', 'near_destination'].includes(activeCustomerOrder.status) ? 'text-amber-400 font-black' : activeCustomerOrder.status === 'delivered' ? 'text-emerald-400' : 'text-emerald-700'}>
                 3. Teslimata Yolda
@@ -476,118 +526,278 @@ export const HeroIntro: React.FC = () => {
   }
 
   // =========================================================================
-  // SCENARIO 2: NO ACTIVE ORDER (Landing / Login / Call Courier screen)
+  // SCENARIO 2: LOGGED-IN CUSTOMER (NO ACTIVE ORDERS)
+  // Shows ONLY:
+  // 1. Delivered celebration banner (if recently delivered)
+  // 2. "+ Yeni Paket" action bar
+  // 3. Past Deliveries List (Eski Teslimatlarım)
+  // =========================================================================
+  if (isUserLoggedIn) {
+    return (
+      <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
+        
+        {/* Animated "Siparişiniz Teslim Edildi" Celebration Section */}
+        {deliveredOrderToCelebrate && !hideDeliveredCard && (
+          <div className="w-full bg-gradient-to-br from-[#023125] via-[#044434] to-[#011d15] rounded-3xl border-2 border-emerald-400 p-6 sm:p-8 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="flex items-start justify-between relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 shrink-0 animate-bounce">
+                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-black uppercase tracking-wider">
+                      Teslimat Tamamlandı
+                    </span>
+                    <span className="font-mono text-xs text-amber-300 font-bold">
+                      {deliveredOrderToCelebrate.trackingCode}
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
+                    🎉 Siparişiniz Başarıyla Teslim Edildi!
+                  </h3>
+                  <p className="text-xs sm:text-sm text-emerald-200/90 mt-0.5">
+                    Paketiniz kuryemiz tarafından alıcıya güvenle teslim edilmiştir.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setHideDeliveredCard(true)}
+                className="p-1.5 text-emerald-400 hover:text-white transition cursor-pointer"
+                title="Kapat"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Delivered Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#011611]/90 rounded-2xl border border-emerald-700/60 text-xs">
+              <div>
+                <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Eden Kurye:</span>
+                <span className="text-white font-extrabold text-sm flex items-center gap-1.5 mt-0.5">
+                  <Bike className="w-4 h-4 text-emerald-400" />
+                  {deliveredOrderToCelebrate.assignedCourier?.name || 'Ahmet Yılmaz (Kurye)'}
+                </span>
+              </div>
+              <div>
+                <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Adresi:</span>
+                <span className="text-white font-bold block mt-0.5">
+                  {deliveredOrderToCelebrate.receiver.district} - {deliveredOrderToCelebrate.receiver.contactName}
+                </span>
+              </div>
+              <div>
+                <span className="text-emerald-400/80 font-semibold block text-[11px]">Paket Bilgisi:</span>
+                <span className="text-amber-300 font-bold block mt-0.5">
+                  📦 {deliveredOrderToCelebrate.packageName} ({deliveredOrderToCelebrate.price} ₺)
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Rating Bar & New Order Button */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1 border-t border-emerald-800/60">
+              <div className="w-full sm:w-auto">
+                {ratingSubmitted ? (
+                  <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs bg-emerald-950/90 px-4 py-2 rounded-xl border border-emerald-700/60">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Kurye değerlendirmeniz kaydedildi. Teşekkür ederiz!</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-emerald-200 font-bold">Kuryeyi Puanla:</span>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => {
+                            setRatingVal(star);
+                            rateDelivery(deliveredOrderToCelebrate.id, star, 'Müşteri ana sayfa puanı');
+                            setRatingSubmitted(true);
+                          }}
+                          className={`p-1 transition cursor-pointer hover:scale-125 ${
+                            star <= ratingVal ? 'text-amber-400' : 'text-slate-600'
+                          }`}
+                          title={`${star} Yıldız`}
+                        >
+                          <Star className="w-5 h-5 fill-current" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentView('customer')}
+                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Yeni Paket</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Customer Dashboard Action Bar */}
+        <div className="bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 shadow-xl text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600/80 border border-emerald-400/40 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
+              <Package className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-extrabold text-white">
+                Müşteri Paneli
+              </h1>
+              <p className="text-xs text-emerald-300/80 mt-0.5">
+                Hoş geldiniz, <span className="text-white font-bold">{currentUser.name}</span>. Yeni bir kurye çağırabilir veya geçmiş siparişlerinizi inceleyebilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          {/* New Package Button */}
+          <button
+            type="button"
+            onClick={() => setCurrentView('customer')}
+            className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Yeni Paket</span>
+          </button>
+        </div>
+
+        {/* Past Deliveries List Section (Eski Teslimatlar) */}
+        <div className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-5 text-white">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
+            <div className="flex items-center gap-2.5">
+              <History className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-base sm:text-lg font-extrabold text-white">
+                Eski Teslimatlarım ({deliveredOrders.length})
+              </h2>
+            </div>
+
+            {/* Quick Search */}
+            {deliveredOrders.length > 0 && (
+              <div className="relative max-w-xs w-full">
+                <Search className="w-4 h-4 text-emerald-400/80 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  placeholder="Kayıtlarda ara..."
+                  className="w-full pl-9 pr-3.5 py-2 bg-[#011410] border border-emerald-700/60 rounded-xl text-xs text-white placeholder:text-emerald-600/70 outline-none focus:border-emerald-400"
+                />
+              </div>
+            )}
+          </div>
+
+          {deliveredOrders.length === 0 ? (
+            <div className="text-center py-12 px-4 space-y-4">
+              <div className="w-14 h-14 rounded-3xl bg-emerald-950/80 border border-emerald-800/60 text-emerald-400/80 flex items-center justify-center mx-auto shadow-inner">
+                <Package className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-white">Henüz tamamlanmış bir teslimatınız bulunmuyor.</p>
+                <p className="text-xs text-emerald-300/70 max-w-md mx-auto">
+                  Antalya içi dilediğiniz adrese hemen paket göndermek için yukarıdaki <strong>Yeni Paket</strong> butonuna basınız.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentView('customer')}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-md inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>İlk Paketini Gönder</span>
+              </button>
+            </div>
+          ) : filteredDeliveredOrders.length === 0 ? (
+            <div className="text-center py-8 text-xs text-emerald-300/80">
+              Aramanıza uygun geçmiş teslimat kaydı bulunamadı.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredDeliveredOrders.map((ord) => (
+                <div
+                  key={ord.id}
+                  className="p-4 bg-[#011410]/90 rounded-2xl border border-emerald-800/50 hover:border-emerald-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-amber-400 text-xs">
+                        {ord.trackingCode}
+                      </span>
+                      {getStatusBadge(ord.status)}
+                      <span className="text-[11px] text-emerald-300/70">
+                        {new Date(ord.createdAt).toLocaleDateString('tr-TR', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+
+                    <div className="text-white font-bold text-sm">
+                      {ord.sender.district} ➔ {ord.receiver.district} ({ord.receiver.contactName})
+                    </div>
+
+                    <div className="text-emerald-300/80 text-[11px] flex items-center gap-2 flex-wrap">
+                      <span>📦 {ord.packageName}</span>
+                      <span>•</span>
+                      <span>{ord.price} ₺ ({ord.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'})</span>
+                      {ord.assignedCourier && (
+                        <>
+                          <span>•</span>
+                          <span>🏍️ Kurye: {ord.assignedCourier.name}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Receipt & Details Button */}
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReceiptOrder(ord)}
+                      className="px-3.5 py-2 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Fiş Görüntüle</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+
+        {/* Receipt Modal */}
+        {selectedReceiptOrder && (
+          <ReceiptModal
+            order={selectedReceiptOrder}
+            onClose={() => setSelectedReceiptOrder(null)}
+          />
+        )}
+
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // SCENARIO 3: GUEST / VISITOR VIEW
+  // Clean Landing page with login/registration form for non-logged in users
   // =========================================================================
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex flex-col items-center justify-center p-2 sm:p-4 space-y-6">
       
-      {/* Animated "Siparişiniz Teslim Edildi" Celebration Section */}
-      {deliveredOrderToCelebrate && !hideDeliveredCard && (
-        <div className="w-full max-w-5xl bg-gradient-to-br from-[#023125] via-[#044434] to-[#011d15] rounded-3xl border-2 border-emerald-400 p-6 sm:p-8 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="flex items-start justify-between relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 shrink-0 animate-bounce">
-                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-black uppercase tracking-wider">
-                    Teslimat Tamamlandı
-                  </span>
-                  <span className="font-mono text-xs text-amber-300 font-bold">
-                    {deliveredOrderToCelebrate.trackingCode}
-                  </span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
-                  🎉 Siparişiniz Başarıyla Teslim Edildi!
-                </h3>
-                <p className="text-xs sm:text-sm text-emerald-200/90 mt-0.5">
-                  Paketiniz kuryemiz tarafından alıcıya güvenle teslim edilmiştir.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setHideDeliveredCard(true)}
-              className="p-1.5 text-emerald-400 hover:text-white transition cursor-pointer"
-              title="Kapat"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Delivered Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#011611]/90 rounded-2xl border border-emerald-700/60 text-xs">
-            <div>
-              <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Eden Kurye:</span>
-              <span className="text-white font-extrabold text-sm flex items-center gap-1.5 mt-0.5">
-                <Bike className="w-4 h-4 text-emerald-400" />
-                {deliveredOrderToCelebrate.assignedCourier?.name || 'Ahmet Yılmaz (Kurye)'}
-              </span>
-            </div>
-            <div>
-              <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Adresi:</span>
-              <span className="text-white font-bold block mt-0.5">
-                {deliveredOrderToCelebrate.receiver.district} - {deliveredOrderToCelebrate.receiver.contactName}
-              </span>
-            </div>
-            <div>
-              <span className="text-emerald-400/80 font-semibold block text-[11px]">Paket Bilgisi:</span>
-              <span className="text-amber-300 font-bold block mt-0.5">
-                📦 {deliveredOrderToCelebrate.packageName} ({deliveredOrderToCelebrate.price} ₺)
-              </span>
-            </div>
-          </div>
-
-          {/* Quick Rating Bar & New Order Button */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1 border-t border-emerald-800/60">
-            <div className="w-full sm:w-auto">
-              {ratingSubmitted ? (
-                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs bg-emerald-950/90 px-4 py-2 rounded-xl border border-emerald-700/60">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Kurye değerlendirmeniz kaydedildi. Teşekkür ederiz!</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-emerald-200 font-bold">Kuryeyi Puanla:</span>
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => {
-                          setRatingVal(star);
-                          rateDelivery(deliveredOrderToCelebrate.id, star, 'Müşteri ana sayfa puanı');
-                          setRatingSubmitted(true);
-                        }}
-                        className={`p-1 transition cursor-pointer hover:scale-125 ${
-                          star <= ratingVal ? 'text-amber-400' : 'text-slate-600'
-                        }`}
-                        title={`${star} Yıldız`}
-                      >
-                        <Star className="w-5 h-5 fill-current" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setCurrentView('customer')}
-              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Yeni Paket Gönder</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 grid grid-cols-1 lg:grid-cols-12 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410]">
         
         {/* LEFT SECTION */}
@@ -620,11 +830,7 @@ export const HeroIntro: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (currentUser.id === 'user-guest-01' || !currentUser.email) {
-                    openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz. Misafir talebi kabul edilmemektedir.');
-                  } else {
-                    setCurrentView('customer');
-                  }
+                  openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
                 }}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
               >
