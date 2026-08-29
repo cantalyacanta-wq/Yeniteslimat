@@ -1,0 +1,29 @@
+{
+  "users": [],
+  "couriers": [
+    {
+      "id": "user-courier-01",
+      "name": "Ahmet Yılmaz (Kurye)",
+      "phone": "0544 111 22 33",
+      "email": "ahmet@antalyakurye.com",
+      "district": "Muratpaşa",
+      "rating": 4.95,
+      "totalDeliveries": 14,
+      "currentLat": 36.886,
+      "currentLng": 30.7065
+    },
+    {
+      "id": "user-courier-02",
+      "name": "Mustafa Demir (Kurye)",
+      "phone": "0555 222 33 44",
+      "email": "mustafa@antalyakurye.com",
+      "district": "Konyaaltı",
+      "rating": 4.88,
+      "totalDeliveries": 9,
+      "currentLat": 36.8732,
+      "currentLng": 30.6384
+    }
+  ],
+  "requests": [],
+  "updatedAt": "2026-08-29T11:04:01.402Z"
+}

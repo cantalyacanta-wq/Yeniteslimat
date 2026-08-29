@@ -206,7 +206,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // 3. Persistent Orders
   const [requests, setRequests] = useState<DeliveryRequest[]>(loadPersistentOrders);
 
-  const [couriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
+  const [couriers, setCouriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
   const [activeCourierId, setActiveCourierId] = useState<string>('user-courier-01');
   const [isCourierOnline, setIsCourierOnline] = useState<boolean>(true);
   
@@ -218,6 +218,69 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'admin_login'>('login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
+
+  // Ref to track last seen pool count for audio notification across devices
+  const prevPoolCountRef = React.useRef<number>(0);
+
+  // =========================================================================
+  // REAL-TIME SERVER SYNC (Cross-Device Data Synchronization)
+  // =========================================================================
+  const syncWithServer = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sync');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.success) {
+        if (Array.isArray(data.requests)) {
+          setRequests((prev) => {
+            // Check if any new pending requests arrived for couriers
+            const newPool = data.requests.filter((r: DeliveryRequest) => r.status === 'pending_pool');
+            if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
+              // Play new order chime if pool orders increased
+              try {
+                playNewOrderSound();
+              } catch {}
+            }
+            prevPoolCountRef.current = newPool.length;
+
+            // Only update state if length or items changed
+            if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
+              try {
+                localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
+              } catch {}
+              return data.requests;
+            }
+            return prev;
+          });
+        }
+
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          setUsers((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(data.users)) {
+              try {
+                localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(data.users));
+              } catch {}
+              return data.users;
+            }
+            return prev;
+          });
+        }
+
+        if (Array.isArray(data.couriers) && data.couriers.length > 0) {
+          setCouriers(data.couriers);
+        }
+      }
+    } catch (err) {
+      // Quietly handle network or offline errors
+    }
+  }, []);
+
+  // Poll server every 2.5 seconds so other devices receive new customer orders immediately
+  useEffect(() => {
+    syncWithServer();
+    const interval = setInterval(syncWithServer, 2500);
+    return () => clearInterval(interval);
+  }, [syncWithServer]);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
@@ -493,6 +556,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setActiveCourierId(newUser.id);
     }
     playSuccessSound();
+
+    // Async sync to server
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser),
+    }).catch((e) => console.warn('Failed to sync user to server:', e));
+
     return newUser;
   }, []);
 
@@ -501,6 +572,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setUsers((prev) =>
       prev.map((u) => (u.id === currentUserId ? { ...u, ...data } : u))
     );
+    fetch(`/api/users/${currentUserId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch((e) => console.warn('Failed to sync profile update:', e));
   }, [currentUserId]);
 
   // Admin add courier
@@ -520,6 +596,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
     setUsers((prev) => [newCourier, ...prev]);
     playSuccessSound();
+
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCourier),
+    }).catch((e) => console.warn('Failed to sync new courier to server:', e));
+
     return newCourier;
   }, []);
 
@@ -530,12 +613,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentUserId(INITIAL_USERS[0].id);
     }
     playAcceptSound();
+
+    fetch(`/api/users/${courierId}`, {
+      method: 'DELETE',
+    }).catch((e) => console.warn('Failed to delete courier on server:', e));
   }, [currentUserId]);
 
   // Admin update courier
   const updateCourier = useCallback((courierId: string, data: Partial<UserAccount>) => {
     setUsers((prev) => prev.map((u) => (u.id === courierId ? { ...u, ...data } : u)));
     playAcceptSound();
+
+    fetch(`/api/users/${courierId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch((e) => console.warn('Failed to update courier on server:', e));
   }, []);
 
   // Logout feature - cleanly resets to guest customer & classic home view
@@ -567,7 +660,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, [users, setCurrentView]);
 
-  // Create new delivery request - Guaranteed to fall into courier pool immediately
+  // Create new delivery request - Guaranteed to fall into courier pool immediately across all devices
   const createNewRequest = useCallback(
     (
       params: Omit<
@@ -616,6 +709,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
           sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
         } catch {}
+
+        fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(autoCustomer),
+        }).catch(() => {});
       }
 
       const newRequest: DeliveryRequest = {
@@ -632,7 +731,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         courierEarnings: estimate.courierEarnings,
       };
 
-      // 1. Immediately update state
+      // 1. Immediately update local state
       setRequests((prev) => {
         const updated = [newRequest, ...prev.filter((r) => r.id !== newRequest.id)];
         try {
@@ -656,16 +755,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('storage'));
-        try {
-          window.dispatchEvent(new CustomEvent('antalya_new_pool_order', { detail: newRequest }));
-        } catch {}
-      }
+      // 4. Send to Server Backend for Cross-Device Sync
+      fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRequest),
+      })
+        .then((res) => res.json())
+        .then(() => {
+          // Trigger immediate sync
+          syncWithServer();
+        })
+        .catch((e) => console.warn('Failed to push new order to server:', e));
 
       return newRequest;
     },
-    [currentUser]
+    [currentUser, syncWithServer]
   );
 
   // Courier accepts order
@@ -705,8 +810,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
       playAcceptSound();
+
+      // Backend sync
+      fetch(`/api/requests/${requestId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courierId: courierObj.id }),
+      })
+        .then(() => syncWithServer())
+        .catch((e) => console.warn('Failed to sync accept order:', e));
     },
-    [currentUser]
+    [currentUser, syncWithServer]
   );
 
   // Update status without needing verification code
@@ -714,6 +828,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (requestId: string, nextStatus: DeliveryStatus) => {
       const targetReq = requests.find((r) => r.id === requestId);
       if (!targetReq) return { success: false, message: 'Sipariş bulunamadı.' };
+
+      const now = new Date().toISOString();
+      const updates: any = {
+        status: nextStatus,
+        updatedAt: now,
+      };
+      if (nextStatus === 'picked_up') updates.pickupTime = now;
+      if (nextStatus === 'delivered') updates.deliveryTime = now;
 
       if (nextStatus === 'delivered') {
         // Success celebration
@@ -725,9 +847,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             origin: { y: 0.6 },
             colors: ['#0284c7', '#10b981', '#f59e0b', '#6366f1'],
           });
-        } catch {
-          // ignore
-        }
+        } catch {}
 
         // Update courier earnings & deliveries
         if (targetReq.assignedCourier?.id) {
@@ -749,22 +869,27 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setRequests((prev) =>
         prev.map((req) => {
           if (req.id === requestId) {
-            const now = new Date().toISOString();
             return {
               ...req,
-              status: nextStatus,
-              updatedAt: now,
-              pickupTime: nextStatus === 'picked_up' ? now : req.pickupTime,
-              deliveryTime: nextStatus === 'delivered' ? now : req.deliveryTime,
+              ...updates,
             };
           }
           return req;
         })
       );
 
+      // Backend sync
+      fetch(`/api/requests/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+        .then(() => syncWithServer())
+        .catch((e) => console.warn('Failed to sync status update:', e));
+
       return { success: true };
     },
-    [requests]
+    [requests, syncWithServer]
   );
 
   // Rating
@@ -782,6 +907,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return req;
       })
     );
+
+    fetch(`/api/requests/${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerRating: rating, customerFeedback: feedback }),
+    }).catch((e) => console.warn('Failed to sync rating:', e));
   }, []);
 
   // Cancel order (by customer or admin)
@@ -798,7 +929,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return req;
       })
     );
-  }, []);
+
+    fetch(`/api/requests/${requestId}/cancel`, {
+      method: 'POST',
+    })
+      .then(() => syncWithServer())
+      .catch((e) => console.warn('Failed to cancel request on server:', e));
+  }, [syncWithServer]);
 
   // Courier releases task before picking up -> drops back to pool
   const releaseRequestBackToPool = useCallback((requestId: string) => {
@@ -816,7 +953,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
     playAcceptSound();
-  }, []);
+
+    fetch(`/api/requests/${requestId}/release`, {
+      method: 'POST',
+    })
+      .then(() => syncWithServer())
+      .catch((e) => console.warn('Failed to release request on server:', e));
+  }, [syncWithServer]);
 
   // Add realistic demo request to test pool
   const addDemoRequest = useCallback(() => {
@@ -904,12 +1047,26 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentUserId(data.activeUserId);
       }
       playSuccessSound();
+
+      fetch('/api/database/backup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            users: data.users || users,
+            requests: data.orders || requests,
+          },
+        }),
+      })
+        .then(() => syncWithServer())
+        .catch(() => {});
+
       return true;
     } catch (e) {
       console.error('Import failed:', e);
       return false;
     }
-  }, []);
+  }, [users, requests, syncWithServer]);
 
   // Reset to default mock data safely
   const resetDefaultData = useCallback(() => {
@@ -920,7 +1077,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.removeItem(STORAGE_USERS_KEY);
     localStorage.removeItem(STORAGE_ACTIVE_USER_ID_KEY);
     playAcceptSound();
-  }, []);
+
+    fetch('/api/database/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: {
+          users: INITIAL_USERS,
+          requests: INITIAL_REQUESTS,
+        },
+      }),
+    })
+      .then(() => syncWithServer())
+      .catch(() => {});
+  }, [syncWithServer]);
 
   // Filtered queries
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
