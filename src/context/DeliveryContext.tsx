@@ -801,7 +801,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         )
       );
 
-      // 3. Audio & Global Dispatch
+      // 3. Audio & Global Dispatch & Customer Session Persistence
+      try {
+        localStorage.setItem('ant_last_customer_order_id', newRequest.id);
+        localStorage.setItem('ant_last_customer_phone', newRequest.sender.contactPhone);
+      } catch {}
       playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
 

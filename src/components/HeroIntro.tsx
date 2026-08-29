@@ -23,7 +23,9 @@ import {
   Check,
   Clock,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Star,
+  Sparkles
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest } from '../types';
@@ -41,30 +43,48 @@ export const HeroIntro: React.FC = () => {
     acceptRequest,
     openAuthModal,
     switchUser,
+    rateDelivery,
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [selectedActiveOrderId, setSelectedActiveOrderId] = useState<string | null>(null);
+  const [ratingVal, setRatingVal] = useState(5);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [hideDeliveredCard, setHideDeliveredCard] = useState(false);
 
-  // Active customer orders (pending, assigned, picked up, near destination)
-  const activeOrders = requests.filter(
+  // Restore last customer order ID & contact phone from persistent storage
+  const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
+  const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
+
+  // Active customer orders (cross-session & cross-device matching)
+  const customerOrders = requests.filter(
     (r) =>
       r &&
-      r.status !== 'delivered' &&
       r.status !== 'cancelled' &&
-      (r.senderUserId === currentUser.id ||
+      (r.id === lastSavedOrderId ||
+        r.senderUserId === currentUser.id ||
         (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone) ||
+        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone) ||
         (currentUser.id === 'user-guest-01' && Boolean(r.senderUserId?.startsWith('user-cust-'))) ||
         currentUser.role === 'admin')
   );
+
+  const activeOrders = customerOrders.filter((r) => r.status !== 'delivered');
+  const deliveredOrders = customerOrders.filter((r) => r.status === 'delivered');
 
   // Active order to display
   const activeCustomerOrder = 
     (selectedActiveOrderId ? activeOrders.find((r) => r.id === selectedActiveOrderId) : null) ||
     activeOrders[0] ||
     null;
+
+  // Delivered order to celebrate if no active order is in progress
+  const deliveredOrderToCelebrate =
+    !activeCustomerOrder && deliveredOrders.length > 0
+      ? deliveredOrders[0]
+      : null;
 
   // Login form state
   const [email, setEmail] = useState('');
@@ -319,29 +339,34 @@ export const HeroIntro: React.FC = () => {
             </div>
           )}
 
-          {/* Progress Timeline */}
-          <div className="space-y-2 bg-[#011813] p-4 sm:p-5 rounded-2xl border border-emerald-800/40">
-            <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-              <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400' : 'text-emerald-400'}>
-                1. Kurye Havuzunda
+          {/* 4-Stage Progress Timeline */}
+          <div className="space-y-2.5 bg-[#011813] p-4 sm:p-5 rounded-2xl border border-emerald-800/40">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold">
+              <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400 font-black' : 'text-emerald-400'}>
+                1. Talep Alındı
               </span>
-              <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-amber-400' : activeCustomerOrder.status === 'picked_up' ? 'text-emerald-400' : 'text-emerald-700'}>
-                2. Paketi Almaya Gidiyor
+              <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-amber-400 font-black' : ['picked_up', 'near_destination', 'delivered'].includes(activeCustomerOrder.status) ? 'text-emerald-400' : 'text-emerald-700'}>
+                2. Kurye Atandı
               </span>
-              <span className={activeCustomerOrder.status === 'picked_up' ? 'text-amber-400' : 'text-emerald-700'}>
+              <span className={['picked_up', 'near_destination'].includes(activeCustomerOrder.status) ? 'text-amber-400 font-black' : activeCustomerOrder.status === 'delivered' ? 'text-emerald-400' : 'text-emerald-700'}>
                 3. Teslimata Yolda
+              </span>
+              <span className={activeCustomerOrder.status === 'delivered' ? 'text-emerald-300 font-black' : 'text-emerald-800'}>
+                4. Teslim Edildi
               </span>
             </div>
 
-            <div className="w-full bg-emerald-950 h-2 rounded-full overflow-hidden border border-emerald-800/40">
+            <div className="w-full bg-emerald-950 h-2.5 rounded-full overflow-hidden border border-emerald-800/40">
               <div
                 className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
                 style={{
                   width:
                     activeCustomerOrder.status === 'pending_pool'
-                      ? '33%'
+                      ? '25%'
                       : activeCustomerOrder.status === 'courier_assigned'
-                      ? '66%'
+                      ? '50%'
+                      : activeCustomerOrder.status === 'picked_up' || activeCustomerOrder.status === 'near_destination'
+                      ? '75%'
                       : '100%',
                 }}
               ></div>
@@ -378,42 +403,6 @@ export const HeroIntro: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Direct Transition Buttons for Testing / Management */}
-          {activeCustomerOrder.status === 'pending_pool' && (
-            <div className="bg-[#011914] p-3.5 rounded-2xl border border-amber-500/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-amber-300">
-                <Bike className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-                <span className="text-[11px] sm:text-xs">
-                  <strong>Talebiniz Kurye Havuzunda:</strong> Kurye veya Yönetici ekranına tek tıkla geçip inceleyebilirsiniz:
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchUser('user-courier-01');
-                    setCurrentView('courier');
-                  }}
-                  className="flex-1 sm:flex-initial px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md text-xs"
-                >
-                  <Bike className="w-3.5 h-3.5" />
-                  <span>Kurye Havuzunda Gör</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    switchUser('user-admin-01');
-                    setCurrentView('admin');
-                  }}
-                  className="flex-1 sm:flex-initial px-3 py-2 bg-emerald-800 hover:bg-emerald-700 text-emerald-200 border border-emerald-600/50 font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 text-xs"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Yönetim Panelinde Gör</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Package Info & Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-emerald-800/50">
@@ -490,7 +479,115 @@ export const HeroIntro: React.FC = () => {
   // SCENARIO 2: NO ACTIVE ORDER (Landing / Login / Call Courier screen)
   // =========================================================================
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-2 sm:p-4">
+    <div className="w-full min-h-[calc(100vh-140px)] flex flex-col items-center justify-center p-2 sm:p-4 space-y-6">
+      
+      {/* Animated "Siparişiniz Teslim Edildi" Celebration Section */}
+      {deliveredOrderToCelebrate && !hideDeliveredCard && (
+        <div className="w-full max-w-5xl bg-gradient-to-br from-[#023125] via-[#044434] to-[#011d15] rounded-3xl border-2 border-emerald-400 p-6 sm:p-8 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex items-start justify-between relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 shrink-0 animate-bounce">
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-black uppercase tracking-wider">
+                    Teslimat Tamamlandı
+                  </span>
+                  <span className="font-mono text-xs text-amber-300 font-bold">
+                    {deliveredOrderToCelebrate.trackingCode}
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
+                  🎉 Siparişiniz Başarıyla Teslim Edildi!
+                </h3>
+                <p className="text-xs sm:text-sm text-emerald-200/90 mt-0.5">
+                  Paketiniz kuryemiz tarafından alıcıya güvenle teslim edilmiştir.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setHideDeliveredCard(true)}
+              className="p-1.5 text-emerald-400 hover:text-white transition cursor-pointer"
+              title="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Delivered Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#011611]/90 rounded-2xl border border-emerald-700/60 text-xs">
+            <div>
+              <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Eden Kurye:</span>
+              <span className="text-white font-extrabold text-sm flex items-center gap-1.5 mt-0.5">
+                <Bike className="w-4 h-4 text-emerald-400" />
+                {deliveredOrderToCelebrate.assignedCourier?.name || 'Ahmet Yılmaz (Kurye)'}
+              </span>
+            </div>
+            <div>
+              <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Adresi:</span>
+              <span className="text-white font-bold block mt-0.5">
+                {deliveredOrderToCelebrate.receiver.district} - {deliveredOrderToCelebrate.receiver.contactName}
+              </span>
+            </div>
+            <div>
+              <span className="text-emerald-400/80 font-semibold block text-[11px]">Paket Bilgisi:</span>
+              <span className="text-amber-300 font-bold block mt-0.5">
+                📦 {deliveredOrderToCelebrate.packageName} ({deliveredOrderToCelebrate.price} ₺)
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Rating Bar & New Order Button */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1 border-t border-emerald-800/60">
+            <div className="w-full sm:w-auto">
+              {ratingSubmitted ? (
+                <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs bg-emerald-950/90 px-4 py-2 rounded-xl border border-emerald-700/60">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Kurye değerlendirmeniz kaydedildi. Teşekkür ederiz!</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-emerald-200 font-bold">Kuryeyi Puanla:</span>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => {
+                          setRatingVal(star);
+                          rateDelivery(deliveredOrderToCelebrate.id, star, 'Müşteri ana sayfa puanı');
+                          setRatingSubmitted(true);
+                        }}
+                        className={`p-1 transition cursor-pointer hover:scale-125 ${
+                          star <= ratingVal ? 'text-amber-400' : 'text-slate-600'
+                        }`}
+                        title={`${star} Yıldız`}
+                      >
+                        <Star className="w-5 h-5 fill-current" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentView('customer')}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Yeni Paket Gönder</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 grid grid-cols-1 lg:grid-cols-12 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410]">
         
         {/* LEFT SECTION */}

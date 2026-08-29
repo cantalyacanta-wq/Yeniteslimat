@@ -38,6 +38,7 @@ export const CourierPool: React.FC = () => {
 
   // Confirmation Modals State
   const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<DeliveryRequest | null>(null);
+  const [customerCallReminderOrder, setCustomerCallReminderOrder] = useState<DeliveryRequest | null>(null);
   const [confirmPickupOrder, setConfirmPickupOrder] = useState<DeliveryRequest | null>(null);
   const [confirmDeliverOrder, setConfirmDeliverOrder] = useState<DeliveryRequest | null>(null);
   const [confirmReleaseOrder, setConfirmReleaseOrder] = useState<DeliveryRequest | null>(null);
@@ -49,8 +50,12 @@ export const CourierPool: React.FC = () => {
 
   const handleConfirmAccept = () => {
     if (confirmAcceptOrder) {
-      acceptRequest(confirmAcceptOrder.id);
+      const order = confirmAcceptOrder;
+      // 1. Instantly assign request so it leaves the pool for all couriers
+      acceptRequest(order.id);
       setConfirmAcceptOrder(null);
+      // 2. Open prominent customer phone call reminder
+      setCustomerCallReminderOrder(order);
       setActiveTab('active');
     }
   };
@@ -470,64 +475,100 @@ export const CourierPool: React.FC = () => {
         </div>
       )}
 
-      {/* CONFIRM ACCEPT MODAL */}
+      {/* SIMPLE CONFIRM ACCEPT MODAL (Evet / Hayır Only) */}
       {confirmAcceptOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#022019] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-emerald-600/60 space-y-5 text-white">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-900/80 text-emerald-300 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                  <PhoneCall className="w-6 h-6 animate-bounce" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-white">Müşteriyi Arayarak Teyit Ediniz</h3>
-                  <p className="text-xs text-emerald-300/80">Görevi başlatmadan önce gönderici ile görüşünüz.</p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#022019] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-600/70 space-y-4 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-900/80 text-emerald-300 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                <Bike className="w-6 h-6" />
               </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-extrabold text-white">Görevi Kabul Etmek İstiyor Musunuz?</h3>
+                <p className="text-xs text-emerald-300/80">Bu teslimat görevi adınıza atanacaktır.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/60 space-y-1.5 text-xs">
+              <div className="flex justify-between border-b border-emerald-900 pb-1.5 font-bold">
+                <span className="text-amber-400 font-mono">{confirmAcceptOrder.trackingCode}</span>
+                <span className="text-emerald-300">Hakediş: {confirmAcceptOrder.courierEarnings} ₺</span>
+              </div>
+              <p className="text-emerald-100"><strong>Paket:</strong> {confirmAcceptOrder.packageName}</p>
+              <p className="text-emerald-200/90"><strong>Güzergah:</strong> {confirmAcceptOrder.sender.district} ➔ {confirmAcceptOrder.receiver.district}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setConfirmAcceptOrder(null)}
-                className="text-emerald-400/70 hover:text-white p-1 cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-sm cursor-pointer transition text-center"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 bg-[#011410] rounded-2xl border border-emerald-800/60 space-y-2 text-xs">
-              <div className="flex justify-between border-b border-emerald-900 pb-2">
-                <span className="font-mono text-amber-400 font-bold">{confirmAcceptOrder.trackingCode}</span>
-                <span className="font-black text-emerald-400">Kazanç: {confirmAcceptOrder.courierEarnings} ₺</span>
-              </div>
-              <p><strong>Gönderen:</strong> {confirmAcceptOrder.sender.contactName} ({confirmAcceptOrder.sender.district})</p>
-              <p><strong>Adres:</strong> {confirmAcceptOrder.sender.addressDetail}</p>
-              <p><strong>Hedef:</strong> {confirmAcceptOrder.receiver.district} - {confirmAcceptOrder.receiver.contactName}</p>
-            </div>
-
-            <a
-              href={`tel:${confirmAcceptOrder.sender.contactPhone}`}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30"
-            >
-              <Phone className="w-4 h-4" />
-              <span>Müşteriyi Hemen Ara: {confirmAcceptOrder.sender.contactPhone}</span>
-            </a>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmAcceptOrder(null)}
-                className="px-4 py-2.5 rounded-xl text-emerald-300 hover:bg-emerald-900/40 font-bold text-xs cursor-pointer transition"
-              >
-                Vazgeç
+                Hayır
               </button>
               <button
                 type="button"
                 onClick={handleConfirmAccept}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-xs cursor-pointer transition shadow-md flex items-center gap-2"
+                className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white font-extrabold text-sm cursor-pointer transition shadow-lg shadow-emerald-500/30 text-center"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Teyit Ettim, Görevi Başlat</span>
+                Evet
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOMER PHONE CALL REMINDER MODAL (Shown after clicking Evet) */}
+      {customerCallReminderOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#032a21] to-[#011a14] rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-emerald-500/80 space-y-5 text-white">
+            <div className="flex items-center gap-3.5">
+              <div className="w-13 h-13 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/40">
+                <PhoneCall className="w-7 h-7 animate-bounce" />
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-900 text-emerald-300 border border-emerald-700/50">
+                  Görev Üzerinize Alındı
+                </span>
+                <h3 className="text-base sm:text-lg font-extrabold text-white pt-1">
+                  Müşteriyi Arayarak Teyit Ediniz!
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-emerald-200 leading-relaxed">
+              Talebi üzerinize aldınız ve talep havuzdan çıkarıldı. Teslimatı sorunsuz başlatmak için lütfen gönderici müşteriyi hemen arayıp hazır olduğunu teyit ediniz:
+            </p>
+
+            <div className="p-4 bg-[#011410] rounded-2xl border border-emerald-800/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-400 font-bold">Gönderici Müşteri:</span>
+                <span className="text-white font-black text-sm">{customerCallReminderOrder.sender.contactName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-400 font-bold">Telefon Numarası:</span>
+                <span className="text-amber-400 font-mono font-black text-sm">{customerCallReminderOrder.sender.contactPhone}</span>
+              </div>
+              <div className="pt-1 border-t border-emerald-900 text-[11px] text-emerald-300/80">
+                <span>Adres: {customerCallReminderOrder.sender.addressDetail} ({customerCallReminderOrder.sender.district})</span>
+              </div>
+            </div>
+
+            <a
+              href={`tel:${customerCallReminderOrder.sender.contactPhone}`}
+              className="w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-white font-black text-sm rounded-2xl transition flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-500/30"
+            >
+              <Phone className="w-5 h-5 animate-pulse" />
+              <span>Müşteriyi Hemen Ara ({customerCallReminderOrder.sender.contactPhone})</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setCustomerCallReminderOrder(null)}
+              className="w-full py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-xs cursor-pointer transition border border-emerald-800/60"
+            >
+              Teyit Ettim / Göreve Başla
+            </button>
           </div>
         </div>
       )}
