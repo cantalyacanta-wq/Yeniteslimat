@@ -1,6 +1,6 @@
 {
-  "name": "Antalya Kurye Express",
-  "description": "Antalya içi hızlı moto kurye paket talep oluşturma, kurye havuzu yönetimi ve anlık teslimat takip sistemi.",
+  "name": "Antalya Teslimat 7/24",
+  "description": "Antalya içi 7/24 hızlı moto kurye paket talep oluşturma, kurye havuzu yönetimi ve anlık teslimat takip sistemi.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

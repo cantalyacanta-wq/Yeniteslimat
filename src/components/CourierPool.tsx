@@ -388,6 +388,43 @@ export const CourierPool: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* STYLISH RED PAYMENT REMINDER ALERT BANNER */}
+                  {req.paymentMethod === 'alici_odemeli' ? (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950 via-rose-950 to-red-950 border-2 border-red-500 shadow-xl shadow-red-950/50 flex items-center gap-3 text-white">
+                      <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                        <AlertTriangle className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white font-black text-[10px] uppercase tracking-wider">
+                            ÖNEMLİ ÖDEME UYARISI
+                          </span>
+                          <span className="font-extrabold text-xs text-red-200">ALICI ÖDEMELİ</span>
+                        </div>
+                        <p className="text-xs text-red-100 font-bold leading-tight">
+                          🔴 Paketi teslim alırken / alıcıya ulaştırırken <span className="text-amber-300 font-black text-sm">{req.price} ₺</span> ödemeyi alıcıdan tahsil etmeyi UNUTMAYINIZ!
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950 via-rose-950 to-red-950 border-2 border-red-500 shadow-xl shadow-red-950/50 flex items-center gap-3 text-white">
+                      <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white font-black text-[10px] uppercase tracking-wider">
+                            ÖNEMLİ ÖDEME UYARISI
+                          </span>
+                          <span className="font-extrabold text-xs text-red-200">GÖNDERİCİ ÖDEMELİ</span>
+                        </div>
+                        <p className="text-xs text-red-100 font-bold leading-tight">
+                          🔴 Bu sipariş gönderici ödemelidir ({req.price} ₺). Paketi alıcıya teslim ederken alıcıdan tekrar ücret almayınız.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Actions for active assignment */}
                   <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-emerald-800/50">
                     <span className="text-xs font-bold text-emerald-300">
@@ -596,7 +633,40 @@ export const CourierPool: React.FC = () => {
                 <span className="text-emerald-400/80">Hedef İlçe:</span>
                 <span className="font-bold text-white">{confirmPickupOrder.receiver.district}</span>
               </div>
+              <div className="flex justify-between pt-1 border-t border-emerald-900/60">
+                <span className="text-emerald-400/80">Ödeme Tipi:</span>
+                <span className="font-bold text-amber-400">
+                  {confirmPickupOrder.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'}
+                </span>
+              </div>
             </div>
+
+            {/* STYLISH RED WARNING IN PICKUP MODAL */}
+            {confirmPickupOrder.paymentMethod === 'alici_odemeli' ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white space-y-1.5 shadow-xl shadow-red-950/60 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                  <span className="font-black text-xs sm:text-sm text-red-200 uppercase tracking-wide">
+                    ÖNEMLİ: ALICI ÖDEMELİ SİPARİŞ!
+                  </span>
+                </div>
+                <p className="text-xs text-red-100 font-bold leading-relaxed">
+                  🔴 Paketi teslim alıyorsunuz. Alıcı teslimat noktasına vardığınızda alıcıdan <span className="text-amber-300 font-black text-sm">{confirmPickupOrder.price} ₺</span> ödemeyi tahsil etmeyi kesinlikle <span className="underline">UNUTMAYINIZ</span>!
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white space-y-1.5 shadow-xl shadow-red-950/60">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                  <span className="font-black text-xs sm:text-sm text-red-200 uppercase tracking-wide">
+                    ÖNEMLİ: GÖNDERİCİ ÖDEMELİ SİPARİŞ!
+                  </span>
+                </div>
+                <p className="text-xs text-red-100 font-bold leading-relaxed">
+                  🔴 Paketi teslim alırken göndericiden <span className="text-amber-300 font-black text-sm">{confirmPickupOrder.price} ₺</span> ücret tahsilatını kontrol ediniz.
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
@@ -632,17 +702,40 @@ export const CourierPool: React.FC = () => {
               </div>
             </div>
 
+            {/* STYLISH RED WARNING IN DELIVER MODAL */}
             {confirmDeliverOrder.paymentMethod === 'alici_odemeli' ? (
-              <div className="p-3.5 bg-amber-950/80 border border-amber-600/60 rounded-xl text-xs space-y-1 text-amber-200">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <span>ÖDEME TAHSİLATI GEREKLİ!</span>
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white space-y-2 shadow-2xl shadow-red-950/70 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-black text-sm text-red-100 uppercase tracking-wider block">
+                      ALICI ÖDEMELİ TAHSİLAT KONTROLÜ
+                    </span>
+                    <span className="text-[11px] text-red-300 font-medium">Ödemeyi almadan teslimatı tamamlamayınız!</span>
+                  </div>
                 </div>
-                <p>Bu sipariş <strong>Alıcı Ödemeli</strong>dir. Alıcıdan <strong>{confirmDeliverOrder.price} ₺</strong> tahsil edildiğini teyit ediniz.</p>
+                <p className="text-xs text-white font-bold leading-relaxed bg-black/40 p-2.5 rounded-xl border border-red-500/50">
+                  🔴 Bu sipariş <strong className="text-red-300 underline">ALICI ÖDEMELİDİR</strong>. Alıcıdan <span className="text-amber-300 font-black text-base">{confirmDeliverOrder.price} ₺</span> ödemeyi teslim aldığınızı onaylıyor musunuz?
+                </p>
               </div>
             ) : (
-              <div className="p-3 bg-emerald-950/80 border border-emerald-600/50 rounded-xl text-xs text-emerald-200">
-                <span>✓ Gönderici Ödemeli sipariş (Alıcıdan ücret alınmayacaktır).</span>
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-rose-900 to-red-950 border-2 border-red-500 text-white space-y-2 shadow-2xl shadow-red-950/70">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shrink-0 shadow-md">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-black text-sm text-red-100 uppercase tracking-wider block">
+                      GÖNDERİCİ ÖDEMELİ SİPARİŞ
+                    </span>
+                    <span className="text-[11px] text-red-300 font-medium">Paketi teslim ederken alıcıdan ücret talep etmeyiniz</span>
+                  </div>
+                </div>
+                <p className="text-xs text-white font-bold leading-relaxed bg-black/40 p-2.5 rounded-xl border border-red-500/50">
+                  🔴 Bu gönderinin ücreti (<span className="text-amber-300 font-black">{confirmDeliverOrder.price} ₺</span>) gönderici tarafından ödenmiştir. Paketi alıcıya teslim ederken alıcıdan tekrar ücret almayınız.
+                </p>
               </div>
             )}
 

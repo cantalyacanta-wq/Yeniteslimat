@@ -5,6 +5,11 @@ import { INITIAL_COURIERS, INITIAL_REQUESTS, INITIAL_USERS } from '../data/mockD
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { playAcceptSound, playNewOrderSound, playSuccessSound } from '../utils/audio';
 import {
+  dispatchOrderStatusNotification,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from '../services/notificationService';
+import {
   subscribeToDeliveryRequests,
   subscribeToUsers,
   saveRequestToFirestore,
@@ -64,6 +69,10 @@ interface DeliveryContextType {
   exportDatabaseBackup: () => void;
   importDatabaseBackup: (jsonString: string) => boolean;
   resetDefaultData: () => void;
+  
+  // Notification Service Controls
+  notificationPermission: NotificationPermission | 'unsupported';
+  requestNotifications: () => Promise<boolean>;
   
   // Filtered lists
   poolRequests: DeliveryRequest[];

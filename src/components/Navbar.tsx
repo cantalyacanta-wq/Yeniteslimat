@@ -87,10 +87,10 @@ export const Navbar: React.FC = () => {
             <div className="truncate">
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-sm sm:text-base text-white tracking-tight">
-                  Antalya<span className="text-emerald-400">Kurye</span>
+                  Antalya<span className="text-emerald-400"> Teslimat</span>
                 </span>
-                <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-700/50">
-                  Express
+                <span className="inline-block text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 shadow-xs">
+                  7/24
                 </span>
               </div>
               <p className="text-[10px] text-emerald-400/80 hidden sm:block truncate">Şehir İçi Jet Teslimat</p>
