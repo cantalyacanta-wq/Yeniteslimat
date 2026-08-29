@@ -73,11 +73,11 @@ interface DeliveryContextType {
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
-// Persistent Local Database Keys (v6 - clean state, locked address support & browser history sync)
-const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v6_orders';
-const STORAGE_USERS_KEY = 'antalya_kurye_database_v6_users';
-const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v6_active_user_id';
-const STORAGE_CURRENT_VIEW_KEY = 'antalya_kurye_database_v6_current_view';
+// Persistent Local Database Keys (v7 - clean state, locked address support & strict courier pool isolation)
+const STORAGE_ORDERS_KEY = 'antalya_kurye_database_v7_orders';
+const STORAGE_USERS_KEY = 'antalya_kurye_database_v7_users';
+const STORAGE_ACTIVE_USER_ID_KEY = 'antalya_kurye_database_v7_active_user_id';
+const STORAGE_CURRENT_VIEW_KEY = 'antalya_kurye_database_v7_current_view';
 
 // Helper to safely determine initial view from URL hash or localStorage
 const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile' => {

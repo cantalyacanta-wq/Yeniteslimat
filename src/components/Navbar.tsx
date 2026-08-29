@@ -92,17 +92,10 @@ export const Navbar: React.FC = () => {
       ];
     }
 
-    // Default Customer / Visitor view
+    // Default Customer / Visitor view (Customers cannot access Courier Pool)
     return [
       { id: 'home', label: 'Ana Sayfa', icon: Home, badge: null, badgeColor: '' },
       { id: 'customer', label: 'Paket Gönder', icon: Send, badge: null, badgeColor: '' },
-      {
-        id: 'courier',
-        label: 'Kurye Havuzu',
-        icon: Bike,
-        badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
-        badgeColor: 'bg-amber-500 text-white font-extrabold animate-pulse',
-      },
       { id: 'tracker', label: 'Sipariş Takibi', icon: Search, badge: null, badgeColor: '' },
     ];
   }, [currentUser.role, activeStats.poolCount]);

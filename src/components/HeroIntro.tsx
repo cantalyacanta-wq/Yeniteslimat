@@ -309,21 +309,11 @@ export const HeroIntro: React.FC = () => {
               </a>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl bg-[#011813] border border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-200/90">
-              <div className="flex items-center gap-3">
-                <Radio className="w-5 h-5 text-emerald-400 animate-pulse shrink-0" />
-                <span>
-                  Talebiniz kurye havuzunda yayınlandı. Size en yakın moto kurye görevi kabul ettiğinde bilgileri ve canlı konumu burada görünecektir.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentView('courier')}
-                className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                <Bike className="w-4 h-4 text-amber-400" />
-                <span>Kurye Havuzunu Gör</span>
-              </button>
+            <div className="p-4 rounded-2xl bg-[#011813] border border-emerald-800/60 flex items-center gap-3 text-xs text-emerald-200/90">
+              <Radio className="w-5 h-5 text-emerald-400 animate-pulse shrink-0" />
+              <span>
+                Talebiniz kurye havuzunda yayınlandı. Size en yakın moto kurye görevi kabul ettiğinde bilgileri ve canlı konumu burada görünecektir.
+              </span>
             </div>
           )}
 

@@ -11,7 +11,7 @@ import { AuthModal } from './components/AuthModal';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentView } = useDelivery();
+  const { currentView, currentUser, setCurrentView, openAuthModal } = useDelivery();
 
   return (
     <div className="w-full max-w-full overflow-hidden">
@@ -26,7 +26,39 @@ const MainContent: React.FC = () => {
       {currentView !== 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
           {currentView === 'customer' && <CustomerRequestForm />}
-          {currentView === 'courier' && <CourierPool />}
+          {currentView === 'courier' && (
+            currentUser.role === 'courier' || currentUser.role === 'admin' ? (
+              <CourierPool />
+            ) : (
+              <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
+                  <Bike className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-extrabold text-white">Kurye Yetkisi Gerekli</h3>
+                  <p className="text-xs text-emerald-300/80">
+                    Kurye havuzu ve anlık görevler sadece kayıtlı moto kuryelerimiz ve yöneticiler içindir.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('courier_login')}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer"
+                  >
+                    Kurye Girişi Yap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('home')}
+                    className="w-full py-2.5 bg-[#011410] hover:bg-[#02241d] text-emerald-300 font-bold text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+                  >
+                    Ana Sayfaya Dön
+                  </button>
+                </div>
+              </div>
+            )
+          )}
           {currentView === 'tracker' && <OrderTracker />}
           {currentView === 'admin' && <AdminManagement />}
           {currentView === 'history' && <OrderHistory />}
