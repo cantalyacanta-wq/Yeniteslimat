@@ -40,6 +40,7 @@ export const HeroIntro: React.FC = () => {
     cancelRequest,
     acceptRequest,
     openAuthModal,
+    switchUser,
   } = useDelivery();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -50,11 +51,12 @@ export const HeroIntro: React.FC = () => {
   // Active customer orders (pending, assigned, picked up, near destination)
   const activeOrders = requests.filter(
     (r) =>
+      r &&
       r.status !== 'delivered' &&
       r.status !== 'cancelled' &&
       (r.senderUserId === currentUser.id ||
-        (currentUser.phone && r.sender.contactPhone === currentUser.phone) ||
-        (currentUser.id === 'user-guest-01' && r.senderUserId.startsWith('user-cust-')) ||
+        (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone) ||
+        (currentUser.id === 'user-guest-01' && Boolean(r.senderUserId?.startsWith('user-cust-'))) ||
         currentUser.role === 'admin')
   );
 
@@ -376,6 +378,42 @@ export const HeroIntro: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Direct Transition Buttons for Testing / Management */}
+          {activeCustomerOrder.status === 'pending_pool' && (
+            <div className="bg-[#011914] p-3.5 rounded-2xl border border-amber-500/40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-amber-300">
+                <Bike className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                <span className="text-[11px] sm:text-xs">
+                  <strong>Talebiniz Kurye Havuzunda:</strong> Kurye veya Yönetici ekranına tek tıkla geçip inceleyebilirsiniz:
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    switchUser('user-courier-01');
+                    setCurrentView('courier');
+                  }}
+                  className="flex-1 sm:flex-initial px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md text-xs"
+                >
+                  <Bike className="w-3.5 h-3.5" />
+                  <span>Kurye Havuzunda Gör</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    switchUser('user-admin-01');
+                    setCurrentView('admin');
+                  }}
+                  className="flex-1 sm:flex-initial px-3 py-2 bg-emerald-800 hover:bg-emerald-700 text-emerald-200 border border-emerald-600/50 font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Yönetim Panelinde Gör</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Package Info & Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-emerald-800/50">

@@ -11,7 +11,7 @@ import { AuthModal } from './components/AuthModal';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentView, currentUser, setCurrentView, openAuthModal } = useDelivery();
+  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser } = useDelivery();
 
   return (
     <div className="w-full max-w-full overflow-hidden">
@@ -37,21 +37,29 @@ const MainContent: React.FC = () => {
                 <div className="space-y-1.5">
                   <h3 className="text-lg font-extrabold text-white">Kurye Yetkisi Gerekli</h3>
                   <p className="text-xs text-emerald-300/80">
-                    Kurye havuzu ve anlık görevler sadece kayıtlı moto kuryelerimiz ve yöneticiler içindir.
+                    Kurye havuzu ve anlık görevler kayıtlı moto kuryelerimiz ve yöneticiler içindir.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => openAuthModal('courier_login')}
-                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer"
+                    onClick={() => switchUser('user-courier-01')}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Kurye Girişi Yap
+                    <Bike className="w-4 h-4" />
+                    <span>Ahmet Yılmaz (Kurye) Olarak Havuzu Aç</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('courier_login')}
+                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer"
+                  >
+                    Farklı Kurye Girişi Yap
                   </button>
                   <button
                     type="button"
                     onClick={() => setCurrentView('home')}
-                    className="w-full py-2.5 bg-[#011410] hover:bg-[#02241d] text-emerald-300 font-bold text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+                    className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
                   >
                     Ana Sayfaya Dön
                   </button>
@@ -60,7 +68,47 @@ const MainContent: React.FC = () => {
             )
           )}
           {currentView === 'tracker' && <OrderTracker />}
-          {currentView === 'admin' && <AdminManagement />}
+          {currentView === 'admin' && (
+            currentUser.role === 'admin' ? (
+              <AdminManagement />
+            ) : (
+              <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-teal-500/20 border border-teal-500/40 text-teal-400 mx-auto flex items-center justify-center">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-extrabold text-white">Yönetici Yetkisi Gerekli</h3>
+                  <p className="text-xs text-emerald-300/80">
+                    Yönetim paneli kurye onayları, irsaliyeler ve sistem kontrolü içindir.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => switchUser('user-admin-01')}
+                    className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Yönetici Olarak Paneli Aç</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('admin_login')}
+                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer"
+                  >
+                    Yönetici Girişi Yap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('home')}
+                    className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+                  >
+                    Ana Sayfaya Dön
+                  </button>
+                </div>
+              </div>
+            )
+          )}
           {currentView === 'history' && <OrderHistory />}
         </main>
       )}

@@ -27,12 +27,12 @@ export const OrderHistory: React.FC = () => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const match =
-        req.trackingCode.toLowerCase().includes(q) ||
-        req.packageName.toLowerCase().includes(q) ||
-        req.sender.contactName.toLowerCase().includes(q) ||
-        req.receiver.contactName.toLowerCase().includes(q) ||
-        req.sender.district.toLowerCase().includes(q) ||
-        req.receiver.district.toLowerCase().includes(q);
+        (req.trackingCode || '').toLowerCase().includes(q) ||
+        (req.packageName || '').toLowerCase().includes(q) ||
+        (req.sender?.contactName || '').toLowerCase().includes(q) ||
+        (req.receiver?.contactName || '').toLowerCase().includes(q) ||
+        (req.sender?.district || '').toLowerCase().includes(q) ||
+        (req.receiver?.district || '').toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;

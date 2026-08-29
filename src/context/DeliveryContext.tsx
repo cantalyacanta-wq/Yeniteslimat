@@ -171,9 +171,11 @@ const loadPersistentOrders = (): DeliveryRequest[] => {
           if (Array.isArray(parsed) && parsed.length > 0) {
             // Filter out old legacy sample requests so only real customer orders are shown
             const realOrders = parsed.filter(
-              (r: DeliveryRequest) => r && r.id && !r.id.startsWith('req-sample-')
+              (r: DeliveryRequest) => r && r.id && typeof r.id === 'string' && !r.id.startsWith('req-sample-')
             );
-            return realOrders;
+            if (realOrders.length > 0) {
+              return realOrders;
+            }
           }
         } catch {}
       }
