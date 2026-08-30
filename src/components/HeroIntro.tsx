@@ -367,7 +367,7 @@ export const HeroIntro: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-emerald-300/90 text-[11px] font-medium">
-                    🏍️ {activeCustomerOrder.assignedCourier.vehiclePlate || '07 KUR 34'} • {activeCustomerOrder.assignedCourier.phone}
+                    🏍️ Moto Kurye • {activeCustomerOrder.assignedCourier.phone}
                   </p>
                 </div>
               </div>

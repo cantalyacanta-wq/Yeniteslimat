@@ -201,9 +201,10 @@ export function calculateDeliveryEstimate(
   
   // Exact Pricing Rule:
   // Yemek / Restoran = 100 TL, Diğerleri = 150 TL
+  // Kurye hakedişi = Tam ücret (100 TL için 100 TL, diğerleri için tam ücret)
   const isFood = packageType === 'food';
   const totalPrice = isFood ? 100 : 150;
-  const courierEarnings = isFood ? 80 : 120; // Kurye hakedişi
+  const courierEarnings = totalPrice; // Tam ücret kuryeye aittir
   
   let durationMins = Math.round(15 + km * 1.8);
   if (urgency === 'express_vip') {

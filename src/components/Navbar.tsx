@@ -30,7 +30,7 @@ export const Navbar: React.FC = () => {
       return [
         {
           id: 'courier',
-          label: 'Kurye Havuzu',
+          label: 'Bekleyen Talep Havuzu',
           icon: Bike,
           badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
           badgeColor: 'bg-amber-500 text-white font-extrabold animate-pulse',
@@ -163,13 +163,13 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              /* If Guest / Not Logged In -> ONLY Courier Login & Registration Button */
+              /* If Guest / Not Logged In -> Compact Courier Login & Registration Button */
               <button
                 type="button"
                 onClick={() => openAuthModal('courier_login')}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs sm:text-sm font-extrabold transition cursor-pointer shadow-lg shadow-amber-600/30 active:scale-95 border border-amber-400/40"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/30"
               >
-                <Bike className="w-4 h-4 text-white animate-bounce shrink-0" />
+                <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
                 <span>Kurye Girişi & Kayıt</span>
               </button>
             )}
