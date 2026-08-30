@@ -15,10 +15,15 @@ import {
   ExternalLink,
   Plus,
   Radio,
-  Check
+  Check,
+  Volume2,
+  Sparkles,
+  Vibrate
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
+import { triggerHapticVibration, requestNotificationPermission } from '../services/notificationService';
+import { playNewOrderSound } from '../utils/audio';
 
 export const CourierPool: React.FC = () => {
   const {
@@ -188,7 +193,44 @@ export const CourierPool: React.FC = () => {
                 Müşterilerin oluşturduğu ve kurye kabulü bekleyen canlı siparişler.
               </p>
             </div>
+
+            {/* Test Vibration and Audio button for mobile couriers */}
+            <button
+              type="button"
+              onClick={async () => {
+                await requestNotificationPermission();
+                playNewOrderSound();
+                triggerHapticVibration([180, 80, 220, 80, 180]);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-900/60 hover:bg-emerald-800/80 border border-emerald-600/50 text-emerald-200 text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto cursor-pointer shadow-xs active:scale-95"
+              title="Mobil cihazda ses ve titreşim uyarısını test edin"
+            >
+              <Vibrate className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+              <span>Titreşim & Ses Test Et</span>
+            </button>
           </div>
+
+          {/* Glowing Beacon when new jobs are present in pool */}
+          {poolRequests.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-950/90 via-amber-900/60 to-amber-950/90 border-2 border-amber-500/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-100 shadow-xl shadow-amber-950/60">
+              <div className="flex items-center gap-2.5">
+                <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping shrink-0" />
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-white block">
+                    ⚡ {poolRequests.length} Yeni Paket Çağrısı Düştü!
+                  </span>
+                  <span className="text-[11px] text-amber-200/90">
+                    Kurye cihazınızda hafif titreşim ve sesli uyarı ile bilgilendirildiniz.
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] font-extrabold bg-amber-400 text-slate-950 px-2.5 py-1 rounded-lg uppercase tracking-wide">
+                  Canlı Havuz Aktif
+                </span>
+              </div>
+            </div>
+          )}
 
           {poolRequests.length === 0 ? (
             <div className="bg-gradient-to-br from-[#021f19] to-[#011410] rounded-3xl border border-emerald-800/60 p-8 sm:p-12 text-center space-y-4 text-white">

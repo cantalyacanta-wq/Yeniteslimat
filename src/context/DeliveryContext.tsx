@@ -236,8 +236,48 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
 
-  // Ref to track last seen pool count for audio notification across devices
+  // Ref to track active user and requests for real-time notifications & vibration across devices
+  const currentUserRef = React.useRef<UserAccount>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const prevRequestsMapRef = React.useRef<Map<string, DeliveryRequest>>(new Map());
   const prevPoolCountRef = React.useRef<number>(0);
+
+  // Helper to detect new orders or status updates for vibration & notifications
+  const processIncomingRequests = useCallback((incoming: DeliveryRequest[]) => {
+    const prevMap = prevRequestsMapRef.current;
+    const isInitial = prevMap.size === 0;
+
+    if (!isInitial) {
+      incoming.forEach((order) => {
+        const prevOrder = prevMap.get(order.id);
+        if (!prevOrder) {
+          if (order.status === 'pending_pool') {
+            dispatchOrderStatusNotification({
+              order,
+              newStatus: 'pending_pool',
+              currentUserId: currentUserRef.current.id,
+              userRole: currentUserRef.current.role,
+            });
+          }
+        } else if (prevOrder.status !== order.status) {
+          dispatchOrderStatusNotification({
+            order,
+            previousStatus: prevOrder.status,
+            newStatus: order.status,
+            currentUserId: currentUserRef.current.id,
+            userRole: currentUserRef.current.role,
+          });
+        }
+      });
+    }
+
+    const newMap = new Map<string, DeliveryRequest>();
+    incoming.forEach((r) => newMap.set(r.id, r));
+    prevRequestsMapRef.current = newMap;
+  }, []);
 
   // =========================================================================
   // REAL-TIME FIRESTORE & SERVER SYNC (Cross-Device Cloud Synchronization)
@@ -246,15 +286,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // 1. Cloud Firestore Real-time Listener for instant cross-device updates
     const unsubscribeRequests = subscribeToDeliveryRequests((cloudRequests) => {
       if (cloudRequests && cloudRequests.length > 0) {
-        setRequests((prev) => {
-          const newPool = cloudRequests.filter((r) => r.status === 'pending_pool');
-          if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
-            try {
-              playNewOrderSound();
-            } catch {}
-          }
-          prevPoolCountRef.current = newPool.length;
-
+        processIncomingRequests(cloudRequests);
+        setRequests(() => {
           try {
             localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(cloudRequests));
           } catch {}
@@ -287,15 +320,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const data = await res.json();
         if (data && data.success) {
           if (Array.isArray(data.requests) && data.requests.length > 0) {
+            processIncomingRequests(data.requests);
             setRequests((prev) => {
-              const newPool = data.requests.filter((r: DeliveryRequest) => r.status === 'pending_pool');
-              if (newPool.length > prevPoolCountRef.current && prevPoolCountRef.current > 0) {
-                try {
-                  playNewOrderSound();
-                } catch {}
-              }
-              prevPoolCountRef.current = newPool.length;
-
               if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
                 try {
                   localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
@@ -317,7 +343,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       unsubscribeUsers();
       clearInterval(interval);
     };
-  }, []);
+  }, [processIncomingRequests]);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
@@ -810,13 +836,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         )
       );
 
-      // 3. Audio & Global Dispatch & Customer Session Persistence
+      // 3. Audio, Vibration & Global Dispatch & Customer Session Persistence
       try {
         localStorage.setItem('ant_last_customer_order_id', newRequest.id);
         localStorage.setItem('ant_last_customer_phone', newRequest.sender.contactPhone);
       } catch {}
-      playNewOrderSound();
       setSelectedTrackingId(newRequest.id);
+
+      dispatchOrderStatusNotification({
+        order: newRequest,
+        newStatus: 'pending_pool',
+        currentUserId: effectiveUserId,
+        userRole: currentUser.role,
+      });
 
       // 4. Send to Cloud Firestore for Immediate Cross-Device Real-Time Sync
       saveRequestToFirestore(newRequest).catch((e) => console.warn('Firestore request save error:', e));
@@ -871,7 +903,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return updated;
       });
 
-      playAcceptSound();
+      const targetReq = requests.find((r) => r.id === requestId);
+      if (targetReq) {
+        dispatchOrderStatusNotification({
+          order: {
+            ...targetReq,
+            status: 'courier_assigned',
+            assignedCourier: courierObj,
+            updatedAt: now,
+          },
+          previousStatus: targetReq.status,
+          newStatus: 'courier_assigned',
+          currentUserId: currentUser.id,
+          userRole: currentUser.role,
+        });
+      }
 
       // Cloud Firestore sync
       updateRequestInFirestore(requestId, {
@@ -947,6 +993,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return req;
         })
       );
+
+      // Local notification & haptic feedback dispatch
+      dispatchOrderStatusNotification({
+        order: {
+          ...targetReq,
+          ...updates,
+        },
+        previousStatus: targetReq.status,
+        newStatus: nextStatus,
+        currentUserId: currentUser.id,
+        userRole: currentUser.role,
+      });
 
       // Cloud Firestore sync
       updateRequestInFirestore(requestId, updates).catch(() => {});
