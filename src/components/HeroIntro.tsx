@@ -806,12 +806,12 @@ export const HeroIntro: React.FC = () => {
             
             {/* Logo and Brand Header */}
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30 shrink-0">
                 <Truck className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Antalya Kurye</h2>
-                <p className="text-xs sm:text-sm text-emerald-300/80">Paket Teslimat Sistemi</p>
+                <h2 className="text-xl font-bold text-white tracking-tight">Antalya Şehir İçi Teslimat</h2>
+                <p className="text-xs sm:text-sm text-emerald-300/80 font-medium">7/24 Jet Moto Kurye & Paket Sistemi</p>
               </div>
             </div>
 
@@ -859,7 +859,7 @@ export const HeroIntro: React.FC = () => {
 
           <div className="pt-8 relative z-10">
             <p className="text-xs text-emerald-400/70">
-              © 2026 Antalya Kurye — Tüm hakları saklıdır
+              © 2026 Antalya Şehir İçi Teslimat 7/24 — Tüm hakları saklıdır
             </p>
           </div>
         </div>
@@ -1103,6 +1103,131 @@ export const HeroIntro: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* GOOGLE SEO & DISTRICTS LANDING SECTION */}
+      {/* Targets: "Antalya kurye cagir, paket gonder, acil kurye, konyaalti, muratpasa, kepez kurye" */}
+      {/* ========================================================================= */}
+      <section className="w-full max-w-5xl space-y-6 pt-4 text-white">
+        
+        {/* SEO Header & Keyword Intro */}
+        <div className="text-center space-y-2 px-4">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+            Antalya Kurye Çağır & Şehir İçi Hızlı Paket Gönder
+          </h2>
+          <p className="text-xs sm:text-sm text-emerald-300/80 max-w-2xl mx-auto leading-relaxed">
+            Antalya içi <strong>Muratpaşa</strong>, <strong>Konyaaltı</strong>, <strong>Kepez</strong> ve tüm çevre ilçelerde 30-45 dakikada acil moto kurye teslimatı. Canlı radar takip ve alıcı ödemeli güvenli gönderim.
+          </p>
+        </div>
+
+        {/* District SEO Grid Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* Muratpaşa Kurye */}
+          <article className="p-5 rounded-2xl bg-[#02231c] border border-emerald-800/60 shadow-lg space-y-3 hover:border-emerald-500/50 transition">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600/30 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/40">
+                01
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Muratpaşa Kurye</h3>
+                <span className="text-[11px] text-emerald-400 font-medium">Lara • Şirinyalı • Fener • Meltem</span>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-200/75 leading-relaxed">
+              Muratpaşa ve Lara bölgesinde acil evrak, medikal paket, anahtar ve kargo teslimatları ortalama 25-35 dakikada kapınızda.
+            </p>
+            <div className="pt-1 flex flex-wrap gap-1.5 text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">Lara Kurye</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">Işıklar</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">Meydankavağı</span>
+            </div>
+          </article>
+
+          {/* Konyaaltı Kurye */}
+          <article className="p-5 rounded-2xl bg-[#02231c] border border-emerald-800/60 shadow-lg space-y-3 hover:border-emerald-500/50 transition">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs border border-amber-500/40">
+                02
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Konyaaltı Kurye</h3>
+                <span className="text-[11px] text-amber-300 font-medium">Liman • Hurma • Uncalı • Altınkum</span>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-200/75 leading-relaxed">
+              Konyaaltı sahil ve iç mahallelerinde 7/24 nöbetçi moto kurye. Gürsu, Toros ve Sarısu bölgelerine anında hızlı paket gönderimi.
+            </p>
+            <div className="pt-1 flex flex-wrap gap-1.5 text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-200 border border-amber-800/50">Liman Kurye</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-200 border border-amber-800/50">Hurma</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-200 border border-amber-800/50">Uncalı</span>
+            </div>
+          </article>
+
+          {/* Kepez Kurye */}
+          <article className="p-5 rounded-2xl bg-[#02231c] border border-emerald-800/60 shadow-lg space-y-3 hover:border-emerald-500/50 transition">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-xs border border-teal-500/40">
+                03
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Kepez Kurye</h3>
+                <span className="text-[11px] text-teal-300 font-medium">Dokuma • Varsak • Kültür • Sanayi</span>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-200/75 leading-relaxed">
+              Kepez, Fabrikalar, Gülveren ve Akdeniz Üniversitesi çevresinde öğrenci ve işletmelere özel ekonomik ve jet moto kurye çözümleri.
+            </p>
+            <div className="pt-1 flex flex-wrap gap-1.5 text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-teal-950/60 text-teal-200 border border-teal-800/50">Dokuma Kurye</span>
+              <span className="px-2 py-0.5 rounded-md bg-teal-950/60 text-teal-200 border border-teal-800/50">Varsak</span>
+              <span className="px-2 py-0.5 rounded-md bg-teal-950/60 text-teal-200 border border-teal-800/50">Kültür</span>
+            </div>
+          </article>
+
+        </div>
+
+        {/* SEO FAQ & Key Features */}
+        <div className="p-6 rounded-3xl bg-[#021d17] border border-emerald-800/50 shadow-xl space-y-4">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>Antalya Acil Kurye Hizmeti Hakkında Sıkça Sorulanlar</span>
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">⚡ Antalya'da kurye teslimatı kaç dakika sürer?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Şehir içi standart teslimat süremiz ortalama 30-45 dakikadır. Kuryeniz siparişi kabul ettiği andan itibaren canlı radar üzerinden konumunu izleyebilirsiniz.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">💳 Alıcı ödemeli paket gönderebilir miyim?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Evet! Sipariş oluştururken 'Alıcı Ödemeli' seçeneğini seçebilirsiniz. Kuryemiz teslimat esnasında ücreti alıcıdan tahsil eder.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">🌙 Gece nöbetçi kurye var mı?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Antalya Teslimat 7/24 kesintisiz çalışır. Gece saatlerinde de kurye havuzumuz üzerinden acil paket ve evrak transferi yapabilirsiniz.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">📦 Hangi ilçelere gönderim yapılıyor?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Muratpaşa, Konyaaltı, Kepez başta olmak üzere Döşemealtı, Aksu, Serik, Kemer, Alanya ve Manavgat ilçelerine kurye gönderimi mevcuttur.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
     </div>
   );
 };

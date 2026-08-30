@@ -37,11 +37,11 @@ interface DeliveryContextType {
   // Auth Modal Controls
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  authModalTab: 'login' | 'register' | 'courier_login' | 'admin_login';
-  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'admin_login') => void;
+  authModalTab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login';
+  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login') => void;
   authModalNotice: string | null;
   setAuthModalNotice: (notice: string | null) => void;
-  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'admin_login', notice?: string | null) => void;
+  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login', notice?: string | null) => void;
   closeAuthModal: () => void;
 
   // Requests
@@ -233,7 +233,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 5. Global Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'admin_login'>('login');
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
 
   // Ref to track last seen pool count for audio notification across devices

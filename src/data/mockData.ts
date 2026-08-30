@@ -18,7 +18,7 @@ export const INITIAL_USERS: UserAccount[] = [
     email: 'kuryeantalyam@gmail.com',
     password: 'admin',
     role: 'admin',
-    companyName: 'Antalya Kurye Express',
+    companyName: 'Antalya Şehir İçi Teslimat 7/24',
     district: 'Muratpaşa',
     createdAt: '2026-01-01T00:00:00.000Z',
   },

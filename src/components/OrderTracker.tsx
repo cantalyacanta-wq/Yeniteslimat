@@ -56,7 +56,7 @@ export const OrderTracker: React.FC = () => {
 
   const handleCopyShareLink = () => {
     if (!currentOrder) return;
-    const shareText = `Antalya Kurye Express - Paket Takip Numarası: ${currentOrder.trackingCode}\nDurum: ${currentOrder.status}\nAlış: ${currentOrder.sender.district}\nTeslim: ${currentOrder.receiver.district}`;
+    const shareText = `Antalya Şehir İçi Teslimat 7/24 - Paket Takip Numarası: ${currentOrder.trackingCode}\nDurum: ${currentOrder.status}\nAlış: ${currentOrder.sender.district}\nTeslim: ${currentOrder.receiver.district}`;
     navigator.clipboard.writeText(shareText);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);

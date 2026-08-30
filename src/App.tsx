@@ -138,8 +138,8 @@ export default function App() {
               <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
                 <Bike className="w-3.5 h-3.5" />
               </div>
-              <span className="font-bold text-white">Antalya Kurye Express</span>
-              <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye</span>
+              <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
+              <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
             </div>
 
             <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
