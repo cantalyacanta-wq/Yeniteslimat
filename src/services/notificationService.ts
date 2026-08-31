@@ -169,7 +169,12 @@ export function dispatchOrderStatusNotification(params: {
 
   switch (newStatus) {
     case 'pending_pool':
-      if (isCourierRole || isAdminRole) {
+      const isPoolRoute = typeof window !== 'undefined' && (
+        window.location.pathname.toLowerCase().includes('pakettalebi') ||
+        window.location.hash.toLowerCase().includes('pakettalebi') ||
+        window.location.search.toLowerCase().includes('pakettalebi')
+      );
+      if (isCourierRole || isAdminRole || isPoolRoute) {
         title = '⚡ YENİ KURYELİK İŞ DÜŞTÜ!';
         body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict} | Kazanç: ${order.price} ₺. Hemen havuzdan kabul edebilirsiniz.`;
         type = 'alert';
@@ -182,6 +187,12 @@ export function dispatchOrderStatusNotification(params: {
         body = `[${trackingCode}] Talebiniz alındı (${senderDistrict} ➔ ${receiverDistrict}). En yakın moto kurye bekleniyor.`;
         type = 'info';
         vibratePattern = [100, 50, 100];
+        playNewOrderSound();
+      } else {
+        title = '⚡ YENİ PAKET TALEBİ GELDİ!';
+        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict} | ${order.price} ₺`;
+        type = 'alert';
+        vibratePattern = [150, 100, 150];
         playNewOrderSound();
       }
       break;

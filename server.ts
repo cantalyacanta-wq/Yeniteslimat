@@ -196,10 +196,13 @@ loadDatabase();
 function getRegisteredCourierEmails(): string[] {
   const emails = new Set<string>();
 
-  // Add all users with role 'courier' who have a valid email
+  // Management & dispatcher email for real-time dispatch alerts
+  emails.add('kuryeantalyam@gmail.com');
+
+  // Add all users with role 'courier' or 'admin' who have a valid email
   if (Array.isArray(dbState.users)) {
     dbState.users
-      .filter((u) => u.role === 'courier' && u.email && u.email.includes('@'))
+      .filter((u) => (u.role === 'courier' || u.role === 'admin') && u.email && u.email.includes('@'))
       .forEach((u) => emails.add(u.email.trim().toLowerCase()));
   }
 
@@ -211,10 +214,8 @@ function getRegisteredCourierEmails(): string[] {
   }
 
   // Ensure default registered couriers are included
-  if (emails.size === 0) {
-    emails.add('ahmet@antalyakurye.com');
-    emails.add('mustafa@antalyakurye.com');
-  }
+  emails.add('ahmet@antalyakurye.com');
+  emails.add('mustafa@antalyakurye.com');
 
   return Array.from(emails);
 }

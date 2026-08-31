@@ -55,7 +55,13 @@ export const PaketTalebiPoolPage: React.FC = () => {
   // Auto-refresh every 3 seconds for real-time live stream
   useEffect(() => {
     const interval = setInterval(async () => {
-      await syncWithServer();
+      if (typeof syncWithServer === 'function') {
+        try {
+          await syncWithServer();
+        } catch (err) {
+          console.debug('Background pool sync status:', err);
+        }
+      }
       setLastSyncTime(new Date());
     }, 3000);
     return () => clearInterval(interval);
@@ -83,7 +89,13 @@ export const PaketTalebiPoolPage: React.FC = () => {
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    await syncWithServer();
+    if (typeof syncWithServer === 'function') {
+      try {
+        await syncWithServer();
+      } catch (err) {
+        console.debug('Manual pool sync status:', err);
+      }
+    }
     setLastSyncTime(new Date());
     setTimeout(() => setIsRefreshing(false), 400);
   };
@@ -216,6 +228,15 @@ export const PaketTalebiPoolPage: React.FC = () => {
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Yenile</span>
               </button>
+
+              <a
+                href="/"
+                className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-emerald-700/60 text-emerald-200 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                title="Ana Sayfaya / Panele Dön"
+              >
+                <ExternalLink className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">Ana Sayfa</span>
+              </a>
             </div>
 
           </div>

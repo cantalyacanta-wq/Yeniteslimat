@@ -117,27 +117,24 @@ const MainContent: React.FC = () => {
   );
 };
 
+const checkIsPaketTalebiRoute = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname.toLowerCase();
+  const s = window.location.search.toLowerCase();
+  const h = window.location.hash.toLowerCase();
+  const keywords = ['pakettalebi', 'paket-talebi', 'pakettalep', 'kuryehavuz', 'kurye-havuz', 'havuz', 'pool'];
+  return keywords.some((k) => p.includes(k) || s.includes(k) || h.includes(k));
+};
+
 export default function App() {
-  const [isPaketTalebiRoute, setIsPaketTalebiRoute] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const p = window.location.pathname.toLowerCase();
-      const s = window.location.search.toLowerCase();
-      const h = window.location.hash.toLowerCase();
-      return p.includes('pakettalebi') || s.includes('pakettalebi') || h.includes('pakettalebi');
-    }
-    return false;
-  });
+  const [isPaketTalebiRoute, setIsPaketTalebiRoute] = useState<boolean>(checkIsPaketTalebiRoute);
 
   useEffect(() => {
     const checkRoute = () => {
-      if (typeof window !== 'undefined') {
-        const p = window.location.pathname.toLowerCase();
-        const s = window.location.search.toLowerCase();
-        const h = window.location.hash.toLowerCase();
-        setIsPaketTalebiRoute(p.includes('pakettalebi') || s.includes('pakettalebi') || h.includes('pakettalebi'));
-      }
+      setIsPaketTalebiRoute(checkIsPaketTalebiRoute());
     };
 
+    checkRoute();
     window.addEventListener('popstate', checkRoute);
     window.addEventListener('hashchange', checkRoute);
     return () => {

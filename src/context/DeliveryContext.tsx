@@ -73,6 +73,7 @@ interface DeliveryContextType {
   // Notification Service Controls
   notificationPermission: NotificationPermission | 'unsupported';
   requestNotifications: () => Promise<boolean>;
+  syncWithServer: () => Promise<void>;
   
   // Filtered lists
   poolRequests: DeliveryRequest[];
@@ -279,6 +280,53 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     prevRequestsMapRef.current = newMap;
   }, []);
 
+  // 6. Notification Controls
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(getNotificationPermission);
+
+  const requestNotifications = useCallback(async () => {
+    const granted = await requestNotificationPermission();
+    setNotificationPermission(getNotificationPermission());
+    return granted;
+  }, []);
+
+  // 7. Full Server Sync Callback (Cross-Device API Polling & Sync)
+  const syncWithServer = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sync');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.success) {
+        if (Array.isArray(data.requests)) {
+          processIncomingRequests(data.requests);
+          setRequests((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
+              try {
+                localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
+              } catch {}
+              return data.requests;
+            }
+            return prev;
+          });
+        }
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          setUsers((prev) => {
+            const userMap = new Map();
+            INITIAL_USERS.forEach((u) => userMap.set(u.id, u));
+            prev.forEach((u) => userMap.set(u.id, u));
+            data.users.forEach((u: any) => userMap.set(u.id, { ...(userMap.get(u.id) || {}), ...u }));
+            const merged = Array.from(userMap.values());
+            try {
+              localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      }
+    } catch (e) {
+      console.debug('Server sync status:', e);
+    }
+  }, [processIncomingRequests]);
+
   // =========================================================================
   // REAL-TIME FIRESTORE & SERVER SYNC (Cross-Device Cloud Synchronization)
   // =========================================================================
@@ -312,29 +360,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
-    // 2. Also poll Express API as additional resilient fallback
-    const syncWithServer = async () => {
-      try {
-        const res = await fetch('/api/sync');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && data.success) {
-          if (Array.isArray(data.requests) && data.requests.length > 0) {
-            processIncomingRequests(data.requests);
-            setRequests((prev) => {
-              if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
-                try {
-                  localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
-                } catch {}
-                return data.requests;
-              }
-              return prev;
-            });
-          }
-        }
-      } catch (e) {}
-    };
-
+    // 2. Also poll Express API as additional resilient fallback every 2 seconds
     syncWithServer();
     const interval = setInterval(syncWithServer, 2000);
 
@@ -343,7 +369,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       unsubscribeUsers();
       clearInterval(interval);
     };
-  }, [processIncomingRequests]);
+  }, [processIncomingRequests, syncWithServer]);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
@@ -1293,6 +1319,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         exportDatabaseBackup,
         importDatabaseBackup,
         resetDefaultData,
+        notificationPermission,
+        requestNotifications,
+        syncWithServer,
         poolRequests,
         activeCourierDeliveries,
         myCustomerOrders,
