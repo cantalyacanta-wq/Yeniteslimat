@@ -34,6 +34,7 @@ import {
   ExternalLink,
   HelpCircle,
   Send,
+  Info,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
@@ -1220,10 +1221,10 @@ export const AdminManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSendTestEmail}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 active:scale-95 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
               >
                 <Mail className="w-4 h-4" />
-                <span>⚡ Test E-postası Gönder</span>
+                <span>⚡ Canlı Test E-postası Gönder</span>
               </button>
             </div>
 
@@ -1232,6 +1233,17 @@ export const AdminManagement: React.FC = () => {
                 {testEmailStatus}
               </div>
             )}
+
+            {/* Important Gmail Inbox Tip */}
+            <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-amber-300">
+                <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Gmail Gelen Kutusu & Spam Bildirimi:</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-100/90">
+                Gmail üzerinden kendi e-posta adresinize (<strong>{smtpUser || 'kuryeantalyam@gmail.com'}</strong>) otomatik sipariş bildirimleri gönderildiğinde, Gmail sistemi bunu bazen <strong>"Spam (İstenmeyen)"</strong> veya <strong>"Tüm Postalar" / "Güncellemeler"</strong> sekmesine yönlendirebilir. E-postayı bulamadığınızda lütfen <strong>Spam</strong> ve <strong>Tüm Postalar</strong> klasörlerinizi kontrol edip <em>"Spam Değil"</em> olarak işaretleyiniz.
+              </p>
+            </div>
 
             {/* Recipient Couriers Pill List */}
             <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/50 space-y-2">

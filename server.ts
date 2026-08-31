@@ -244,26 +244,33 @@ loadDatabase();
 function getRegisteredCourierEmails(): string[] {
   const emails = new Set<string>();
 
-  // Management & dispatcher email for real-time dispatch alerts
+  // Always include dispatcher / management email
   emails.add('kuryeantalyam@gmail.com');
 
-  // Add all users with role 'courier' or 'admin' who have a valid email
+  // Add all users with role 'courier' or 'admin' with valid email, ignoring fake placeholder @antalyakurye.com
   if (Array.isArray(dbState.users)) {
     dbState.users
-      .filter((u) => (u.role === 'courier' || u.role === 'admin') && u.email && u.email.includes('@'))
+      .filter(
+        (u) =>
+          (u.role === 'courier' || u.role === 'admin') &&
+          u.email &&
+          u.email.includes('@') &&
+          !u.email.toLowerCase().endsWith('@antalyakurye.com')
+      )
       .forEach((u) => emails.add(u.email.trim().toLowerCase()));
   }
 
-  // Add all items in couriers list who have a valid email
+  // Add all items in couriers list
   if (Array.isArray(dbState.couriers)) {
     dbState.couriers
-      .filter((c) => c.email && c.email.includes('@'))
+      .filter(
+        (c) =>
+          c.email &&
+          c.email.includes('@') &&
+          !c.email.toLowerCase().endsWith('@antalyakurye.com')
+      )
       .forEach((c) => emails.add(c.email.trim().toLowerCase()));
   }
-
-  // Ensure default registered couriers are included
-  emails.add('ahmet@antalyakurye.com');
-  emails.add('mustafa@antalyakurye.com');
 
   return Array.from(emails);
 }
@@ -277,7 +284,7 @@ function getMailTransporter() {
   const envFrom = process.env.SMTP_FROM;
 
   const user = (cfg?.user || envUser || '').trim();
-  const pass = (cfg?.pass || envPass || '').trim();
+  const pass = (cfg?.pass || envPass || '').replace(/\s+/g, '').trim();
   const host = (cfg?.host || envHost || '').trim();
   const port = Number(cfg?.port) || envPort || 587;
   const secure = cfg?.secure ?? (port === 465);
@@ -326,19 +333,50 @@ async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: strin
 
     const trackingCode = order.trackingCode || order.id || 'ANT-0000';
     const senderDist = order.sender?.district || 'Antalya';
-    const senderAddr = order.sender?.address || '';
-    const senderContact = `${order.sender?.contactName || 'Gönderici'} (${order.sender?.phone || ''})`;
+    const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
+    const senderPhone = order.sender?.contactPhone || order.sender?.phone || '';
+    const senderName = order.sender?.contactName || 'Gönderici';
+    const senderContact = senderPhone ? `${senderName} (${senderPhone})` : senderName;
+
     const receiverDist = order.receiver?.district || 'Antalya';
-    const receiverAddr = order.receiver?.address || '';
-    const receiverContact = `${order.receiver?.contactName || 'Alıcı'} (${order.receiver?.phone || ''})`;
+    const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
+    const receiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
+    const receiverName = order.receiver?.contactName || 'Alıcı';
+    const receiverContact = receiverPhone ? `${receiverName} (${receiverPhone})` : receiverName;
+
     const price = order.price || 0;
     const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
     const pkgName = order.packageName || 'Paket / Koli';
     const paymentMethod = order.paymentMethod || 'gonderici_odemeli';
     const isAliciOdemeli = paymentMethod === 'alici_odemeli';
 
-    const subject = `⚡ [YENİ PAKET TALEBİ] ${senderDist} ➔ ${receiverDist} | ${price} ₺ (${isAliciOdemeli ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'})`;
+    const subject = `⚡ [YENİ SİPARİŞ] ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'})`;
     const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
+
+    const textContent = `
+🛵 YENİ PAKET ÇAĞRISI - ANTALYA ŞEHİR İÇİ TESLİMAT 7/24
+--------------------------------------------------------
+Sipariş Takip No : #${trackingCode}
+Paket İçeriği   : ${pkgName}
+Toplam Ücret    : ${price} TL
+Kurye Kazancı   : +${courierEarnings} TL
+Ödeme Türü      : ${isAliciOdemeli ? 'ALICI ÖDEMELİ (Teslimatta tahsil edilecek)' : 'GÖNDERİCİ ÖDEMELİ'}
+
+📍 1. ALIŞ NOKTASI (GÖNDERİCİ):
+İlçe  : ${senderDist}
+Adres : ${senderAddr}
+İletişim: ${senderContact}
+
+🎯 2. TESLİMAT NOKTASI (ALICI):
+İlçe  : ${receiverDist}
+Adres : ${receiverAddr}
+İletişim: ${receiverContact}
+
+HAVUZDAN İŞİ ALMAK İÇİN TIKLAYIN:
+${poolUrl}
+--------------------------------------------------------
+© 2026 Antalya Şehir İçi Teslimat 7/24
+    `.trim();
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -451,7 +489,9 @@ async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: strin
         await mailDetails.transporter.sendMail({
           from: mailDetails.fromAddress,
           to: recipients.join(', '),
+          replyTo: 'kuryeantalyam@gmail.com',
           subject,
+          text: textContent,
           html: htmlContent,
         });
         emailStatus = 'sent';

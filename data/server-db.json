@@ -1,5 +1,63 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "user-guest-01",
+      "name": "Misafir Müşteri",
+      "phone": "",
+      "email": "",
+      "password": "",
+      "role": "customer",
+      "district": "Muratpaşa",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-admin-01",
+      "name": "Antalya Kurye Yönetim",
+      "phone": "0532 000 00 00",
+      "email": "kuryeantalyam@gmail.com",
+      "password": "admin",
+      "role": "admin",
+      "companyName": "Antalya Kurye Express",
+      "district": "Muratpaşa",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-courier-01",
+      "name": "Ahmet Yılmaz (Kurye)",
+      "phone": "0544 111 22 33",
+      "email": "ahmet@antalyakurye.com",
+      "password": "123",
+      "role": "courier",
+      "district": "Muratpaşa",
+      "createdAt": "2026-01-02T00:00:00.000Z",
+      "totalOrders": 14,
+      "totalEarnings": 3200,
+      "isOnline": true
+    },
+    {
+      "id": "user-courier-02",
+      "name": "Mustafa Demir (Kurye)",
+      "phone": "0555 222 33 44",
+      "email": "mustafa@antalyakurye.com",
+      "password": "123",
+      "role": "courier",
+      "district": "Konyaaltı",
+      "createdAt": "2026-01-03T00:00:00.000Z",
+      "totalOrders": 9,
+      "totalEarnings": 2150,
+      "isOnline": true
+    },
+    {
+      "id": "user-customer-sample-1",
+      "name": "Deniz Akdeniz (Müşteri)",
+      "phone": "0533 123 45 67",
+      "email": "deniz@antalya.com",
+      "password": "123",
+      "role": "customer",
+      "district": "Muratpaşa",
+      "createdAt": "2026-01-04T00:00:00.000Z"
+    }
+  ],
   "couriers": [
     {
       "id": "user-courier-01",
@@ -24,7 +82,98 @@
       "currentLng": 30.6384
     }
   ],
-  "requests": [],
+  "requests": [
+    {
+      "id": "req-live-order-1788189764624",
+      "trackingCode": "ANT-7788",
+      "packageType": "belge",
+      "packageName": "Sözleşme & Evrak Dosyası",
+      "urgency": "vip",
+      "paymentMethod": "alici_odemeli",
+      "price": 320,
+      "courierEarnings": 275,
+      "sender": {
+        "district": "Muratpaşa",
+        "addressDetail": "Şirinyalı Mah. 1487 Sok. No:12",
+        "contactName": "Selim Bey",
+        "contactPhone": "0533 555 66 77"
+      },
+      "receiver": {
+        "district": "Konyaaltı",
+        "addressDetail": "Arapsuyu Mah. Akdeniz Bulvarı No:45",
+        "contactName": "Zeynep Hanım",
+        "contactPhone": "0542 888 99 00"
+      },
+      "status": "pending_pool",
+      "createdAt": "2026-08-31T15:22:44.647Z",
+      "updatedAt": "2026-08-31T15:22:44.647Z"
+    },
+    {
+      "id": "req-live-test-1788189599720",
+      "trackingCode": "ANT-9988",
+      "packageType": "kutu",
+      "packageName": "Test Canli Siparis Paketi",
+      "urgency": "express",
+      "paymentMethod": "alici_odemeli",
+      "price": 280,
+      "courierEarnings": 240,
+      "sender": {
+        "district": "Muratpasa",
+        "address": "Lara Cad. No:88",
+        "contactName": "Ahmet Bey",
+        "contactPhone": "0532 111 22 33"
+      },
+      "receiver": {
+        "district": "Kepez",
+        "address": "Sakarya Bulvari No:140",
+        "contactName": "Mehmet Bey",
+        "contactPhone": "0544 222 33 44"
+      },
+      "status": "pending_pool",
+      "createdAt": "2026-08-31T15:19:59.743Z",
+      "updatedAt": "2026-08-31T15:19:59.743Z"
+    }
+  ],
+  "emailLogs": [
+    {
+      "id": "mail-1788189758275-970",
+      "timestamp": "2026-08-31T15:22:38.275Z",
+      "orderId": "req-test-1788189757264",
+      "trackingCode": "ANT-8937",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Konyaaltı | 250 TL (Alıcı Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Konyaaltı (250 ₺, Örnek Test Paketi (Elektronik & Belge))"
+    },
+    {
+      "id": "mail-1788189600495-83",
+      "timestamp": "2026-08-31T15:20:00.495Z",
+      "orderId": "req-live-test-1788189599720",
+      "trackingCode": "ANT-9988",
+      "recipients": [
+        "kuryeantalyam@gmail.com",
+        "ahmet@antalyakurye.com",
+        "mustafa@antalyakurye.com"
+      ],
+      "subject": "⚡ [YENİ PAKET TALEBİ] Muratpasa ➔ Kepez | 280 ₺ (Alıcı Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpasa ➔ Kepez (280 ₺, Test Canli Siparis Paketi)"
+    },
+    {
+      "id": "mail-1788189570823-313",
+      "timestamp": "2026-08-31T15:19:30.823Z",
+      "orderId": "req-test-1788189570137",
+      "trackingCode": "ANT-7526",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ PAKET TALEBİ] Muratpaşa ➔ Konyaaltı | 250 ₺ (Alıcı Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Konyaaltı (250 ₺, Örnek Test Paketi (Elektronik & Belge))"
+    }
+  ],
   "smtpConfig": {
     "service": "gmail",
     "host": "smtp.gmail.com",
@@ -39,5 +188,5 @@
     "lastTestStatus": "success",
     "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
   },
-  "updatedAt": "2026-08-31T14:15:00.000Z"
+  "updatedAt": "2026-08-31T15:22:44.647Z"
 }
