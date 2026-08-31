@@ -84,6 +84,38 @@
   ],
   "requests": [
     {
+      "id": "test-order-1788191689110",
+      "trackingCode": "ANT-392045",
+      "sender": {
+        "district": "Muratpaşa",
+        "neighborhood": "Lara",
+        "addressDetail": "Şirinyalı Mah. 1487 Sokak No:12",
+        "contactName": "Ahmet Yılmaz",
+        "contactPhone": "05321234567",
+        "lat": 36.8841,
+        "lng": 30.7056
+      },
+      "receiver": {
+        "district": "Konyaaltı",
+        "neighborhood": "Gürsu",
+        "addressDetail": "Gürsu Mah. 304 Sokak No:5",
+        "contactName": "Mehmet Demir",
+        "contactPhone": "05429876543",
+        "lat": 36.8625,
+        "lng": 30.6375
+      },
+      "packageType": "food",
+      "packageName": "Sıcak Yemek Paketi",
+      "packageWeightKg": 1,
+      "price": 240,
+      "courierEarnings": 190,
+      "paymentMethod": "gonderici_odemeli",
+      "urgency": "standard",
+      "createdAt": "2026-08-31T15:54:49.110Z",
+      "status": "pending_pool",
+      "updatedAt": "2026-08-31T15:54:49.249Z"
+    },
+    {
       "id": "req-live-order-1788189764624",
       "trackingCode": "ANT-7788",
       "packageType": "belge",
@@ -136,6 +168,30 @@
   ],
   "emailLogs": [
     {
+      "id": "mail-1788191689899-259",
+      "timestamp": "2026-08-31T15:54:49.899Z",
+      "orderId": "test-order-1788191689110",
+      "trackingCode": "ANT-392045",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Konyaaltı | 240 TL (Gönderici Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Konyaaltı (240 ₺, Sıcak Yemek Paketi)"
+    },
+    {
+      "id": "mail-1788189765367-589",
+      "timestamp": "2026-08-31T15:22:45.367Z",
+      "orderId": "req-live-order-1788189764624",
+      "trackingCode": "ANT-7788",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Konyaaltı | 320 TL (Alıcı Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Konyaaltı (320 ₺, Sözleşme & Evrak Dosyası)"
+    },
+    {
       "id": "mail-1788189758275-970",
       "timestamp": "2026-08-31T15:22:38.275Z",
       "orderId": "req-test-1788189757264",
@@ -174,6 +230,7 @@
       "summary": "Muratpaşa ➔ Konyaaltı (250 ₺, Örnek Test Paketi (Elektronik & Belge))"
     }
   ],
+  "extraCourierEmails": [],
   "smtpConfig": {
     "service": "gmail",
     "host": "smtp.gmail.com",
@@ -188,5 +245,5 @@
     "lastTestStatus": "success",
     "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
   },
-  "updatedAt": "2026-08-31T15:22:44.647Z"
+  "updatedAt": "2026-08-31T15:54:49.899Z"
 }

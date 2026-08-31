@@ -712,40 +712,18 @@ export const HeroIntro: React.FC = () => {
             </p>
           </div>
 
-          {/* Action Buttons Grid */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+          {/* Action Button */}
+          <div className="flex items-center justify-center pt-2">
             <button
               type="button"
               onClick={() => {
                 openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
               }}
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+              className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
             >
               <Plus className="w-5 h-5" />
               <span>Hemen Yeni Kurye Çağır</span>
               <ArrowRight className="w-5 h-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                openAuthModal('register', 'Kurye olarak aramıza katılın ve hemen kazanmaya başlayın.', 'courier');
-              }}
-              className="w-full sm:w-auto px-7 py-4 bg-[#011410] hover:bg-[#02241c] text-amber-300 border border-amber-500/50 hover:border-amber-400 font-extrabold text-sm sm:text-base rounded-2xl transition flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shadow-md"
-            >
-              <Bike className="w-5 h-5 text-amber-400" />
-              <span>Kurye Girişi / Kaydı</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                openAuthModal('login');
-              }}
-              className="w-full sm:w-auto px-6 py-4 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 font-bold text-sm rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <LogIn className="w-4 h-4 text-emerald-400" />
-              <span>Giriş Yap</span>
             </button>
           </div>
 

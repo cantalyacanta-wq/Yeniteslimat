@@ -25,7 +25,7 @@ interface DeliveryContextType {
   courierUsers: UserAccount[];
   switchUser: (userId: string) => void;
   setCurrentUser: (user: UserAccount) => void;
-  loginUser: (identifier: string, passwordInput?: string) => { success: boolean; user?: UserAccount; message?: string };
+  loginUser: (identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin') => { success: boolean; user?: UserAccount; message?: string };
   switchRole: (role: UserRole) => void;
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
@@ -516,8 +516,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     playAcceptSound();
   }, []);
 
-  // Resilient Login by identifier (email/phone/name/alias) AND password
-  const loginUser = useCallback((identifier: string, passwordInput?: string): { success: boolean; user?: UserAccount; message?: string } => {
+  // Resilient Login by identifier (email/phone/name/alias) AND password with strict role boundaries
+  const loginUser = useCallback((identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin'): { success: boolean; user?: UserAccount; message?: string } => {
     const rawClean = identifier.trim().toLowerCase();
     if (!rawClean) {
       return { success: false, message: 'Lütfen e-posta, telefon veya kullanıcı adınızı giriniz.' };
@@ -573,6 +573,28 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (!found) {
       return { success: false, message: 'Bu e-posta veya telefon numarasına ait kayıtlı hesap bulunamadı.' };
+    }
+
+    // STRICT ROLE SEPARATION CHECK (Prevent customer from courier login and courier from customer login)
+    if (expectedRole) {
+      if (expectedRole === 'courier' && found.role === 'customer') {
+        return {
+          success: false,
+          message: 'Bu hesap Müşteri hesabıdır. Kurye paneline giriş yapamazsınız. Lütfen Müşteri Girişi ekranını kullanınız.',
+        };
+      }
+      if (expectedRole === 'customer' && found.role === 'courier') {
+        return {
+          success: false,
+          message: 'Bu hesap Kurye hesabıdır. Müşteri paneline giriş yapamazsınız. Lütfen Kurye Girişi ekranını kullanınız.',
+        };
+      }
+      if (expectedRole === 'admin' && found.role !== 'admin') {
+        return {
+          success: false,
+          message: 'Bu hesap Yönetici yetkisine sahip değildir.',
+        };
+      }
     }
 
     // PASSWORD VERIFICATION

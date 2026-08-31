@@ -97,7 +97,8 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
-    const res = loginUser(identifier.trim(), password);
+    const targetRole = isCourierFlow ? 'courier' : authModalTab === 'admin_login' ? 'admin' : 'customer';
+    const res = loginUser(identifier.trim(), password, targetRole);
     if (res.success && res.user) {
       const u = res.user;
       setLoginSuccess(`Giriş başarılı! Hoş geldiniz, ${u.name}.`);
