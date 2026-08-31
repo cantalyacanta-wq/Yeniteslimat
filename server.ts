@@ -112,11 +112,27 @@ interface EmailLogItem {
   summary: string;
 }
 
+export interface SmtpConfig {
+  service?: 'gmail' | 'custom' | 'none';
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  pass?: string;
+  fromName?: string;
+  fromEmail?: string;
+  enabled?: boolean;
+  lastTestedAt?: string;
+  lastTestStatus?: 'success' | 'error';
+  lastTestMessage?: string;
+}
+
 interface ServerDatabase {
   users: any[];
   couriers: any[];
   requests: any[];
   emailLogs?: EmailLogItem[];
+  smtpConfig?: SmtpConfig;
   updatedAt: string;
 }
 
@@ -125,6 +141,16 @@ let dbState: ServerDatabase = {
   couriers: DEFAULT_COURIERS,
   requests: [],
   emailLogs: [],
+  smtpConfig: {
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    user: 'kuryeantalyam@gmail.com',
+    fromName: 'Antalya Şehir İçi Teslimat 7/24',
+    fromEmail: 'kuryeantalyam@gmail.com',
+    enabled: true,
+  },
   updatedAt: new Date().toISOString(),
 };
 
@@ -164,6 +190,16 @@ function loadDatabase() {
           couriers: Array.from(courierMap.values()),
           requests: cleanRequests,
           emailLogs: Array.isArray(parsed.emailLogs) ? parsed.emailLogs : [],
+          smtpConfig: parsed.smtpConfig || {
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            user: 'kuryeantalyam@gmail.com',
+            fromName: 'Antalya Şehir İçi Teslimat 7/24',
+            fromEmail: 'kuryeantalyam@gmail.com',
+            enabled: true,
+          },
           updatedAt: parsed.updatedAt || new Date().toISOString(),
         };
         console.log(`[DB] Database loaded successfully: ${dbState.requests.length} requests, ${dbState.users.length} users, ${dbState.emailLogs?.length || 0} email logs`);
@@ -221,28 +257,59 @@ function getRegisteredCourierEmails(): string[] {
 }
 
 function getMailTransporter() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const port = Number(process.env.SMTP_PORT) || 587;
+  const cfg = dbState.smtpConfig;
+  const envHost = process.env.SMTP_HOST;
+  const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const envPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const envPort = Number(process.env.SMTP_PORT) || 587;
+  const envFrom = process.env.SMTP_FROM;
 
-  if (host && user && pass) {
-    return nodemailer.createTransport({
-      host,
+  const user = (cfg?.user || envUser || '').trim();
+  const pass = (cfg?.pass || envPass || '').trim();
+  const host = (cfg?.host || envHost || '').trim();
+  const port = Number(cfg?.port) || envPort || 587;
+  const secure = cfg?.secure ?? (port === 465);
+  const service = cfg?.service || (user.toLowerCase().endsWith('@gmail.com') ? 'gmail' : undefined);
+  const fromName = cfg?.fromName || 'Antalya Şehir İçi Teslimat 7/24';
+  const fromEmail = cfg?.fromEmail || user || 'bildirim@antalyateslimat.com';
+  const fromAddress = `"${fromName}" <${fromEmail}>`;
+
+  if (user && pass && cfg?.enabled !== false) {
+    if (service === 'gmail' || user.toLowerCase().endsWith('@gmail.com')) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+      return { transporter, fromAddress, isConfigured: true, user, host: 'smtp.gmail.com' };
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: host || 'smtp.gmail.com',
       port,
-      secure: port === 465,
+      secure,
       auth: { user, pass },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
+    return { transporter, fromAddress, isConfigured: true, user, host: host || 'smtp.gmail.com' };
   }
-  return null;
+
+  return { transporter: null, fromAddress, isConfigured: false, user, host };
 }
 
-async function sendNewOrderEmailToCouriers(order: any) {
+async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: string) {
   try {
-    const recipients = getRegisteredCourierEmails();
+    let recipients: string[] = [];
+    if (specificRecipient && specificRecipient.includes('@')) {
+      recipients = [specificRecipient.trim().toLowerCase()];
+    } else {
+      recipients = getRegisteredCourierEmails();
+    }
+
     if (recipients.length === 0) {
       console.log('[EMAIL] No courier email addresses registered.');
-      return { success: false, recipients: [] };
+      return { success: false, recipients: [], message: 'Kayıtlı e-posta adresi bulunamadı.' };
     }
 
     const trackingCode = order.trackingCode || order.id || 'ANT-0000';
@@ -347,7 +414,7 @@ async function sendNewOrderEmailToCouriers(order: any) {
       </div>
 
       <p style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 14px; line-height: 1.4;">
-        Bu bildirim Antalya Kurye sisteminde kayıtlı kurye e-posta adreslerine (${recipients.join(', ')}) otomatik olarak iletilmiştir.
+        Bu bildirim Antalya Kurye sisteminde kayıtlı kurye e-posta adreslerine (${recipients.join(', ')}) iletilmiştir.
       </p>
 
     </div>
@@ -362,29 +429,31 @@ async function sendNewOrderEmailToCouriers(order: any) {
 </html>
     `;
 
-    const transporter = getMailTransporter();
+    const mailDetails = getMailTransporter();
     let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
     let errorMessage: string | undefined;
+    let isRealDelivery = false;
 
-    if (transporter) {
+    if (mailDetails.transporter && mailDetails.isConfigured) {
       try {
-        const fromAddress = process.env.SMTP_FROM || 'Antalya Şehir İçi Teslimat <bildirim@antalyateslimat.com>';
-        await transporter.sendMail({
-          from: fromAddress,
+        await mailDetails.transporter.sendMail({
+          from: mailDetails.fromAddress,
           to: recipients.join(', '),
           subject,
           html: htmlContent,
         });
         emailStatus = 'sent';
-        console.log(`[EMAIL SMTP SENT] New order notification sent to ${recipients.length} couriers.`);
+        isRealDelivery = true;
+        console.log(`[EMAIL SMTP SUCCESS] Order notification sent to ${recipients.join(', ')} via ${mailDetails.user}`);
       } catch (smtpErr: any) {
-        console.warn('[EMAIL SMTP ERROR] Failed sending via SMTP, logged as simulated:', smtpErr.message);
-        emailStatus = 'simulated';
+        console.error('[EMAIL SMTP ERROR] Failed sending via SMTP:', smtpErr.message);
+        emailStatus = 'failed';
         errorMessage = smtpErr.message;
       }
     } else {
-      console.log(`[EMAIL DISPATCH] Dispatched to ${recipients.length} registered couriers: ${recipients.join(', ')}`);
+      console.log(`[EMAIL SIMULATED] No SMTP credentials configured. Order notification simulated for: ${recipients.join(', ')}`);
       emailStatus = 'simulated';
+      errorMessage = 'SMTP e-posta sunucusu veya Gmail şifresi tanımlanmadı. Yönetim panelinden E-posta SMTP ayarlarınızı yapılandırınız.';
     }
 
     const logEntry: EmailLogItem = {
@@ -408,10 +477,17 @@ async function sendNewOrderEmailToCouriers(order: any) {
     }
     saveDatabase();
 
-    return { success: true, log: logEntry, recipients };
+    return { 
+      success: emailStatus === 'sent' || emailStatus === 'simulated', 
+      isRealDelivery, 
+      status: emailStatus,
+      log: logEntry, 
+      recipients,
+      error: errorMessage,
+    };
   } catch (err: any) {
     console.error('[EMAIL DISPATCH EXCEPTION]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, isRealDelivery: false };
   }
 }
 
@@ -493,9 +569,114 @@ app.get('/api/email-logs', (req, res) => {
   });
 });
 
+// GET SMTP Configuration
+app.get('/api/smtp-config', (req, res) => {
+  const cfg = dbState.smtpConfig || {};
+  const hasPass = Boolean(cfg.pass || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD);
+  const user = cfg.user || process.env.SMTP_USER || process.env.GMAIL_USER || 'kuryeantalyam@gmail.com';
+  
+  res.json({
+    success: true,
+    config: {
+      service: cfg.service || (user.toLowerCase().endsWith('@gmail.com') ? 'gmail' : 'custom'),
+      host: cfg.host || 'smtp.gmail.com',
+      port: Number(cfg.port) || 587,
+      secure: Boolean(cfg.secure),
+      user,
+      fromName: cfg.fromName || 'Antalya Şehir İçi Teslimat 7/24',
+      fromEmail: cfg.fromEmail || user || 'kuryeantalyam@gmail.com',
+      enabled: cfg.enabled !== false,
+      hasPassword: hasPass,
+      lastTestedAt: cfg.lastTestedAt,
+      lastTestStatus: cfg.lastTestStatus,
+      lastTestMessage: cfg.lastTestMessage,
+    },
+    isConfigured: hasPass && Boolean(user),
+  });
+});
+
+// SAVE & VERIFY SMTP Configuration
+app.post('/api/smtp-config', async (req, res) => {
+  try {
+    const { service, host, port, secure, user, pass, fromName, fromEmail, enabled } = req.body;
+    const existing = dbState.smtpConfig || {};
+    const finalPass = (pass && pass.trim() !== '') ? pass.trim() : (existing.pass || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '');
+    const cleanUser = (user || existing.user || 'kuryeantalyam@gmail.com').trim();
+
+    const newConfig: SmtpConfig = {
+      service: service || (cleanUser.toLowerCase().endsWith('@gmail.com') ? 'gmail' : 'custom'),
+      host: host || 'smtp.gmail.com',
+      port: Number(port) || 587,
+      secure: Boolean(secure),
+      user: cleanUser,
+      pass: finalPass,
+      fromName: (fromName || 'Antalya Şehir İçi Teslimat 7/24').trim(),
+      fromEmail: (fromEmail || cleanUser || 'kuryeantalyam@gmail.com').trim(),
+      enabled: enabled !== false,
+    };
+
+    let testVerified = false;
+    let testMessage = '';
+
+    if (newConfig.user && newConfig.pass && newConfig.enabled) {
+      try {
+        let testTransporter;
+        if (newConfig.service === 'gmail' || newConfig.user.toLowerCase().endsWith('@gmail.com')) {
+          testTransporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: newConfig.user, pass: newConfig.pass },
+          });
+        } else {
+          testTransporter = nodemailer.createTransport({
+            host: newConfig.host,
+            port: newConfig.port,
+            secure: newConfig.secure,
+            auth: { user: newConfig.user, pass: newConfig.pass },
+            tls: { rejectUnauthorized: false },
+          });
+        }
+        await testTransporter.verify();
+        testVerified = true;
+        testMessage = 'SMTP sunucu bağlantısı ve kimlik doğrulama başarıyla onaylandı. E-postalar artık gerçek kutulara gönderilecek.';
+        newConfig.lastTestStatus = 'success';
+        newConfig.lastTestMessage = testMessage;
+      } catch (verifyErr: any) {
+        testVerified = false;
+        let errMsg = verifyErr.message || 'Bilinmeyen hata';
+        if (errMsg.includes('535') || errMsg.includes('BadCredentials') || errMsg.includes('Username and Password not accepted') || errMsg.includes('Invalid login')) {
+          errMsg = 'E-posta veya şifre hatalı! Gmail için normal şifre yerine Google Hesabınızdan oluşturacağınız 16 haneli "Uygulama Şifresi" (App Password) gereklidir.';
+        }
+        testMessage = `Bağlantı hatası: ${errMsg}`;
+        newConfig.lastTestStatus = 'error';
+        newConfig.lastTestMessage = testMessage;
+      }
+    } else {
+      testMessage = 'Şifre girilmedi; yapılandırma kaydedildi.';
+    }
+
+    newConfig.lastTestedAt = new Date().toISOString();
+    dbState.smtpConfig = newConfig;
+    saveDatabase();
+
+    res.json({
+      success: true,
+      verified: testVerified,
+      message: testMessage,
+      config: {
+        ...newConfig,
+        pass: undefined,
+        hasPassword: Boolean(newConfig.pass),
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Sunucu hatası' });
+  }
+});
+
 // Test Email Dispatch Endpoint
 app.post('/api/notifications/test-email', async (req, res) => {
   try {
+    const { targetEmail } = req.body || {};
     const sampleOrder = {
       id: `req-test-${Date.now()}`,
       trackingCode: `ANT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -517,7 +698,7 @@ app.post('/api/notifications/test-email', async (req, res) => {
       },
     };
 
-    const result = await sendNewOrderEmailToCouriers(sampleOrder);
+    const result = await sendNewOrderEmailToCouriers(sampleOrder, targetEmail);
     res.json({ success: true, result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -162,15 +162,29 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              /* If Guest / Not Logged In -> Mini, sleek Courier Login & Registration Button that never overlaps titles */
-              <button
-                type="button"
-                onClick={() => openAuthModal('courier_login')}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/30 shrink-0"
-              >
-                <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
-                <span className="whitespace-nowrap">Kurye Girişi & Kayıt</span>
-              </button>
+              /* If Guest / Not Logged In -> Courier & Admin Login Buttons */
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('courier_login')}
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/30 shrink-0"
+                >
+                  <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
+                  <span className="whitespace-nowrap">Kurye Girişi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentView('admin');
+                  }}
+                  title="Yönetim Paneli"
+                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 hover:text-white border border-emerald-700/60 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer active:scale-95 shrink-0"
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="whitespace-nowrap">Yönetici</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

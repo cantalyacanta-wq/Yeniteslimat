@@ -105,6 +105,8 @@ export const AuthModal: React.FC = () => {
         closeAuthModal();
         if (u.role === 'courier') {
           setCurrentView('courier');
+        } else if (u.role === 'admin') {
+          setCurrentView('admin');
         } else {
           setCurrentView('customer');
         }

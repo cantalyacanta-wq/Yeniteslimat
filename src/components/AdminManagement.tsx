@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -11,6 +11,7 @@ import {
   Radio,
   FileText,
   Eye,
+  EyeOff,
   Search,
   Filter,
   Shield,
@@ -23,7 +24,16 @@ import {
   AlertTriangle,
   DollarSign,
   Package,
-  Activity
+  Activity,
+  Key,
+  Lock,
+  Server,
+  Settings,
+  Check,
+  AlertCircle,
+  ExternalLink,
+  HelpCircle,
+  Send,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
@@ -63,6 +73,26 @@ export const AdminManagement: React.FC = () => {
   const [isLoadingEmails, setIsLoadingEmails] = useState(false);
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
 
+  // SMTP Settings State
+  const [smtpService, setSmtpService] = useState<'gmail' | 'custom'>('gmail');
+  const [smtpUser, setSmtpUser] = useState('kuryeantalyam@gmail.com');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
+  const [smtpPort, setSmtpPort] = useState(587);
+  const [smtpSecure, setSmtpSecure] = useState(false);
+  const [smtpFromName, setSmtpFromName] = useState('Antalya Şehir İçi Teslimat 7/24');
+  const [smtpFromEmail, setSmtpFromEmail] = useState('kuryeantalyam@gmail.com');
+  const [smtpHasPassword, setSmtpHasPassword] = useState(false);
+  const [smtpIsConfigured, setSmtpIsConfigured] = useState(false);
+  const [smtpLastTestedAt, setSmtpLastTestedAt] = useState<string | null>(null);
+  const [smtpLastTestStatus, setSmtpLastTestStatus] = useState<'success' | 'error' | null>(null);
+  const [smtpLastTestMessage, setSmtpLastTestMessage] = useState<string | null>(null);
+  const [isSavingSmtp, setIsSavingSmtp] = useState(false);
+  const [smtpSaveFeedback, setSmtpSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [testTargetEmail, setTestTargetEmail] = useState('kuryeantalyam@gmail.com');
+  const [showGmailHelp, setShowGmailHelp] = useState(false);
+
   const fetchEmailLogs = async () => {
     setIsLoadingEmails(true);
     try {
@@ -79,24 +109,111 @@ export const AdminManagement: React.FC = () => {
     }
   };
 
+  const fetchSmtpConfig = async () => {
+    try {
+      const res = await fetch('/api/smtp-config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.config) {
+          setSmtpService(data.config.service || 'gmail');
+          setSmtpUser(data.config.user || 'kuryeantalyam@gmail.com');
+          setSmtpHost(data.config.host || 'smtp.gmail.com');
+          setSmtpPort(data.config.port || 587);
+          setSmtpSecure(Boolean(data.config.secure));
+          setSmtpFromName(data.config.fromName || 'Antalya Şehir İçi Teslimat 7/24');
+          setSmtpFromEmail(data.config.fromEmail || data.config.user || 'kuryeantalyam@gmail.com');
+          setSmtpHasPassword(Boolean(data.config.hasPassword));
+          setSmtpIsConfigured(Boolean(data.isConfigured));
+          setSmtpLastTestedAt(data.config.lastTestedAt || null);
+          setSmtpLastTestStatus(data.config.lastTestStatus || null);
+          setSmtpLastTestMessage(data.config.lastTestMessage || null);
+          if (!testTargetEmail && data.config.user) {
+            setTestTargetEmail(data.config.user);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch SMTP config:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'emails') {
+      fetchEmailLogs();
+      fetchSmtpConfig();
+    }
+  }, [activeTab]);
+
+  const handleSaveSmtpConfig = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingSmtp(true);
+    setSmtpSaveFeedback(null);
+    try {
+      const res = await fetch('/api/smtp-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: smtpService,
+          user: smtpUser.trim(),
+          pass: smtpPass.trim(),
+          host: smtpHost.trim(),
+          port: Number(smtpPort) || 587,
+          secure: smtpSecure,
+          fromName: smtpFromName.trim(),
+          fromEmail: smtpFromEmail.trim(),
+          enabled: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSmtpHasPassword(data.config?.hasPassword || Boolean(smtpPass));
+        setSmtpIsConfigured(Boolean(data.verified || data.config?.hasPassword));
+        setSmtpLastTestedAt(data.config?.lastTestedAt || new Date().toISOString());
+        setSmtpLastTestStatus(data.config?.lastTestStatus || (data.verified ? 'success' : 'error'));
+        setSmtpLastTestMessage(data.message || (data.verified ? 'SMTP bağlantısı onaylandı' : ''));
+
+        if (data.verified) {
+          setSmtpSaveFeedback({ type: 'success', message: '✅ ' + (data.message || 'SMTP ayarları kaydedildi ve bağlantı başarıyla test edildi!') });
+        } else {
+          setSmtpSaveFeedback({ type: 'error', message: '⚠️ Ayarlar kaydedildi ancak bağlantı testi başarısız: ' + (data.message || 'Giriş yapılamadı') });
+        }
+        setSmtpPass('');
+        fetchEmailLogs();
+      } else {
+        setSmtpSaveFeedback({ type: 'error', message: '❌ Hata: ' + (data.error || 'Ayarlar kaydedilemedi') });
+      }
+    } catch (err: any) {
+      setSmtpSaveFeedback({ type: 'error', message: '❌ Sunucu hatası: ' + err.message });
+    } finally {
+      setIsSavingSmtp(false);
+    }
+  };
+
   const handleSendTestEmail = async () => {
-    setTestEmailStatus('Gönderiliyor...');
+    setTestEmailStatus('E-posta gönderiliyor...');
     try {
       const res = await fetch('/api/notifications/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetEmail: testTargetEmail }),
       });
       const data = await res.json();
       if (data.success) {
-        setTestEmailStatus('✅ Test bildirimi kayıtlı tüm kuryelere başarıyla gönderildi!');
+        const isReal = data.result?.isRealDelivery;
+        if (isReal) {
+          setTestEmailStatus(`✅ Gerçek test e-postası başarıyla gönderildi! (${data.result?.recipients?.join(', ') || testTargetEmail})`);
+        } else {
+          setTestEmailStatus(`ℹ️ Test e-postası sistem loguna kaydedildi (Gerçek gönderim için SMTP şifrenizi tanımlayınız).`);
+        }
         fetchEmailLogs();
+        fetchSmtpConfig();
       } else {
         setTestEmailStatus(`❌ Hata: ${data.error || 'Gönderilemedi'}`);
       }
     } catch (err: any) {
       setTestEmailStatus(`❌ Hata: ${err.message}`);
     }
-    setTimeout(() => setTestEmailStatus(null), 5000);
+    setTimeout(() => setTestEmailStatus(null), 8000);
   };
 
   // Add Courier Modal State
@@ -679,46 +796,343 @@ export const AdminManagement: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 3: KURYE E-POSTA BİLDİRİMLERİ & LOGLAR */}
+      {/* TAB 3: KURYE E-POSTA BİLDİRİMLERİ & SMTP AYARLARI */}
       {/* ===================================================================== */}
       {activeTab === 'emails' && (
         <div className="space-y-6">
-          {/* Email System Overview Card */}
-          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-emerald-400" />
-                  <span>Kurye E-posta Bildirim Sistemi</span>
-                </h3>
-                <p className="text-xs text-emerald-300/80">
-                  Müşteriler yeni bir kurye çağrısı oluşturduğunda, sistem otomatik olarak tüm kayıtlı kuryelerin e-posta adreslerine HTML formatında detaylı bildirim gönderir.
-                </p>
+          {/* Status Diagnostic Card */}
+          <div className={`p-5 sm:p-6 rounded-3xl border text-white space-y-4 shadow-xl transition ${
+            smtpLastTestStatus === 'success' || (smtpIsConfigured && smtpHasPassword)
+              ? 'bg-[#021f19] border-emerald-500/60'
+              : 'bg-[#181005] border-amber-500/60'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className={`p-3 rounded-2xl shrink-0 ${
+                  smtpLastTestStatus === 'success' || (smtpIsConfigured && smtpHasPassword)
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                }`}>
+                  <Mail className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-extrabold text-white">
+                      Kurye E-posta Bildirim Durumu:
+                    </h3>
+                    <span className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                      smtpLastTestStatus === 'success' || (smtpIsConfigured && smtpHasPassword)
+                        ? 'bg-emerald-500 text-black'
+                        : 'bg-amber-500 text-black'
+                    }`}>
+                      {smtpLastTestStatus === 'success' || (smtpIsConfigured && smtpHasPassword)
+                        ? '🟢 Canlı E-posta Gönderimi Aktif'
+                        : '⚠️ E-posta Şifresi Bekleniyor'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Yeni bir sipariş oluşturulduğunda sistem kuryelerin e-postalarına (<strong>{emailRecipients.join(', ') || 'kuryeantalyam@gmail.com'}</strong>) otomatik bildirim gönderir.
+                  </p>
+                  {smtpLastTestMessage && (
+                    <div className="text-xs mt-2 font-medium text-slate-200 bg-black/40 p-2.5 rounded-xl border border-white/10">
+                      <strong>Bağlantı Notu:</strong> {smtpLastTestMessage}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={handleSendTestEmail}
-                  className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>Test E-postası Gönder</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={fetchEmailLogs}
-                  className="p-2.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl transition cursor-pointer"
-                  title="Logları Yenile"
+                  onClick={() => {
+                    fetchEmailLogs();
+                    fetchSmtpConfig();
+                  }}
+                  className="p-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 rounded-xl transition cursor-pointer"
+                  title="Durumu ve Logları Yenile"
                 >
                   <RotateCcw className={`w-4 h-4 ${isLoadingEmails ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* SMTP Configuration Form */}
+          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-5 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-900/60 pb-4">
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-emerald-400" />
+                  <span>E-posta Gönderici (SMTP / Gmail) Ayarları</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">
+                  Bildirimlerin gerçek gelen kutularına (Inbox) ulaşması için Gmail veya kurumsal SMTP bilgilerinizi tanımlayınız.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowGmailHelp(!showGmailHelp)}
+                className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <HelpCircle className="w-4 h-4 text-emerald-400" />
+                <span>Gmail Şifresi Nasıl Alınır?</span>
+              </button>
+            </div>
+
+            {/* Google App Password Guide (Collapsible) */}
+            {showGmailHelp && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#011410] border border-emerald-600/60 space-y-3 text-xs text-slate-200">
+                <div className="flex items-center justify-between text-emerald-400 font-bold text-sm border-b border-emerald-800/60 pb-2">
+                  <span className="flex items-center gap-2">
+                    <Key className="w-4 h-4" />
+                    Google Hesabı için 16 Haneli "Uygulama Şifresi" Alma Rehberi (1 Dakika)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowGmailHelp(false)}
+                    className="text-slate-400 hover:text-white p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-2 text-slate-300 leading-relaxed">
+                  <p>
+                    Google güvenlik politikaları gereği doğrudan normal Gmail şifresi yerine 16 haneli bir <strong>Uygulama Şifresi</strong> gerektirir:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1.5 pl-1 text-slate-200 font-medium">
+                    <li>
+                      <a
+                        href="https://myaccount.google.com/security"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-400 underline hover:text-emerald-300 font-bold inline-flex items-center gap-1"
+                      >
+                        Google Hesap Güvenliği Sayfası'na gidin <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </li>
+                    <li><strong>2 Adımlı Doğrulama</strong>'nın açık olduğundan emin olun.</li>
+                    <li>
+                      Arama çubuğuna <strong>"Uygulama Şifreleri"</strong> (App Passwords) yazın veya{' '}
+                      <a
+                        href="https://myaccount.google.com/apppasswords"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-400 underline hover:text-emerald-300 font-bold inline-flex items-center gap-1"
+                      >
+                        doğrudan Uygulama Şifreleri sayfasına <ExternalLink className="w-3 h-3" />
+                      </a>{' '}
+                      tıklayın.
+                    </li>
+                    <li>Uygulama adı olarak <strong>"Antalya Teslimat"</strong> yazıp <strong>"Oluştur"</strong> butonuna basın.</li>
+                    <li>Google'ın size verdiği <strong>16 haneli sarı kutudaki şifreyi</strong> kopyalayıp aşağıdaki "Şifre" alanına yapıştırın.</li>
+                  </ol>
+                </div>
+              </div>
+            )}
+
+            {/* SMTP Form Fields */}
+            <form onSubmit={handleSaveSmtpConfig} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Service Type */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-emerald-300 block">
+                    E-posta Servis Sağlayıcısı
+                  </label>
+                  <select
+                    value={smtpService}
+                    onChange={(e) => {
+                      const val = e.target.value as 'gmail' | 'custom';
+                      setSmtpService(val);
+                      if (val === 'gmail') {
+                        setSmtpHost('smtp.gmail.com');
+                        setSmtpPort(587);
+                        setSmtpSecure(false);
+                      }
+                    }}
+                    className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-emerald-400"
+                  >
+                    <option value="gmail">Gmail / Google Workspace (smtp.gmail.com)</option>
+                    <option value="custom">Özel SMTP Sunucusu (Kurumsal / Yandex / Natro / Turhost)</option>
+                  </select>
+                </div>
+
+                {/* Sender Email / User */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-emerald-300 block">
+                    Gönderici E-posta Adresi (Kullanıcı Adı)
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={smtpUser}
+                    onChange={(e) => {
+                      setSmtpUser(e.target.value);
+                      if (!smtpFromEmail || smtpFromEmail === 'kuryeantalyam@gmail.com') {
+                        setSmtpFromEmail(e.target.value);
+                      }
+                    }}
+                    placeholder="kuryeantalyam@gmail.com"
+                    className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                {/* Password / App Password */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-emerald-300 block">
+                      {smtpService === 'gmail' ? 'Google 16 Haneli Uygulama Şifresi' : 'SMTP Şifresi'}
+                    </label>
+                    {smtpHasPassword && (
+                      <span className="text-[10px] text-emerald-400 font-bold">
+                        ✓ Kayıtlı Şifre Var
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showSmtpPass ? 'text' : 'password'}
+                      value={smtpPass}
+                      onChange={(e) => setSmtpPass(e.target.value)}
+                      placeholder={smtpHasPassword ? '•••••••••••••••• (Değiştirmek için yeni şifre girin)' : '16 haneli uygulama şifresi'}
+                      className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 pr-10 text-white text-xs focus:outline-none focus:border-emerald-400 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPass(!showSmtpPass)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-200 p-1"
+                    >
+                      {showSmtpPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* From Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-emerald-300 block">
+                    E-postada Görünen Başlık
+                  </label>
+                  <input
+                    type="text"
+                    value={smtpFromName}
+                    onChange={(e) => setSmtpFromName(e.target.value)}
+                    placeholder="Antalya Şehir İçi Teslimat 7/24"
+                    className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                {/* Custom Host & Port (If Custom) */}
+                {smtpService === 'custom' && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-emerald-300 block">
+                        SMTP Sunucu Host Adresi
+                      </label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        placeholder="mail.antalyateslimat.com"
+                        className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-emerald-300 block">
+                        Port & Güvenlik
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(Number(e.target.value))}
+                          placeholder="587"
+                          className="w-24 bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                        />
+                        <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={smtpSecure}
+                            onChange={(e) => setSmtpSecure(e.target.checked)}
+                            className="rounded border-emerald-700 text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <span>SSL/TLS (465)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Feedback banner */}
+              {smtpSaveFeedback && (
+                <div className={`p-3.5 rounded-xl border text-xs font-bold flex items-start gap-2 ${
+                  smtpSaveFeedback.type === 'success'
+                    ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200'
+                    : 'bg-red-950/90 border-red-500 text-red-200'
+                }`}>
+                  {smtpSaveFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  )}
+                  <span>{smtpSaveFeedback.message}</span>
+                </div>
+              )}
+
+              {/* Save & Verify Button */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingSmtp}
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>{isSavingSmtp ? 'Doğrulanıyor...' : '💾 Ayarları Kaydet ve Bağlantıyı Doğrula'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Test Email Dispatch Card & Courier Recipient List */}
+          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-900/60 pb-3">
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Send className="w-5 h-5 text-emerald-400" />
+                  <span>Canlı E-posta Gönderim Testi & Alıcı Kuryeler</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">
+                  Ayarlarınızı test etmek için aşağıdaki adrese veya kayıtlı tüm kuryelere anında örnek paket bildirim e-postası gönderebilirsiniz.
+                </p>
+              </div>
+            </div>
+
+            {/* Test Input & Button */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex-1 relative">
+                <Mail className="w-4 h-4 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  value={testTargetEmail}
+                  onChange={(e) => setTestTargetEmail(e.target.value)}
+                  placeholder="Test e-postası gönderilecek adres (örn: kuryeantalyam@gmail.com)"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl pl-9 pr-3 py-2.5 text-white text-xs focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSendTestEmail}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                <Mail className="w-4 h-4" />
+                <span>⚡ Test E-postası Gönder</span>
+              </button>
+            </div>
 
             {testEmailStatus && (
-              <div className="p-3 rounded-xl bg-emerald-950 border border-emerald-600 text-xs font-bold text-emerald-200 animate-in fade-in">
+              <div className="p-3.5 rounded-xl bg-emerald-950 border border-emerald-500 text-xs font-bold text-emerald-200 animate-in fade-in">
                 {testEmailStatus}
               </div>
             )}
@@ -740,17 +1154,27 @@ export const AdminManagement: React.FC = () => {
                 ))}
               </div>
               <p className="text-[11px] text-emerald-400/60 mt-1">
-                * Kurye kayıt formundan veya panelden yeni bir kurye eklendiğinde e-postası otomatik olarak bu listeye dahil edilir.
+                * Kurye kayıt formundan veya panelden yeni bir kurye eklendiğinde e-posta adresi otomatik olarak bu bildirim listesine dahil edilir.
               </p>
             </div>
           </div>
 
           {/* Email Logs History Table */}
           <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4 shadow-xl">
-            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-400" />
-              <span>Son Gönderilen E-posta Bildirim Geçmişi ({emailLogs.length})</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <Clock className="w-5 h-5 text-emerald-400" />
+                <span>Son Gönderilen E-posta Bildirim Geçmişi ({emailLogs.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={fetchEmailLogs}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Yenile</span>
+              </button>
+            </div>
 
             {emailLogs.length === 0 ? (
               <div className="p-8 rounded-2xl bg-[#011410] border border-emerald-800/40 text-center space-y-2">
@@ -786,15 +1210,27 @@ export const AdminManagement: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-slate-300">{log.summary}</span>
-                        <span className={`px-2 py-0.5 rounded-full font-bold ${
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
                           log.status === 'sent'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                            : 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                            : log.status === 'failed'
+                            ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                         }`}>
-                          {log.status === 'sent' ? '✓ İletildi (SMTP)' : '✓ Gönderildi (Sistem Logu)'}
+                          {log.status === 'sent' 
+                            ? '✓ İletildi (SMTP Gerçek Gönderim)' 
+                            : log.status === 'failed'
+                            ? '✕ Gönderim Hatası'
+                            : 'ℹ️ Simüle Edildi (Sistem Logu)'}
                         </span>
                       </div>
                     </div>
+
+                    {log.error && (
+                      <div className="p-2 rounded-lg bg-red-950/60 border border-red-800/40 text-red-300 text-[11px]">
+                        <strong>Hata Detayı:</strong> {log.error}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
