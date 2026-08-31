@@ -126,6 +126,39 @@ const checkIsPaketTalebiRoute = (): boolean => {
   return keywords.some((k) => p.includes(k) || s.includes(k) || h.includes(k));
 };
 
+const AppFooter: React.FC = () => {
+  const { setCurrentView } = useDelivery();
+
+  return (
+    <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+          <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
+            <Bike className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
+          <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
+        </div>
+
+        <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
+          <button
+            type="button"
+            onClick={() => setCurrentView('admin')}
+            className="flex items-center gap-1 text-emerald-400 hover:text-emerald-200 underline font-bold cursor-pointer"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Yönetici Paneli</span>
+          </button>
+          <span className="flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>30-45 Dk Moto Kurye</span>
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
 export default function App() {
   const [isPaketTalebiRoute, setIsPaketTalebiRoute] = useState<boolean>(checkIsPaketTalebiRoute);
 
@@ -165,32 +198,7 @@ export default function App() {
             </div>
 
             {/* Minimal Responsive Footer */}
-            <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
-              <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
-                    <Bike className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
-                  <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
-                </div>
-
-                <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('admin')}
-                    className="flex items-center gap-1 text-emerald-400 hover:text-emerald-200 underline font-bold cursor-pointer"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Yönetici Paneli</span>
-                  </button>
-                  <span className="flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>30-45 Dk Moto Kurye</span>
-                  </span>
-                </div>
-              </div>
-            </footer>
+            <AppFooter />
           </>
         )}
       </div>

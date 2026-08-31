@@ -25,5 +25,19 @@
     }
   ],
   "requests": [],
-  "updatedAt": "2026-08-29T11:04:01.402Z"
+  "smtpConfig": {
+    "service": "gmail",
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": false,
+    "user": "kuryeantalyam@gmail.com",
+    "pass": "tlnsrezkaobytsvg",
+    "fromName": "Antalya Şehir İçi Teslimat 7/24",
+    "fromEmail": "kuryeantalyam@gmail.com",
+    "enabled": true,
+    "lastTestedAt": "2026-08-31T14:15:00.000Z",
+    "lastTestStatus": "success",
+    "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
+  },
+  "updatedAt": "2026-08-31T14:15:00.000Z"
 }

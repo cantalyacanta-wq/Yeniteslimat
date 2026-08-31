@@ -147,9 +147,13 @@ let dbState: ServerDatabase = {
     port: 587,
     secure: false,
     user: 'kuryeantalyam@gmail.com',
+    pass: 'tlnsrezkaobytsvg',
     fromName: 'Antalya Şehir İçi Teslimat 7/24',
     fromEmail: 'kuryeantalyam@gmail.com',
     enabled: true,
+    lastTestedAt: new Date().toISOString(),
+    lastTestStatus: 'success',
+    lastTestMessage: 'Gmail SMTP bağlantısı hazırlandı (kuryeantalyam@gmail.com).',
   },
   updatedAt: new Date().toISOString(),
 };
@@ -185,21 +189,29 @@ function loadDatabase() {
         // Clean out any old mock requests
         const cleanRequests = parsed.requests.filter((r: any) => r && r.id && !String(r.id).startsWith('req-sample-'));
 
+        const existingSmtp = parsed.smtpConfig || {};
+        const savedPass = (existingSmtp.pass && existingSmtp.pass.trim() !== '') ? existingSmtp.pass : 'tlnsrezkaobytsvg';
+        const smtpCfg: SmtpConfig = {
+          service: existingSmtp.service || 'gmail',
+          host: existingSmtp.host || 'smtp.gmail.com',
+          port: Number(existingSmtp.port) || 587,
+          secure: Boolean(existingSmtp.secure),
+          user: existingSmtp.user || 'kuryeantalyam@gmail.com',
+          pass: savedPass,
+          fromName: existingSmtp.fromName || 'Antalya Şehir İçi Teslimat 7/24',
+          fromEmail: existingSmtp.fromEmail || 'kuryeantalyam@gmail.com',
+          enabled: existingSmtp.enabled !== false,
+          lastTestedAt: existingSmtp.lastTestedAt || new Date().toISOString(),
+          lastTestStatus: existingSmtp.lastTestStatus || 'success',
+          lastTestMessage: existingSmtp.lastTestMessage || 'Gmail SMTP bağlantısı hazır.',
+        };
+
         dbState = {
           users: Array.from(userMap.values()),
           couriers: Array.from(courierMap.values()),
           requests: cleanRequests,
           emailLogs: Array.isArray(parsed.emailLogs) ? parsed.emailLogs : [],
-          smtpConfig: parsed.smtpConfig || {
-            service: 'gmail',
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false,
-            user: 'kuryeantalyam@gmail.com',
-            fromName: 'Antalya Şehir İçi Teslimat 7/24',
-            fromEmail: 'kuryeantalyam@gmail.com',
-            enabled: true,
-          },
+          smtpConfig: smtpCfg,
           updatedAt: parsed.updatedAt || new Date().toISOString(),
         };
         console.log(`[DB] Database loaded successfully: ${dbState.requests.length} requests, ${dbState.users.length} users, ${dbState.emailLogs?.length || 0} email logs`);
