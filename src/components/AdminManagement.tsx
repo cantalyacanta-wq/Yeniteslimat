@@ -93,6 +93,9 @@ export const AdminManagement: React.FC = () => {
   const [smtpSaveFeedback, setSmtpSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [testTargetEmail, setTestTargetEmail] = useState('kuryeantalyam@gmail.com');
   const [showGmailHelp, setShowGmailHelp] = useState(false);
+  const [newExtraEmailInput, setNewExtraEmailInput] = useState('');
+  const [isAddingExtraEmail, setIsAddingExtraEmail] = useState(false);
+  const [extraEmailFeedback, setExtraEmailFeedback] = useState<string | null>(null);
 
   const fetchEmailLogs = async () => {
     setIsLoadingEmails(true);
@@ -278,9 +281,9 @@ export const AdminManagement: React.FC = () => {
     }
   };
 
-  const handleSendTestEmail = async () => {
+  const handleSendTestEmail = async (targetOverride?: string) => {
     setTestEmailStatus('E-posta gönderiliyor...');
-    const target = testTargetEmail || smtpUser || 'kuryeantalyam@gmail.com';
+    const target = targetOverride || testTargetEmail || 'all';
     try {
       const res = await fetch('/api/notifications/test-email', {
         method: 'POST',
@@ -297,10 +300,11 @@ export const AdminManagement: React.FC = () => {
 
       if (data && data.success) {
         const isReal = data.result?.isRealDelivery;
+        const recipientList = data.result?.recipients || [];
         if (isReal) {
-          setTestEmailStatus(`✅ Canlı test e-postası başarıyla gönderildi! (${data.result?.recipients?.join(', ') || target})`);
+          setTestEmailStatus(`✅ Canlı test e-postası başarıyla ${recipientList.length} adrese gönderildi! (${recipientList.join(', ')})`);
         } else {
-          setTestEmailStatus(`✅ Test bildirimi oluşturuldu ve kuyruğa alındı (${target}).`);
+          setTestEmailStatus(`✅ Test bildirimi oluşturuldu ve kuyruğa alındı (${recipientList.join(', ') || target}).`);
         }
         fetchEmailLogs();
         fetchSmtpConfig();
@@ -311,6 +315,54 @@ export const AdminManagement: React.FC = () => {
       setTestEmailStatus(`✅ Test bildirimi kaydedildi: ${target}`);
     }
     setTimeout(() => setTestEmailStatus(null), 8000);
+  };
+
+  const handleAddExtraCourierEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExtraEmailInput.trim() || !newExtraEmailInput.includes('@')) {
+      setExtraEmailFeedback('Lütfen geçerli bir e-posta adresi giriniz.');
+      return;
+    }
+    setIsAddingExtraEmail(true);
+    setExtraEmailFeedback(null);
+    try {
+      const res = await fetch('/api/couriers/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newExtraEmailInput.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.allRecipients) {
+          setEmailRecipients(data.allRecipients);
+        }
+        setNewExtraEmailInput('');
+        setExtraEmailFeedback('✅ Kurye e-posta adresi bildirim listesine başarıyla eklendi!');
+        fetchEmailLogs();
+      }
+    } catch (e) {
+      setExtraEmailFeedback('E-posta listeye eklenemedi.');
+    } finally {
+      setIsAddingExtraEmail(false);
+      setTimeout(() => setExtraEmailFeedback(null), 5000);
+    }
+  };
+
+  const handleRemoveExtraCourierEmail = async (emailToRemove: string) => {
+    try {
+      const res = await fetch(`/api/couriers/emails/${encodeURIComponent(emailToRemove)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.allRecipients) {
+          setEmailRecipients(data.allRecipients);
+        }
+        fetchEmailLogs();
+      }
+    } catch (e) {
+      console.warn('Failed to delete email:', e);
+    }
   };
 
   // Add Courier Modal State
@@ -597,9 +649,23 @@ export const AdminManagement: React.FC = () => {
                         <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <span className="font-mono">{courier.phone}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-emerald-300/90 truncate">
-                        <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{courier.email}</span>
+                      <div className="flex items-center justify-between gap-2 text-emerald-300/90 truncate">
+                        <div className="flex items-center gap-2 truncate">
+                          <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="truncate">{courier.email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('emails');
+                            handleSendTestEmail(courier.email);
+                          }}
+                          title="Bu kuryeye test e-postası gönder"
+                          className="px-2 py-0.5 rounded bg-emerald-900/80 hover:bg-emerald-800 text-[10px] text-emerald-300 font-bold border border-emerald-700/50 transition cursor-pointer shrink-0 flex items-center gap-1"
+                        >
+                          <Send className="w-2.5 h-2.5" />
+                          <span>Test Mail</span>
+                        </button>
                       </div>
                       <div className="flex items-center gap-2 text-emerald-300/90">
                         <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -1205,32 +1271,47 @@ export const AdminManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Test Input & Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex-1 relative">
-                <Mail className="w-4 h-4 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={testTargetEmail}
-                  onChange={(e) => setTestTargetEmail(e.target.value)}
-                  placeholder="Test e-postası gönderilecek adres (örn: kuryeantalyam@gmail.com)"
-                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl pl-9 pr-3 py-2.5 text-white text-xs focus:outline-none focus:border-emerald-400"
-                />
-              </div>
+            {/* Test Input & Buttons */}
+            <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/60 space-y-3">
+              <span className="text-xs font-bold text-emerald-300 block">
+                🧪 Test Bildirimi Gönderme Paneli
+              </span>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSendTestEmail('all')}
+                  className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4 text-emerald-200" />
+                  <span>⚡ TÜM Kuryelere Test E-postası Gönder ({emailRecipients.length} Alıcı)</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={handleSendTestEmail}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 active:scale-95 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
-              >
-                <Mail className="w-4 h-4" />
-                <span>⚡ Canlı Test E-postası Gönder</span>
-              </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={testTargetEmail}
+                      onChange={(e) => setTestTargetEmail(e.target.value)}
+                      placeholder="Tekil test adresi (örn: ahmet@gmail.com)"
+                      className="w-full bg-[#021d17] border border-emerald-700/60 rounded-xl pl-8 pr-2 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSendTestEmail(testTargetEmail)}
+                    className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs rounded-xl transition shrink-0 cursor-pointer"
+                  >
+                    Gönder
+                  </button>
+                </div>
+              </div>
             </div>
 
             {testEmailStatus && (
-              <div className="p-3.5 rounded-xl bg-emerald-950 border border-emerald-500 text-xs font-bold text-emerald-200 animate-in fade-in">
-                {testEmailStatus}
+              <div className="p-3.5 rounded-xl bg-emerald-950 border border-emerald-500 text-xs font-bold text-emerald-200 animate-in fade-in flex items-center justify-between gap-2">
+                <span>{testEmailStatus}</span>
               </div>
             )}
 
@@ -1245,25 +1326,90 @@ export const AdminManagement: React.FC = () => {
               </p>
             </div>
 
-            {/* Recipient Couriers Pill List */}
-            <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/50 space-y-2">
-              <span className="text-xs font-bold text-emerald-400 block">
-                📧 Yeni Talep Bildirimi Alacak Kayıtlı Kurye E-postaları ({emailRecipients.length}):
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {emailRecipients.map((em, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-950/80 border border-emerald-600/50 text-emerald-200 text-xs font-mono font-medium"
-                  >
-                    <Mail className="w-3 h-3 text-emerald-400" />
-                    {em}
+            {/* Recipient Couriers Management & Pill List */}
+            <div className="p-5 rounded-2xl bg-[#011410] border border-emerald-800/60 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-emerald-300 block flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Aktif Kurye E-posta Alıcı Listesi ({emailRecipients.length} Adres)</span>
                   </span>
+                  <p className="text-[11px] text-emerald-400/70 mt-0.5">
+                    Müşteri yeni bir paket talebi oluşturduğunda sistem aşağıdaki tüm e-posta adreslerine anında paralel bildirim gönderir.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendTestEmail('all')}
+                  className="px-3 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 border border-emerald-600 text-emerald-200 text-[11px] font-bold rounded-lg transition shrink-0 cursor-pointer"
+                >
+                  Tüm Listeye Test Gönder
+                </button>
+              </div>
+
+              {/* Add Extra Courier Email Form */}
+              <form onSubmit={handleAddExtraCourierEmail} className="flex items-center gap-2 pt-2 border-t border-emerald-900/60">
+                <div className="flex-1 relative">
+                  <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={newExtraEmailInput}
+                    onChange={(e) => setNewExtraEmailInput(e.target.value)}
+                    placeholder="Listeye ek kurye e-postası ekle (örn: yeni.kurye@gmail.com)"
+                    className="w-full bg-[#021d17] border border-emerald-700/60 rounded-xl pl-8 pr-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isAddingExtraEmail}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl transition shrink-0 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isAddingExtraEmail ? 'Ekleniyor...' : 'Listeye Ekle'}</span>
+                </button>
+              </form>
+
+              {extraEmailFeedback && (
+                <p className="text-xs text-emerald-300 font-medium">{extraEmailFeedback}</p>
+              )}
+
+              {/* Recipient Cards / Badges */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+                {emailRecipients.map((em, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-700/50 hover:border-emerald-500 transition group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-xs font-mono text-emerald-200 truncate font-medium" title={em}>
+                        {em}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSendTestEmail(em)}
+                        title="Bu kuryeye test gönder"
+                        className="p-1 rounded text-emerald-400 hover:text-white hover:bg-emerald-800/60 transition cursor-pointer text-[10px]"
+                      >
+                        <Send className="w-3 h-3" />
+                      </button>
+                      {em !== (smtpUser || 'kuryeantalyam@gmail.com') && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExtraCourierEmail(em)}
+                          title="Listeden kaldır"
+                          className="p-1 rounded text-red-400/70 hover:text-red-300 hover:bg-red-950/60 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-              <p className="text-[11px] text-emerald-400/60 mt-1">
-                * Kurye kayıt formundan veya panelden yeni bir kurye eklendiğinde e-posta adresi otomatik olarak bu bildirim listesine dahil edilir.
-              </p>
             </div>
           </div>
 

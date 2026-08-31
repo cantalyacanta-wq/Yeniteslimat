@@ -132,6 +132,7 @@ interface ServerDatabase {
   couriers: any[];
   requests: any[];
   emailLogs?: EmailLogItem[];
+  extraCourierEmails?: string[];
   smtpConfig?: SmtpConfig;
   updatedAt: string;
 }
@@ -141,6 +142,7 @@ let dbState: ServerDatabase = {
   couriers: DEFAULT_COURIERS,
   requests: [],
   emailLogs: [],
+  extraCourierEmails: [],
   smtpConfig: {
     service: 'gmail',
     host: 'smtp.gmail.com',
@@ -211,6 +213,7 @@ function loadDatabase() {
           couriers: Array.from(courierMap.values()),
           requests: cleanRequests,
           emailLogs: Array.isArray(parsed.emailLogs) ? parsed.emailLogs : [],
+          extraCourierEmails: Array.isArray(parsed.extraCourierEmails) ? parsed.extraCourierEmails : [],
           smtpConfig: smtpCfg,
           updatedAt: parsed.updatedAt || new Date().toISOString(),
         };
@@ -244,32 +247,31 @@ loadDatabase();
 function getRegisteredCourierEmails(): string[] {
   const emails = new Set<string>();
 
-  // Always include dispatcher / management email
-  emails.add('kuryeantalyam@gmail.com');
+  // 1. Dispatcher & admin management email
+  const adminEmail = (dbState.smtpConfig?.user || 'kuryeantalyam@gmail.com').trim().toLowerCase();
+  if (adminEmail && adminEmail.includes('@')) {
+    emails.add(adminEmail);
+  }
 
-  // Add all users with role 'courier' or 'admin' with valid email, ignoring fake placeholder @antalyakurye.com
+  // 2. All registered users with role 'courier' or 'admin' with valid email
   if (Array.isArray(dbState.users)) {
     dbState.users
-      .filter(
-        (u) =>
-          (u.role === 'courier' || u.role === 'admin') &&
-          u.email &&
-          u.email.includes('@') &&
-          !u.email.toLowerCase().endsWith('@antalyakurye.com')
-      )
+      .filter((u) => (u.role === 'courier' || u.role === 'admin') && u.email && u.email.includes('@'))
       .forEach((u) => emails.add(u.email.trim().toLowerCase()));
   }
 
-  // Add all items in couriers list
+  // 3. All items in couriers list
   if (Array.isArray(dbState.couriers)) {
     dbState.couriers
-      .filter(
-        (c) =>
-          c.email &&
-          c.email.includes('@') &&
-          !c.email.toLowerCase().endsWith('@antalyakurye.com')
-      )
+      .filter((c) => c.email && c.email.includes('@'))
       .forEach((c) => emails.add(c.email.trim().toLowerCase()));
+  }
+
+  // 4. Any custom registered courier notification emails
+  if (Array.isArray(dbState.extraCourierEmails)) {
+    dbState.extraCourierEmails
+      .filter((em) => em && em.includes('@'))
+      .forEach((em) => emails.add(em.trim().toLowerCase()));
   }
 
   return Array.from(emails);
@@ -483,24 +485,46 @@ ${poolUrl}
     let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
     let errorMessage: string | undefined;
     let isRealDelivery = false;
+    const sentRecipients: string[] = [];
+    const failedRecipients: { email: string; error: string }[] = [];
 
     if (mailDetails.transporter && mailDetails.isConfigured) {
-      try {
-        await mailDetails.transporter.sendMail({
-          from: mailDetails.fromAddress,
-          to: recipients.join(', '),
-          replyTo: 'kuryeantalyam@gmail.com',
-          subject,
-          text: textContent,
-          html: htmlContent,
-        });
+      // Send to all couriers in parallel using Promise.allSettled
+      const sendResults = await Promise.allSettled(
+        recipients.map(async (targetEmail) => {
+          await mailDetails.transporter!.sendMail({
+            from: mailDetails.fromAddress,
+            to: targetEmail,
+            replyTo: 'kuryeantalyam@gmail.com',
+            subject,
+            text: textContent,
+            html: htmlContent,
+          });
+          return targetEmail;
+        })
+      );
+
+      sendResults.forEach((res, idx) => {
+        const targetEmail = recipients[idx];
+        if (res.status === 'fulfilled') {
+          sentRecipients.push(targetEmail);
+        } else {
+          const reason = res.reason?.message || 'Bilinmeyen hata';
+          failedRecipients.push({ email: targetEmail, error: reason });
+          console.warn(`[EMAIL COURIER SEND FAIL] Failed sending to ${targetEmail}: ${reason}`);
+        }
+      });
+
+      if (sentRecipients.length > 0) {
         emailStatus = 'sent';
         isRealDelivery = true;
-        console.log(`[EMAIL SMTP SUCCESS] Order notification sent to ${recipients.join(', ')} via ${mailDetails.user}`);
-      } catch (smtpErr: any) {
-        console.error('[EMAIL SMTP ERROR] Failed sending via SMTP:', smtpErr.message);
+        console.log(`[EMAIL SMTP SUCCESS] Order notification successfully sent to ${sentRecipients.length} couriers: ${sentRecipients.join(', ')}`);
+        if (failedRecipients.length > 0) {
+          errorMessage = `Bazı kuryelere iletildi (${sentRecipients.length} adet). Başarısız olanlar: ${failedRecipients.map(f => f.email).join(', ')}`;
+        }
+      } else {
         emailStatus = 'failed';
-        errorMessage = smtpErr.message;
+        errorMessage = failedRecipients.map(f => `${f.email}: ${f.error}`).join(' | ');
       }
     } else {
       console.log(`[EMAIL SIMULATED] No SMTP credentials configured. Order notification simulated for: ${recipients.join(', ')}`);
@@ -725,10 +749,12 @@ app.post('/api/smtp-config', async (req, res) => {
   }
 });
 
-// Test Email Dispatch Endpoint
+// Test Email Dispatch Endpoint (Supports single or ALL registered couriers)
 app.post('/api/notifications/test-email', async (req, res) => {
   try {
     const { targetEmail } = req.body || {};
+    const effectiveTarget = (targetEmail && targetEmail !== 'all' && targetEmail.includes('@')) ? targetEmail.trim() : undefined;
+
     const sampleOrder = {
       id: `req-test-${Date.now()}`,
       trackingCode: `ANT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -750,8 +776,64 @@ app.post('/api/notifications/test-email', async (req, res) => {
       },
     };
 
-    const result = await sendNewOrderEmailToCouriers(sampleOrder, targetEmail);
+    const result = await sendNewOrderEmailToCouriers(sampleOrder, effectiveTarget);
     res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET all registered courier recipients and custom emails
+app.get('/api/couriers/emails', (req, res) => {
+  const allRecipients = getRegisteredCourierEmails();
+  const courierUsers = (dbState.users || []).filter((u) => u.role === 'courier');
+  res.json({
+    success: true,
+    allRecipients,
+    courierUsers,
+    extraEmails: dbState.extraCourierEmails || [],
+  });
+});
+
+// POST add a custom courier notification email
+app.post('/api/couriers/emails', (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email || !email.includes('@')) {
+      res.status(400).json({ error: 'Geçersiz e-posta adresi' });
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!Array.isArray(dbState.extraCourierEmails)) {
+      dbState.extraCourierEmails = [];
+    }
+    if (!dbState.extraCourierEmails.includes(cleanEmail)) {
+      dbState.extraCourierEmails.push(cleanEmail);
+      saveDatabase();
+    }
+    res.json({
+      success: true,
+      extraEmails: dbState.extraCourierEmails,
+      allRecipients: getRegisteredCourierEmails(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove a custom courier notification email
+app.delete('/api/couriers/emails/:email', (req, res) => {
+  try {
+    const emailToDelete = decodeURIComponent(req.params.email).trim().toLowerCase();
+    if (Array.isArray(dbState.extraCourierEmails)) {
+      dbState.extraCourierEmails = dbState.extraCourierEmails.filter((em) => em.toLowerCase() !== emailToDelete);
+      saveDatabase();
+    }
+    res.json({
+      success: true,
+      extraEmails: dbState.extraCourierEmails || [],
+      allRecipients: getRegisteredCourierEmails(),
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
