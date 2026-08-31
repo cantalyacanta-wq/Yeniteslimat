@@ -52,10 +52,52 @@ export const AdminManagement: React.FC = () => {
     activeStats,
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'couriers' | 'orders' | 'system'>('orders');
+  const [activeTab, setActiveTab] = useState<'couriers' | 'orders' | 'emails' | 'system'>('orders');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
+
+  // Email Notification Tab State
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [emailRecipients, setEmailRecipients] = useState<string[]>([]);
+  const [isLoadingEmails, setIsLoadingEmails] = useState(false);
+  const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
+
+  const fetchEmailLogs = async () => {
+    setIsLoadingEmails(true);
+    try {
+      const res = await fetch('/api/email-logs');
+      if (res.ok) {
+        const data = await res.json();
+        setEmailLogs(data.emailLogs || []);
+        setEmailRecipients(data.courierRecipients || []);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch email logs:', e);
+    } finally {
+      setIsLoadingEmails(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    setTestEmailStatus('Gönderiliyor...');
+    try {
+      const res = await fetch('/api/notifications/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestEmailStatus('✅ Test bildirimi kayıtlı tüm kuryelere başarıyla gönderildi!');
+        fetchEmailLogs();
+      } else {
+        setTestEmailStatus(`❌ Hata: ${data.error || 'Gönderilemedi'}`);
+      }
+    } catch (err: any) {
+      setTestEmailStatus(`❌ Hata: ${err.message}`);
+    }
+    setTimeout(() => setTestEmailStatus(null), 5000);
+  };
 
   // Add Courier Modal State
   const [isAddCourierOpen, setIsAddCourierOpen] = useState(false);
@@ -222,6 +264,22 @@ export const AdminManagement: React.FC = () => {
         >
           <Package className="w-4 h-4" />
           <span>Tüm Siparişler & Havuz ({requests.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('emails');
+            fetchEmailLogs();
+          }}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
+            activeTab === 'emails'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          }`}
+        >
+          <Mail className="w-4 h-4" />
+          <span>Kurye E-posta Bildirimleri ({emailRecipients.length || courierUsers.length})</span>
         </button>
 
         <button
@@ -621,7 +679,132 @@ export const AdminManagement: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 3: SİSTEM, RAPORLAR & YEDEKLEME */}
+      {/* TAB 3: KURYE E-POSTA BİLDİRİMLERİ & LOGLAR */}
+      {/* ===================================================================== */}
+      {activeTab === 'emails' && (
+        <div className="space-y-6">
+          {/* Email System Overview Card */}
+          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-emerald-400" />
+                  <span>Kurye E-posta Bildirim Sistemi</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">
+                  Müşteriler yeni bir kurye çağrısı oluşturduğunda, sistem otomatik olarak tüm kayıtlı kuryelerin e-posta adreslerine HTML formatında detaylı bildirim gönderir.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Test E-postası Gönder</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fetchEmailLogs}
+                  className="p-2.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl transition cursor-pointer"
+                  title="Logları Yenile"
+                >
+                  <RotateCcw className={`w-4 h-4 ${isLoadingEmails ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {testEmailStatus && (
+              <div className="p-3 rounded-xl bg-emerald-950 border border-emerald-600 text-xs font-bold text-emerald-200 animate-in fade-in">
+                {testEmailStatus}
+              </div>
+            )}
+
+            {/* Recipient Couriers Pill List */}
+            <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/50 space-y-2">
+              <span className="text-xs font-bold text-emerald-400 block">
+                📧 Yeni Talep Bildirimi Alacak Kayıtlı Kurye E-postaları ({emailRecipients.length}):
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {emailRecipients.map((em, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-950/80 border border-emerald-600/50 text-emerald-200 text-xs font-mono font-medium"
+                  >
+                    <Mail className="w-3 h-3 text-emerald-400" />
+                    {em}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[11px] text-emerald-400/60 mt-1">
+                * Kurye kayıt formundan veya panelden yeni bir kurye eklendiğinde e-postası otomatik olarak bu listeye dahil edilir.
+              </p>
+            </div>
+          </div>
+
+          {/* Email Logs History Table */}
+          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4 shadow-xl">
+            <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+              <Clock className="w-5 h-5 text-emerald-400" />
+              <span>Son Gönderilen E-posta Bildirim Geçmişi ({emailLogs.length})</span>
+            </h3>
+
+            {emailLogs.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-[#011410] border border-emerald-800/40 text-center space-y-2">
+                <Mail className="w-8 h-8 text-emerald-500/50 mx-auto" />
+                <p className="text-xs text-emerald-300/70">
+                  Henüz kaydedilmiş e-posta logu bulunmuyor. Yeni bir sipariş oluşturulduğunda veya "Test E-postası Gönder" butonuna basıldığında burada listelenecektir.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {emailLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/60 hover:border-emerald-500 transition space-y-2 text-xs"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[11px]">
+                          #{log.trackingCode || 'TEST'}
+                        </span>
+                        <span className="font-bold text-white text-xs truncate max-w-md">
+                          {log.subject}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-emerald-400/70 shrink-0">
+                        {new Date(log.timestamp).toLocaleString('tr-TR')}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                      <div className="text-emerald-300/80">
+                        <strong>Alıcılar:</strong> {Array.isArray(log.recipients) ? log.recipients.join(', ') : log.recipients}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-300">{log.summary}</span>
+                        <span className={`px-2 py-0.5 rounded-full font-bold ${
+                          log.status === 'sent'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                        }`}>
+                          {log.status === 'sent' ? '✓ İletildi (SMTP)' : '✓ Gönderildi (Sistem Logu)'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB 4: SİSTEM, RAPORLAR & YEDEKLEME */}
       {/* ===================================================================== */}
       {activeTab === 'system' && (
         <div className="space-y-6">

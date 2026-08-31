@@ -39,8 +39,6 @@ export const HeroIntro: React.FC = () => {
   const {
     setCurrentView,
     currentUser,
-    loginUser,
-    registerUser,
     requests,
     setSelectedTrackingId,
     cancelRequest,
@@ -49,7 +47,6 @@ export const HeroIntro: React.FC = () => {
     rateDelivery,
   } = useDelivery();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [selectedActiveOrderId, setSelectedActiveOrderId] = useState<string | null>(null);
@@ -91,117 +88,10 @@ export const HeroIntro: React.FC = () => {
       ? deliveredOrders[0]
       : null;
 
-  // Login form state
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
-
-  // Register form state
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState<UserRole>('customer');
-  const [regDistrict, setRegDistrict] = useState<DistrictName>('Muratpaşa');
-  const [regCompany, setRegCompany] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPasswordConfirm, setRegPasswordConfirm] = useState('');
-  const [regError, setRegError] = useState<string | null>(null);
-  const [regSuccess, setRegSuccess] = useState<string | null>(null);
-
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
-  };
-
-  // Handle Strict Login
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    setLoginSuccess(null);
-
-    const cleanInput = email.trim();
-    if (!cleanInput) {
-      setLoginError('Lütfen e-posta veya telefon numaranızı giriniz.');
-      return;
-    }
-
-    if (!password.trim()) {
-      setLoginError('Lütfen hesabınızın şifresini giriniz.');
-      return;
-    }
-
-    const res = loginUser(cleanInput, password.trim());
-    if (res.success && res.user) {
-      const u = res.user;
-      setLoginSuccess(`Giriş başarılı! Hoş geldiniz, ${u.name}.`);
-      setTimeout(() => {
-        setLoginSuccess(null);
-        if (u.role === 'customer') {
-          setCurrentView('home');
-        } else if (u.role === 'courier') {
-          setCurrentView('courier');
-        } else if (u.role === 'admin') {
-          setCurrentView('admin');
-        }
-      }, 500);
-    } else {
-      setLoginError(res.error || 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.');
-    }
-  };
-
-  // Handle Register
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    setRegError(null);
-    setRegSuccess(null);
-
-    if (!regName.trim()) {
-      setRegError('Lütfen ad ve soyadınızı giriniz.');
-      return;
-    }
-
-    if (!regEmail.trim()) {
-      setRegError('Lütfen e-posta adresinizi giriniz.');
-      return;
-    }
-
-    if (!regPhone.trim()) {
-      setRegError('Lütfen telefon numaranızı giriniz.');
-      return;
-    }
-
-    if (!regPassword || regPassword.length < 4) {
-      setRegError('Şifreniz en az 4 karakter olmalıdır.');
-      return;
-    }
-
-    if (regPassword !== regPasswordConfirm) {
-      setRegError('Girdiğiniz şifreler birbiriyle eşleşmiyor.');
-      return;
-    }
-
-    const newUser = registerUser({
-      name: regName.trim(),
-      email: regEmail.trim(),
-      phone: regPhone.trim(),
-      role: regRole,
-      district: regDistrict,
-      company: regCompany.trim() || undefined,
-      password: regPassword.trim(),
-    });
-
-    setRegSuccess('Hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...');
-    setTimeout(() => {
-      setRegSuccess(null);
-      if (newUser.role === 'customer') {
-        setCurrentView('home');
-      } else {
-        setCurrentView('courier');
-      }
-    }, 800);
   };
 
   const getStatusBadge = (status: DeliveryStatus) => {
@@ -654,7 +544,7 @@ export const HeroIntro: React.FC = () => {
                 Müşteri Paneli
               </h1>
               <p className="text-xs text-emerald-300/80 mt-0.5">
-                Hoş geldiniz, <span className="text-white font-bold">{currentUser.name}</span>. Yeni bir kurye çağırabilir veya geçmiş siparişlerinizi inceleyebilirsiniz.
+                Sayın <span className="text-white font-bold">{currentUser.name}</span>, yeni bir kurye çağırabilir veya geçmiş siparişlerinizi inceleyebilirsiniz.
               </p>
             </div>
           </div>
@@ -793,315 +683,99 @@ export const HeroIntro: React.FC = () => {
 
   // =========================================================================
   // SCENARIO 3: GUEST / VISITOR VIEW
-  // Clean Landing page with login/registration form for non-logged in users
+  // Clean Landing page without embedded forms; direct one-click action modals
   // =========================================================================
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex flex-col items-center justify-center p-2 sm:p-4 space-y-6">
       
-      <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 grid grid-cols-1 lg:grid-cols-12 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410]">
-        
-        {/* LEFT SECTION */}
-        <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between text-white relative overflow-hidden">
-          <div className="relative z-10 space-y-8">
-            
-            {/* Logo and Brand Header */}
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30 shrink-0">
-                <Truck className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Antalya Şehir İçi Teslimat</h2>
-                <p className="text-xs sm:text-sm text-emerald-300/80 font-medium">7/24 Jet Moto Kurye & Paket Sistemi</p>
-              </div>
+      <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410] p-6 sm:p-10 lg:p-12 text-white relative">
+        <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
+          
+          {/* Logo and Brand Header */}
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-emerald-950/80 border border-emerald-700/60 shadow-lg">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0">
+              <Truck className="w-5 h-5" />
             </div>
-
-            {/* Main Headline */}
-            <div className="space-y-3.5 pt-2">
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-                Paketlerinizi hızlı ve güvenli şekilde gönderin
-              </h1>
-              <p className="text-sm sm:text-base text-emerald-100/80 leading-relaxed max-w-xl">
-                Talebinizi oluşturun, kurye havuzuna düşsün. Size en yakın kurye paketinizi seçip teslimatınızı gerçekleştirsin.
-              </p>
-            </div>
-
-            {/* Primary Action Button: "Hemen Kurye Çağır" */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
-                }}
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 cursor-pointer active:scale-98"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Hemen Yeni Kurye Çağır</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* 3 Simple Feature Badges */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
-                <span className="text-xs font-bold text-emerald-300 block">⚡ Jet Teslimat</span>
-                <span className="text-[11px] text-emerald-200/70">30-45 Dakika</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
-                <span className="text-xs font-bold text-emerald-300 block">🛡️ Güvenli Taşıma</span>
-                <span className="text-[11px] text-emerald-200/70">Teyitli & Korumalı</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
-                <span className="text-xs font-bold text-emerald-300 block">📍 Canlı Radar</span>
-                <span className="text-[11px] text-emerald-200/70">Anlık Takip</span>
-              </div>
+            <div className="text-left">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Antalya Şehir İçi Teslimat</h2>
+              <p className="text-[10px] sm:text-xs text-emerald-300 font-medium">7/24 Jet Moto Kurye & Paket Sistemi</p>
             </div>
           </div>
 
-          <div className="pt-8 relative z-10">
-            <p className="text-xs text-emerald-400/70">
-              © 2026 Antalya Şehir İçi Teslimat 7/24 — Tüm hakları saklıdır
+          {/* Main Headline */}
+          <div className="space-y-3.5">
+            <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+              Paketlerinizi hızlı ve güvenli şekilde gönderin
+            </h1>
+            <p className="text-sm sm:text-base text-emerald-100/85 leading-relaxed max-w-2xl mx-auto">
+              Antalya'nın tüm ilçelerine ortalama 30-45 dakikada motorlu kurye ile güvenli teslimat. Talebinizi oluşturun, en yakın kuryemiz paketinizi kapınızdan alsın.
             </p>
           </div>
-        </div>
 
-        {/* RIGHT LOGIN/REGISTER CARD */}
-        <div className="lg:col-span-5 bg-[#03231d] border-t lg:border-t-0 lg:border-l border-emerald-800/50 p-6 sm:p-10 flex flex-col justify-center shadow-xl text-white">
-          {mode === 'login' ? (
-            <div className="w-full max-w-sm mx-auto space-y-6">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Hoş geldiniz
-                </h2>
-                <p className="text-sm text-emerald-300/80 mt-1">
-                  Müşteri veya kurye hesabınıza giriş yapın
-                </p>
-              </div>
+          {/* Action Buttons Grid */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
+              }}
+              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Hemen Yeni Kurye Çağır</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    E-posta veya Telefon
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                    <input
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setLoginError(null);
-                      }}
-                      placeholder="ornek@email.com"
-                      className="w-full pl-10 pr-3.5 py-3 bg-[#021813] border border-emerald-700/60 rounded-xl text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition placeholder:text-emerald-600/60 font-medium"
-                    />
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={() => {
+                openAuthModal('register', 'Kurye olarak aramıza katılın ve hemen kazanmaya başlayın.', 'courier');
+              }}
+              className="w-full sm:w-auto px-7 py-4 bg-[#011410] hover:bg-[#02241c] text-amber-300 border border-amber-500/50 hover:border-amber-400 font-extrabold text-sm sm:text-base rounded-2xl transition flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shadow-md"
+            >
+              <Bike className="w-5 h-5 text-amber-400" />
+              <span>Kurye Girişi / Kaydı</span>
+            </button>
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-emerald-200">
-                    Şifre
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3.5" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setLoginError(null);
-                      }}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-3 bg-[#021813] border border-emerald-700/60 rounded-xl text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition placeholder:text-emerald-600/60 font-medium font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-emerald-400/70 hover:text-white cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={() => {
+                openAuthModal('login');
+              }}
+              className="w-full sm:w-auto px-6 py-4 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 font-bold text-sm rounded-2xl transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <LogIn className="w-4 h-4 text-emerald-400" />
+              <span>Giriş Yap</span>
+            </button>
+          </div>
 
-                {loginError && (
-                  <div className="p-3 bg-rose-950/60 border border-rose-600/60 text-rose-200 rounded-xl text-xs font-medium">
-                    {loginError}
-                  </div>
-                )}
-
-                {loginSuccess && (
-                  <div className="p-3 bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>{loginSuccess}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-98"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Giriş Yap</span>
-                </button>
-              </form>
-
-              <div className="pt-2 text-center border-t border-emerald-800/40">
-                <p className="text-xs text-emerald-300/80">
-                  Hesabınız yok mu?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setLoginError(null);
-                    }}
-                    className="font-bold text-white hover:underline cursor-pointer ml-1"
-                  >
-                    Hemen Kayıt Olun
-                  </button>
-                </p>
-              </div>
+          {/* 4 Feature Badges */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+              <span className="text-xs font-bold text-emerald-300 block">⚡ Jet Teslimat</span>
+              <span className="text-[11px] text-emerald-200/70 block">30-45 Dakika</span>
             </div>
-          ) : (
-            <div className="w-full max-w-sm mx-auto space-y-5">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Hesap Oluştur</h2>
-                <p className="text-xs text-emerald-300/80 mt-1">Hızlıca kayıt olup gönderi oluşturun</p>
-              </div>
-
-              <form onSubmit={handleRegister} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-emerald-200 mb-1">Hesap Türü</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRegRole('customer')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                        regRole === 'customer'
-                          ? 'bg-emerald-600 text-white border-emerald-400'
-                          : 'bg-[#021813] text-emerald-300 border-emerald-800/60'
-                      }`}
-                    >
-                      Müşteri
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRegRole('courier')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                        regRole === 'courier'
-                          ? 'bg-emerald-600 text-white border-emerald-400'
-                          : 'bg-[#021813] text-emerald-300 border-emerald-800/60'
-                      }`}
-                    >
-                      Kurye
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-emerald-200 mb-1">Ad Soyad</label>
-                  <input
-                    type="text"
-                    required
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Adınız Soyadınız"
-                    className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-emerald-200 mb-1">E-posta</label>
-                    <input
-                      type="email"
-                      required
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="ornek@mail.com"
-                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Telefon</label>
-                    <input
-                      type="tel"
-                      required
-                      value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="05XX XXX XX XX"
-                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Şifre</label>
-                    <input
-                      type="password"
-                      required
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="••••"
-                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-emerald-200 mb-1">Şifre Tekrar</label>
-                    <input
-                      type="password"
-                      required
-                      value={regPasswordConfirm}
-                      onChange={(e) => setRegPasswordConfirm(e.target.value)}
-                      placeholder="••••"
-                      className="w-full px-3.5 py-2.5 bg-[#021813] border border-emerald-700/60 rounded-xl text-xs text-white outline-none focus:border-emerald-400 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {regError && (
-                  <div className="p-2.5 bg-rose-950/60 border border-rose-600/60 text-rose-200 rounded-xl text-xs">
-                    {regError}
-                  </div>
-                )}
-
-                {regSuccess && (
-                  <div className="p-2.5 bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>{regSuccess}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Kayıt Ol & Giriş Yap</span>
-                </button>
-              </form>
-
-              <div className="pt-2 text-center border-t border-emerald-800/40">
-                <p className="text-xs text-emerald-300/80">
-                  Zaten hesabınız var mı?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('login');
-                      setRegError(null);
-                    }}
-                    className="font-bold text-white hover:underline cursor-pointer ml-1"
-                  >
-                    Giriş Yapın
-                  </button>
-                </p>
-              </div>
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+              <span className="text-xs font-bold text-emerald-300 block">🛡️ Güvenli Taşıma</span>
+              <span className="text-[11px] text-emerald-200/70 block">Teyitli Teslimat</span>
             </div>
-          )}
-        </div>
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+              <span className="text-xs font-bold text-emerald-300 block">📍 Canlı Radar</span>
+              <span className="text-[11px] text-emerald-200/70 block">Haritada Takip</span>
+            </div>
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
+              <span className="text-xs font-bold text-amber-300 block">💳 Kolay Ödeme</span>
+              <span className="text-[11px] text-emerald-200/70 block">Alıcı / Gönderici</span>
+            </div>
+          </div>
 
+          <div className="pt-4 border-t border-emerald-800/40">
+            <p className="text-xs text-emerald-400/70">
+              © 2026 Antalya Şehir İçi Teslimat 7/24 — Muratpaşa • Kepez • Konyaaltı • Lara • Döşemealtı • Aksu
+            </p>
+          </div>
+
+        </div>
       </div>
 
       {/* ========================================================================= */}

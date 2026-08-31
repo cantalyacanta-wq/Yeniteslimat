@@ -665,38 +665,20 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Çalışma Bölgesi</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Taşıma Aracı Tipi</label>
                 <div className="relative">
-                  <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-500" />
+                  <Bike className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-500" />
                   <select
-                    value={courierDistrict}
-                    onChange={(e) => setCourierDistrict(e.target.value as DistrictName)}
+                    value={courierVehicle}
+                    onChange={(e) => setCourierVehicle(e.target.value)}
                     className="w-full bg-[#011410] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-amber-400 outline-hidden font-medium cursor-pointer"
                   >
-                    {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((d) => (
-                      <option key={d} value={d} className="bg-[#021f19] text-white">
-                        {d}
-                      </option>
-                    ))}
+                    <option value="Motosiklet" className="bg-[#021f19] text-white">Motosiklet</option>
+                    <option value="Scooter" className="bg-[#021f19] text-white">Scooter</option>
+                    <option value="Bisiklet / E-Bike" className="bg-[#021f19] text-white">Bisiklet / E-Bike</option>
+                    <option value="Otomobil" className="bg-[#021f19] text-white">Otomobil</option>
                   </select>
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-emerald-200 block">Taşıma Aracı Tipi</label>
-              <div className="relative">
-                <Bike className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-500" />
-                <select
-                  value={courierVehicle}
-                  onChange={(e) => setCourierVehicle(e.target.value)}
-                  className="w-full bg-[#011410] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-amber-400 outline-hidden font-medium cursor-pointer"
-                >
-                  <option value="Motosiklet" className="bg-[#021f19] text-white">Motosiklet</option>
-                  <option value="Scooter" className="bg-[#021f19] text-white">Scooter</option>
-                  <option value="Bisiklet / E-Bike" className="bg-[#021f19] text-white">Bisiklet / E-Bike</option>
-                  <option value="Otomobil" className="bg-[#021f19] text-white">Otomobil</option>
-                </select>
               </div>
             </div>
 

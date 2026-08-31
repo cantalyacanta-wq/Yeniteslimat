@@ -130,3 +130,15 @@ export interface DistrictData {
   centerCoordinates: { lat: number; lng: number };
   basePriceExtra: number;
 }
+
+export interface EmailLogItem {
+  id: string;
+  timestamp: string;
+  orderId?: string;
+  trackingCode?: string;
+  recipients: string[];
+  subject: string;
+  status: 'sent' | 'simulated' | 'failed';
+  error?: string;
+  summary: string;
+}
