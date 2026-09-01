@@ -240,6 +240,17 @@ function saveDatabase() {
 // Initial DB load
 loadDatabase();
 
+// In-memory set to prevent duplicate emails for the same order ID or tracking code
+const dispatchedEmailOrderIds = new Set<string>();
+if (Array.isArray(dbState.requests)) {
+  dbState.requests.forEach((r) => {
+    if (r.emailDispatched) {
+      if (r.id) dispatchedEmailOrderIds.add(r.id);
+      if (r.trackingCode) dispatchedEmailOrderIds.add(r.trackingCode);
+    }
+  });
+}
+
 // ==========================================
 // EMAIL NOTIFICATION SYSTEM FOR COURIERS
 // ==========================================
@@ -337,8 +348,30 @@ async function sendSingleEmailWithRetry(
   throw lastErr;
 }
 
-async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: string) {
+async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: string, isForce = false) {
   try {
+    const orderId = order.id || '';
+    const trackingCode = order.trackingCode || orderId || 'ANT-0000';
+
+    // Prevent duplicate emails for the same order unless explicitly forced (e.g. manual resend)
+    if (!isForce) {
+      const alreadySent =
+        order.emailDispatched === true ||
+        (orderId && dispatchedEmailOrderIds.has(orderId)) ||
+        (trackingCode && dispatchedEmailOrderIds.has(trackingCode));
+
+      if (alreadySent) {
+        console.log(`[EMAIL DEDUPLICATION] Order ${orderId} (#${trackingCode}) notification email already sent. Skipping duplicate.`);
+        return {
+          success: true,
+          isRealDelivery: false,
+          status: 'already_sent',
+          message: 'Bu sipariş için bildirim e-postası daha önce gönderildi.',
+          recipients: [],
+        };
+      }
+    }
+
     let recipients: string[] = [];
     if (specificRecipient && specificRecipient.includes('@')) {
       recipients = [specificRecipient.trim().toLowerCase()];
@@ -351,153 +384,61 @@ async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: strin
       return { success: false, recipients: [], message: 'Kayıtlı e-posta adresi bulunamadı.' };
     }
 
-    const trackingCode = order.trackingCode || order.id || 'ANT-0000';
     const senderDist = order.sender?.district || 'Antalya';
+    const senderNeighborhood = order.sender?.neighborhood ? ` (${order.sender.neighborhood})` : '';
     const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
     const senderPhone = order.sender?.contactPhone || order.sender?.phone || '';
     const senderName = order.sender?.contactName || 'Gönderici';
-    const senderContact = senderPhone ? `${senderName} (${senderPhone})` : senderName;
+    const senderContact = senderPhone ? `${senderName} - ${senderPhone}` : senderName;
 
     const receiverDist = order.receiver?.district || 'Antalya';
+    const receiverNeighborhood = order.receiver?.neighborhood ? ` (${order.receiver.neighborhood})` : '';
     const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
     const receiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
     const receiverName = order.receiver?.contactName || 'Alıcı';
-    const receiverContact = receiverPhone ? `${receiverName} (${receiverPhone})` : receiverName;
+    const receiverContact = receiverPhone ? `${receiverName} - ${receiverPhone}` : receiverName;
 
     const price = order.price || 0;
     const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
     const pkgName = order.packageName || 'Paket / Koli';
     const paymentMethod = order.paymentMethod || 'gonderici_odemeli';
     const isAliciOdemeli = paymentMethod === 'alici_odemeli';
+    const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
 
-    const subject = `⚡ [YENİ SİPARİŞ] ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'})`;
+    const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
     const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
 
+    // Pure, clean, high-priority plain-text format (No images, no heavy HTML)
     const textContent = `
-🛵 YENİ PAKET ÇAĞRISI - ANTALYA ŞEHİR İÇİ TESLİMAT 7/24
---------------------------------------------------------
-Sipariş Takip No : #${trackingCode}
-Paket İçeriği   : ${pkgName}
-Toplam Ücret    : ${price} TL
-Kurye Kazancı   : +${courierEarnings} TL
-Ödeme Türü      : ${isAliciOdemeli ? 'ALICI ÖDEMELİ (Teslimatta tahsil edilecek)' : 'GÖNDERİCİ ÖDEMELİ'}
+YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})
+==================================================
+Sipariş Takip Kodu : #${trackingCode}
+Paket İçeriği      : ${pkgName}
+Teslimat Önceliği  : ${urgency}
+Toplam Tutar       : ${price} TL
+Net Kurye Kazancı  : +${courierEarnings} TL
+Ödeme Türü         : ${isAliciOdemeli ? 'ALICI ÖDEMELİ (Teslimatta tahsil edilecek)' : 'GÖNDERİCİ ÖDEMELİ (Teslim alırken kontrol ediniz)'}
 
-📍 1. ALIŞ NOKTASI (GÖNDERİCİ):
-İlçe  : ${senderDist}
-Adres : ${senderAddr}
+1. ALIŞ NOKTASI (GÖNDERİCİ):
+İlçe    : ${senderDist}${senderNeighborhood}
+Adres   : ${senderAddr}
 İletişim: ${senderContact}
 
-🎯 2. TESLİMAT NOKTASI (ALICI):
-İlçe  : ${receiverDist}
-Adres : ${receiverAddr}
+2. TESLİMAT NOKTASI (ALICI):
+İlçe    : ${receiverDist}${receiverNeighborhood}
+Adres   : ${receiverAddr}
 İletişim: ${receiverContact}
 
-HAVUZDAN İŞİ ALMAK İÇİN TIKLAYIN:
+HAVUZDAN İŞİ ALMAK İÇİN TIKLAYINIZ:
 ${poolUrl}
---------------------------------------------------------
-© 2026 Antalya Şehir İçi Teslimat 7/24
+==================================================
+Antalya Şehir İçi Teslimat 7/24
     `.trim();
 
+    // Pure text HTML (Zero external assets or images for instant spam-free delivery)
     const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yeni Paket Talebi</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #011410; color: #ffffff; margin: 0; padding: 16px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #021f19; border: 1px solid #059669; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.6);">
-    
-    <!-- Header -->
-    <div style="background: linear-gradient(135deg, #047857, #065f46); padding: 24px 20px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">🛵 ANTALYA ŞEHİR İÇİ TESLİMAT</h1>
-      <p style="color: #a7f3d0; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">Canlı Kurye Havuzuna Yeni Paket Çağrısı Düştü!</p>
-    </div>
-
-    <!-- Content Body -->
-    <div style="padding: 24px 20px;">
-      
-      <!-- Tracking Badge -->
-      <div style="background: #011410; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 8px; margin-bottom: 20px;">
-        <div style="font-size: 11px; color: #9ca3af; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Sipariş Takip Kodu</div>
-        <div style="font-size: 20px; color: #f59e0b; font-weight: 900; margin-top: 2px;">#${trackingCode}</div>
-        <div style="font-size: 13px; color: #d1fae5; margin-top: 4px;">Paket İçeriği: <strong style="color:#ffffff;">${pkgName}</strong></div>
-      </div>
-
-      <!-- Route Details -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #022b22; border-radius: 12px; overflow: hidden; border: 1px solid #065f46;">
-        <tr>
-          <td style="padding: 14px 16px; border-bottom: 1px solid #064e3b; vertical-align: top; width: 50%;">
-            <div style="font-size: 11px; color: #34d399; font-weight: bold; text-transform: uppercase;">📍 1. ALIŞ NOKTASI (GÖNDERİCİ)</div>
-            <div style="font-size: 16px; color: #ffffff; font-weight: bold; margin-top: 3px;">${senderDist}</div>
-            <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">${senderAddr}</div>
-            <div style="font-size: 11px; color: #6ee7b7; margin-top: 5px;">👤 ${senderContact}</div>
-          </td>
-          <td style="padding: 14px 16px; border-bottom: 1px solid #064e3b; vertical-align: top; width: 50%;">
-            <div style="font-size: 11px; color: #fbbf24; font-weight: bold; text-transform: uppercase;">🎯 2. TESLİMAT NOKTASI (ALICI)</div>
-            <div style="font-size: 16px; color: #ffffff; font-weight: bold; margin-top: 3px;">${receiverDist}</div>
-            <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px; line-height: 1.4;">${receiverAddr}</div>
-            <div style="font-size: 11px; color: #fde68a; margin-top: 5px;">👤 ${receiverContact}</div>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2" style="padding: 14px 16px; background: #011b15;">
-            <table style="width: 100%;">
-              <tr>
-                <td>
-                  <span style="font-size: 12px; color: #9ca3af;">Müşteri Ücreti:</span>
-                  <strong style="font-size: 15px; color: #ffffff; margin-left: 6px;">${price} ₺</strong>
-                </td>
-                <td style="text-align: right;">
-                  <span style="font-size: 12px; color: #9ca3af;">Net Kurye Kazancı:</span>
-                  <strong style="font-size: 18px; color: #10b981; margin-left: 6px;">+${courierEarnings} ₺</strong>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-
-      <!-- Payment Alert Box -->
-      ${
-        isAliciOdemeli
-          ? `<div style="background: #450a0a; border: 1.5px solid #ef4444; border-radius: 10px; padding: 14px 16px; margin-bottom: 22px; color: #fecaca;">
-              <strong style="color: #ffffff; font-size: 13px; display: block;">🔴 ÖNEMLİ: ALICI ÖDEMELİ SİPARİŞ</strong>
-              <p style="margin: 4px 0 0 0; font-size: 12px; line-height: 1.5; color: #fee2e2;">
-                Paketi adresten teslim alırken göndericiden ücret almayınız. Paketi alıcıya teslim ederken alıcıdan <strong>${price} ₺</strong> tutarındaki ödemeyi tahsil etmeyi <u>unutmayınız</u>.
-              </p>
-            </div>`
-          : `<div style="background: #14532d; border: 1.5px solid #22c55e; border-radius: 10px; padding: 14px 16px; margin-bottom: 22px; color: #bbf7d0;">
-              <strong style="color: #ffffff; font-size: 13px; display: block;">🟢 GÖNDERİCİ ÖDEMELİ SİPARİŞ</strong>
-              <p style="margin: 4px 0 0 0; font-size: 12px; line-height: 1.5; color: #dcfce7;">
-                Paketi adresten teslim alırken göndericiden <strong>${price} ₺</strong> ücret tahsilatını kontrol ediniz. Alıcıya teslim ederken alıcıdan ücret talep etmeyiniz.
-              </p>
-            </div>`
-      }
-
-      <!-- Direct Action CTA Button -->
-      <div style="text-align: center; margin: 24px 0 16px 0;">
-        <a href="${poolUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 15px; font-weight: 800; border-radius: 12px; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4); text-transform: uppercase; letter-spacing: 0.5px;">
-          ⚡ Havuzdan İşi Kabul Et (${poolUrl})
-        </a>
-      </div>
-
-      <p style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 14px; line-height: 1.4;">
-        Bu bildirim Antalya Kurye sisteminde kayıtlı kurye e-posta adreslerine (${recipients.join(', ')}) iletilmiştir.
-      </p>
-
-    </div>
-
-    <!-- Footer -->
-    <div style="background: #011410; padding: 14px 20px; text-align: center; border-top: 1px solid #064e3b;">
-      <span style="font-size: 11px; color: #10b981; font-weight: bold;">© 2026 Antalya Şehir İçi Teslimat 7/24 • Jet Moto Kurye</span>
-    </div>
-
-  </div>
-</body>
-</html>
-    `;
+<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827; white-space: pre-wrap; margin: 0; padding: 14px; background: #ffffff;">${textContent}</div>
+    `.trim();
 
     const mailDetails = createMailTransporter();
     let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
@@ -536,6 +477,13 @@ ${poolUrl}
       if (sentRecipients.length > 0) {
         emailStatus = 'sent';
         isRealDelivery = true;
+        
+        // Record deduplication state
+        order.emailDispatched = true;
+        order.emailDispatchedAt = new Date().toISOString();
+        if (order.id) dispatchedEmailOrderIds.add(order.id);
+        if (trackingCode) dispatchedEmailOrderIds.add(trackingCode);
+
         console.log(`[EMAIL SMTP SUCCESS] Order notification successfully sent to ${sentRecipients.length} couriers: ${sentRecipients.join(', ')}`);
         if (failedRecipients.length > 0) {
           errorMessage = `Bazı kuryelere iletildi (${sentRecipients.length} adet). Başarısız olanlar: ${failedRecipients.map(f => f.email).join(', ')}`;
@@ -623,10 +571,18 @@ app.post('/api/requests', async (req, res) => {
     }
     newRequest.updatedAt = new Date().toISOString();
 
-    // Check if duplicate ID exists
-    const existingIndex = dbState.requests.findIndex((r) => r.id === newRequest.id);
+    // Check if duplicate ID or tracking code exists
+    const existingIndex = dbState.requests.findIndex(
+      (r) => r.id === newRequest.id || (r.trackingCode && r.trackingCode === newRequest.trackingCode)
+    );
+    
+    let isAlreadyDispatched = false;
     if (existingIndex >= 0) {
-      dbState.requests[existingIndex] = newRequest;
+      const existingReq = dbState.requests[existingIndex];
+      isAlreadyDispatched = Boolean(existingReq.emailDispatched);
+      newRequest.emailDispatched = existingReq.emailDispatched;
+      newRequest.emailDispatchedAt = existingReq.emailDispatchedAt;
+      dbState.requests[existingIndex] = { ...existingReq, ...newRequest };
     } else {
       dbState.requests.unshift(newRequest);
     }
@@ -640,15 +596,20 @@ app.post('/api/requests', async (req, res) => {
     }
 
     saveDatabase();
-    console.log(`[ORDER CREATED] ID: ${newRequest.id}, Tracking: ${newRequest.trackingCode}, Price: ${newRequest.price} TL`);
+    console.log(`[ORDER SAVED] ID: ${newRequest.id}, Tracking: ${newRequest.trackingCode}, Price: ${newRequest.price} TL`);
 
-    // DISPATCH EMAIL NOTIFICATION DIRECTLY & GUARANTEED
+    // DISPATCH EMAIL NOTIFICATION DIRECTLY (Only if not already dispatched)
     let emailResult = null;
-    try {
-      emailResult = await sendNewOrderEmailToCouriers(newRequest);
-      console.log(`[EMAIL DISPATCH COMPLETED] Target: kuryeantalyam@gmail.com + couriers. Result:`, emailResult?.status);
-    } catch (mailErr: any) {
-      console.error('[EMAIL DISPATCH ERROR ON REQUEST CREATE]', mailErr.message);
+    if (!isAlreadyDispatched && !dispatchedEmailOrderIds.has(newRequest.id) && !dispatchedEmailOrderIds.has(newRequest.trackingCode)) {
+      try {
+        emailResult = await sendNewOrderEmailToCouriers(newRequest, undefined, false);
+        console.log(`[EMAIL DISPATCH COMPLETED] Target: kuryeantalyam@gmail.com + couriers. Result:`, emailResult?.status);
+      } catch (mailErr: any) {
+        console.error('[EMAIL DISPATCH ERROR ON REQUEST CREATE]', mailErr.message);
+      }
+    } else {
+      console.log(`[EMAIL DISPATCH SKIPPED] Duplicate order detected, email was already sent for: ${newRequest.id} / ${newRequest.trackingCode}`);
+      emailResult = { success: true, status: 'already_sent', isRealDelivery: false };
     }
 
     res.json({ success: true, request: newRequest, emailResult });
@@ -669,7 +630,7 @@ app.post('/api/requests/:id/resend-email', async (req, res) => {
       return;
     }
 
-    const emailResult = await sendNewOrderEmailToCouriers(order, targetEmail);
+    const emailResult = await sendNewOrderEmailToCouriers(order, targetEmail, true);
     res.json({ success: true, orderId: order.id, trackingCode: order.trackingCode, emailResult });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

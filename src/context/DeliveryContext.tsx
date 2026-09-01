@@ -305,17 +305,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             
             // Retain any pending local requests created in current session that are not yet in server list
             const unsyncedLocals = prev.filter((r) => !serverIds.has(r.id) && !serverCodes.has(r.trackingCode));
-            
-            // Auto-forward unsynced requests to server so emails are triggered without fail
-            if (unsyncedLocals.length > 0) {
-              unsyncedLocals.forEach((uReq) => {
-                fetch('/api/requests', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(uReq),
-                }).catch(() => {});
-              });
-            }
 
             const merged = [...data.requests];
             unsyncedLocals.forEach((u) => {
