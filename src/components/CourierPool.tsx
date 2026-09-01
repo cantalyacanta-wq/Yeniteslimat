@@ -24,6 +24,7 @@ import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
 import { triggerHapticVibration, requestNotificationPermission } from '../services/notificationService';
 import { playNewOrderSound } from '../utils/audio';
+import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 
 export const CourierPool: React.FC = () => {
   const {
@@ -275,7 +276,9 @@ export const CourierPool: React.FC = () => {
                         <div className="min-w-0">
                           <span className="font-bold text-white block">1. Alış: {req.sender.district}</span>
                           <p className="text-emerald-300/80 text-[11px] truncate">{req.sender.addressDetail}</p>
-                          <p className="text-emerald-400 font-mono text-[11px] mt-0.5">Gönderen: {req.sender.contactName} ({req.sender.contactPhone})</p>
+                          <p className="text-emerald-400 font-mono text-[11px] mt-0.5">
+                            Gönderen: {maskCustomerName(req.sender.contactName)} ({maskPhoneNumber(req.sender.contactPhone)})
+                          </p>
                         </div>
                       </div>
 
@@ -285,7 +288,9 @@ export const CourierPool: React.FC = () => {
                         <div className="min-w-0">
                           <span className="font-bold text-white block">2. Teslimat: {req.receiver.district}</span>
                           <p className="text-emerald-300/80 text-[11px] truncate">{req.receiver.addressDetail}</p>
-                          <p className="text-teal-400 font-mono text-[11px] mt-0.5">Alıcı: {req.receiver.contactName} ({req.receiver.contactPhone})</p>
+                          <p className="text-teal-400 font-mono text-[11px] mt-0.5">
+                            Alıcı: {maskCustomerName(req.receiver.contactName)} ({maskPhoneNumber(req.receiver.contactPhone)})
+                          </p>
                         </div>
                       </div>
                     </div>

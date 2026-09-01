@@ -536,6 +536,28 @@ emailQueueEvents.on('job_enqueued', () => {
   });
 });
 
+function maskName(name?: string): string {
+  if (!name || typeof name !== 'string' || !name.trim()) return 'M***';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'M***';
+  return parts.map((part) => `${part.charAt(0).toUpperCase()}***`).join(' ');
+}
+
+function maskPhone(phone?: string): string {
+  if (!phone || typeof phone !== 'string' || !phone.trim()) return '0555555****';
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('90') && digits.length === 12) {
+    digits = '0' + digits.slice(2);
+  } else if (!digits.startsWith('0') && digits.length === 10) {
+    digits = '0' + digits;
+  }
+  if (digits.length >= 7) {
+    const prefix = digits.slice(0, digits.length - 4);
+    return `${prefix}****`;
+  }
+  return '0555555****';
+}
+
 // Non-blocking Enqueue helper
 function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = false) {
   const orderId = order.id || '';
@@ -574,16 +596,20 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const senderDist = order.sender?.district || 'Antalya';
   const senderNeighborhood = order.sender?.neighborhood ? ` (${order.sender.neighborhood})` : '';
   const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
-  const senderPhone = order.sender?.contactPhone || order.sender?.phone || '';
-  const senderName = order.sender?.contactName || 'Gönderici';
-  const senderContact = senderPhone ? `${senderName} - ${senderPhone}` : senderName;
+  const rawSenderPhone = order.sender?.contactPhone || order.sender?.phone || '';
+  const rawSenderName = order.sender?.contactName || 'Gönderici';
+  const maskedSenderName = maskName(rawSenderName);
+  const maskedSenderPhone = maskPhone(rawSenderPhone);
+  const senderContact = `${maskedSenderName} - ${maskedSenderPhone}`;
 
   const receiverDist = order.receiver?.district || 'Antalya';
   const receiverNeighborhood = order.receiver?.neighborhood ? ` (${order.receiver.neighborhood})` : '';
   const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
-  const receiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
-  const receiverName = order.receiver?.contactName || 'Alıcı';
-  const receiverContact = receiverPhone ? `${receiverName} - ${receiverPhone}` : receiverName;
+  const rawReceiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
+  const rawReceiverName = order.receiver?.contactName || 'Alıcı';
+  const maskedReceiverName = maskName(rawReceiverName);
+  const maskedReceiverPhone = maskPhone(rawReceiverPhone);
+  const receiverContact = `${maskedReceiverName} - ${maskedReceiverPhone}`;
 
   const price = order.price || 0;
   const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
@@ -593,7 +619,7 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
 
   const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
-  const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
+  const poolUrl = 'https://www.antalyateslimat.com/#pakettalebi';
 
   const textContent = `
 YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})
