@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   ShieldCheck,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, UserRole } from '../types';
@@ -27,13 +28,15 @@ export const AuthModal: React.FC = () => {
     authModalTab,
     setAuthModalTab,
     authModalNotice,
-    login,
-    registerCustomer,
-    registerCourier,
+    loginUser,
+    registerUser,
+    switchUser,
+    setCurrentView,
   } = useDelivery();
 
   // Mode selectors
   const isCourierFlow = authModalTab === 'courier_login' || authModalTab === 'courier_register';
+  const isAdminFlow = authModalTab === 'admin_login';
   const isRegister = authModalTab === 'register' || authModalTab === 'courier_register';
 
   // Common Login Form State
@@ -71,20 +74,40 @@ export const AuthModal: React.FC = () => {
     setLoginError(null);
     setLoginSuccess(null);
 
-    const targetRole: UserRole = isCourierFlow ? 'courier' : 'customer';
-    const res = login(identifier, password, targetRole);
+    const targetRole: UserRole = isAdminFlow ? 'admin' : (isCourierFlow ? 'courier' : 'customer');
+    const res = loginUser(identifier, password, targetRole);
 
-    if (res.success) {
-      setLoginSuccess('Giriş başarılı! Yönlendiriliyorsunuz...');
+    if (res.success && res.user) {
+      const roleName = res.user.role === 'courier' ? 'Moto Kurye' : res.user.role === 'admin' ? 'Yönetici' : 'Müşteri';
+      setLoginSuccess(`${roleName} girişi başarılı! Yönlendiriliyorsunuz...`);
       setTimeout(() => {
+        if (res.user?.role === 'courier') {
+          setCurrentView('courier');
+        } else if (res.user?.role === 'admin') {
+          setCurrentView('admin');
+        } else {
+          setCurrentView('customer');
+        }
         closeAuthModal();
         setLoginSuccess(null);
         setIdentifier('');
         setPassword('');
-      }, 700);
+      }, 600);
     } else {
-      setLoginError(res.message);
+      setLoginError(res.message || 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.');
     }
+  };
+
+  // Quick 1-Click Demo Login Helper
+  const handleQuickDemoLogin = (userId: string, targetView: 'courier' | 'customer' | 'admin') => {
+    setLoginError(null);
+    setLoginSuccess('Hızlı oturum açılıyor...');
+    switchUser(userId);
+    setTimeout(() => {
+      setCurrentView(targetView);
+      closeAuthModal();
+      setLoginSuccess(null);
+    }, 400);
   };
 
   // Handle Customer Register
@@ -108,23 +131,25 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
-    const res = registerCustomer({
-      name: customerName,
-      phone: customerPhone,
-      email: customerEmail,
-      district: customerDistrict,
-      company: customerCompany,
-      password: customerPassword,
-    });
+    try {
+      registerUser({
+        name: customerName.trim(),
+        phone: customerPhone.trim(),
+        email: customerEmail.trim().toLowerCase(),
+        district: customerDistrict,
+        companyName: customerCompany.trim(),
+        password: customerPassword.trim(),
+        role: 'customer',
+      });
 
-    if (res.success) {
       setCustomerSuccess('Müşteri kaydınız başarıyla oluşturuldu ve oturum açıldı!');
       setTimeout(() => {
+        setCurrentView('customer');
         closeAuthModal();
         setCustomerSuccess(null);
-      }, 900);
-    } else {
-      setCustomerError(res.message);
+      }, 800);
+    } catch (err: any) {
+      setCustomerError(err?.message || 'Kayıt sırasında bir hata meydana geldi.');
     }
   };
 
@@ -149,22 +174,26 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
-    const res = registerCourier({
-      name: courierName,
-      phone: courierPhone,
-      email: courierEmail,
-      vehicle: courierVehicle,
-      password: courierPassword,
-    });
+    try {
+      registerUser({
+        name: courierName.trim(),
+        phone: courierPhone.trim(),
+        email: courierEmail.trim().toLowerCase(),
+        vehicleType: courierVehicle,
+        password: courierPassword.trim(),
+        role: 'courier',
+        district: 'Muratpaşa',
+        isOnline: true,
+      });
 
-    if (res.success) {
-      setCourierSuccess('Kurye kaydınız tamamlandı ve havuz erişiminiz açıldı!');
+      setCourierSuccess('Kurye kaydınız tamamlandı ve talep havuzuna yönlendiriliyorsunuz!');
       setTimeout(() => {
+        setCurrentView('courier');
         closeAuthModal();
         setCourierSuccess(null);
-      }, 900);
-    } else {
-      setCourierError(res.message);
+      }, 800);
+    } catch (err: any) {
+      setCourierError(err?.message || 'Kayıt sırasında bir hata meydana geldi.');
     }
   };
 
@@ -176,11 +205,19 @@ export const AuthModal: React.FC = () => {
         <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-900/50">
-              {isCourierFlow ? <Bike className="w-5 h-5" /> : <User className="w-5 h-5" />}
+              {isAdminFlow ? (
+                <ShieldCheck className="w-5 h-5" />
+              ) : isCourierFlow ? (
+                <Bike className="w-5 h-5" />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white">
-                {isCourierFlow
+                {isAdminFlow
+                  ? 'Yönetici Girişi'
+                  : isCourierFlow
                   ? isRegister
                     ? 'Yeni Kurye Kayıt & Başvuru'
                     : 'Kurye Girişi'
@@ -189,7 +226,11 @@ export const AuthModal: React.FC = () => {
                   : 'Müşteri Girişi'}
               </h3>
               <p className="text-xs text-emerald-300/80">
-                {isCourierFlow ? 'Antalya Kurye Kazanç Havuzu' : 'Antalya Şehir İçi Paket Gönderimi'}
+                {isAdminFlow
+                  ? 'Sistem ve Operasyon Yönetimi'
+                  : isCourierFlow
+                  ? 'Antalya Kurye Kazanç Havuzu'
+                  : 'Antalya Şehir İçi Paket Gönderimi'}
               </p>
             </div>
           </div>
@@ -211,39 +252,92 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* 2-Tab Navigation for the Current Flow (Giriş Yap vs Kayıt Ol) */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
+        {/* Role Type Selector Tabs */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-[11px] font-bold">
           <button
             type="button"
-            onClick={() => setAuthModalTab(isCourierFlow ? 'courier_login' : 'login')}
-            className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              !isRegister
+            onClick={() => {
+              setLoginError(null);
+              setAuthModalTab('login');
+            }}
+            className={`py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              !isCourierFlow && !isAdminFlow
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Giriş Yap</span>
+            <User className="w-3.5 h-3.5" />
+            <span>Müşteri</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setAuthModalTab(isCourierFlow ? 'courier_register' : 'register')}
-            className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              isRegister
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+            onClick={() => {
+              setLoginError(null);
+              setAuthModalTab('courier_login');
+            }}
+            className={`py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              isCourierFlow
+                ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Kayıt Ol</span>
+            <Bike className="w-3.5 h-3.5" />
+            <span>Kurye</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLoginError(null);
+              setAuthModalTab('admin_login');
+            }}
+            className={`py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              isAdminFlow
+                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Yönetici</span>
           </button>
         </div>
+
+        {/* 2-Tab Navigation for the Current Flow (Giriş Yap vs Kayıt Ol) */}
+        {!isAdminFlow && (
+          <div className="grid grid-cols-2 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setAuthModalTab(isCourierFlow ? 'courier_login' : 'login')}
+              className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                !isRegister
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-emerald-300/80 hover:text-white'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Giriş Yap</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAuthModalTab(isCourierFlow ? 'courier_register' : 'register')}
+              className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                isRegister
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-emerald-300/80 hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Kayıt Ol</span>
+            </button>
+          </div>
+        )}
 
         {/* =================================================================== */}
         {/* VIEW A: CUSTOMER LOGIN */}
         {/* =================================================================== */}
-        {!isCourierFlow && !isRegister && (
+        {!isCourierFlow && !isAdminFlow && !isRegister && (
           <form onSubmit={handleLoginSubmit} className="space-y-3.5">
             {loginError && (
               <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2">
@@ -268,7 +362,7 @@ export const AuthModal: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="ornek@email.com veya 05XX XXX XX XX"
+                  placeholder="deniz@antalya.com veya 0533 123 45 67"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
@@ -282,7 +376,7 @@ export const AuthModal: React.FC = () => {
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Şifreniz (Örn: 123)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
@@ -297,6 +391,18 @@ export const AuthModal: React.FC = () => {
               <LogIn className="w-4 h-4" />
               <span>Müşteri Olarak Giriş Yap</span>
             </button>
+
+            {/* Quick Demo Customer Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('user-customer-sample-1', 'customer')}
+                className="w-full py-2 bg-[#041a14] hover:bg-[#06291f] border border-emerald-600/40 text-emerald-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>⚡ Hızlı Giriş: Deniz Akdeniz (Şifre: 123)</span>
+              </button>
+            </div>
 
             <div className="pt-2 border-t border-emerald-900/60 text-center">
               <p className="text-xs text-emerald-300/80 mb-2">
@@ -318,7 +424,7 @@ export const AuthModal: React.FC = () => {
         {/* =================================================================== */}
         {/* VIEW B: CUSTOMER REGISTER */}
         {/* =================================================================== */}
-        {!isCourierFlow && isRegister && (
+        {!isCourierFlow && !isAdminFlow && isRegister && (
           <form onSubmit={handleCustomerRegisterSubmit} className="space-y-2.5">
             {customerError && (
               <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2">
@@ -489,14 +595,14 @@ export const AuthModal: React.FC = () => {
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-emerald-200 block">
-                Kurye E-Posta veya Telefon Numarası
+                Kurye E-Posta, İsim veya Telefon Numarası
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="text"
                   required
-                  placeholder="ahmet@antalyakurye.com veya 05XX XXX XX XX"
+                  placeholder="ahmet@antalyakurye.com veya 0544 111 22 33"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
@@ -510,7 +616,7 @@ export const AuthModal: React.FC = () => {
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Şifreniz (Varsayılan: 123)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
@@ -520,11 +626,32 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
             >
-              <LogIn className="w-4 h-4" />
+              <Bike className="w-4 h-4" />
               <span>Kurye Olarak Giriş Yap</span>
             </button>
+
+            {/* Quick Demo Courier Buttons */}
+            <div className="space-y-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('user-courier-01', 'courier')}
+                className="w-full py-2 bg-[#1a1404] hover:bg-[#292006] border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>⚡ Hızlı Giriş: Ahmet Yılmaz (Kurye - Şifre: 123)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('user-courier-02', 'courier')}
+                className="w-full py-2 bg-[#1a1404] hover:bg-[#292006] border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>⚡ Hızlı Giriş: Mustafa Demir (Kurye - Şifre: 123)</span>
+              </button>
+            </div>
 
             <div className="pt-2 border-t border-emerald-900/60 text-center">
               <p className="text-xs text-emerald-300/80 mb-2">
@@ -667,7 +794,7 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
             >
               <Bike className="w-4 h-4" />
               <span>Kurye Kaydını Tamamla & Havuzuna Katıl</span>
@@ -678,9 +805,81 @@ export const AuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAuthModalTab('courier_login')}
-                className="text-xs text-emerald-400 hover:text-white underline font-bold cursor-pointer"
+                className="text-xs text-amber-400 hover:text-white underline font-bold cursor-pointer"
               >
                 Kurye Girişi Yap
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* =================================================================== */}
+        {/* VIEW E: ADMIN LOGIN */}
+        {/* =================================================================== */}
+        {isAdminFlow && (
+          <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+            {loginError && (
+              <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            {loginSuccess && (
+              <div className="p-2.5 bg-emerald-950/90 border border-emerald-500/60 rounded-xl text-xs text-emerald-200 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{loginSuccess}</span>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-emerald-200 block">
+                Yönetici E-Posta veya Kullanıcı Adı
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
+                <input
+                  type="text"
+                  required
+                  placeholder="kuryeantalyam@gmail.com veya admin"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-emerald-200 block">Yönetici Şifresi</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
+                <input
+                  type="password"
+                  placeholder="admin"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-teal-600/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Yönetici Olarak Giriş Yap</span>
+            </button>
+
+            {/* Quick Demo Admin Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('user-admin-01', 'admin')}
+                className="w-full py-2 bg-[#041a14] hover:bg-[#06291f] border border-teal-500/40 text-teal-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>⚡ Hızlı Yönetici Girişi (Şifre: admin)</span>
               </button>
             </div>
           </form>

@@ -26,6 +26,9 @@ interface DeliveryContextType {
   switchUser: (userId: string) => void;
   setCurrentUser: (user: UserAccount) => void;
   loginUser: (identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin') => { success: boolean; user?: UserAccount; message?: string };
+  login: (identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin') => { success: boolean; user?: UserAccount; message?: string };
+  registerCustomer: (data: { name: string; phone: string; email: string; district?: DistrictName; company?: string; password?: string }) => { success: boolean; message?: string; user?: UserAccount };
+  registerCourier: (data: { name: string; phone: string; email: string; vehicle?: string; password?: string }) => { success: boolean; message?: string; user?: UserAccount };
   switchRole: (role: UserRole) => void;
   registerUser: (userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>) => UserAccount;
   updateCurrentUserProfile: (data: Partial<UserAccount>) => void;
@@ -706,6 +709,45 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newUser;
   }, []);
 
+  const login = useCallback((identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin') => {
+    return loginUser(identifier, passwordInput, expectedRole);
+  }, [loginUser]);
+
+  const registerCustomer = useCallback((data: { name: string; phone: string; email: string; district?: DistrictName; company?: string; password?: string }) => {
+    try {
+      const user = registerUser({
+        name: data.name.trim(),
+        phone: data.phone.trim(),
+        email: data.email.trim().toLowerCase(),
+        district: data.district || 'Muratpaşa',
+        companyName: data.company?.trim(),
+        password: data.password?.trim() || '123456',
+        role: 'customer',
+      });
+      return { success: true, user };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Kayıt sırasında bir hata oluştu.' };
+    }
+  }, [registerUser]);
+
+  const registerCourier = useCallback((data: { name: string; phone: string; email: string; vehicle?: string; password?: string }) => {
+    try {
+      const user = registerUser({
+        name: data.name.trim(),
+        phone: data.phone.trim(),
+        email: data.email.trim().toLowerCase(),
+        vehicleType: data.vehicle?.trim() || 'Motosiklet',
+        password: data.password?.trim() || '123',
+        role: 'courier',
+        district: 'Muratpaşa',
+        isOnline: true,
+      });
+      return { success: true, user };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Kayıt sırasında bir hata oluştu.' };
+    }
+  }, [registerUser]);
+
   // Update current user profile
   const updateCurrentUserProfile = useCallback((data: Partial<UserAccount>) => {
     setUsers((prev) =>
@@ -1360,6 +1402,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         switchUser,
         setCurrentUser,
         loginUser,
+        login,
+        registerCustomer,
+        registerCourier,
         switchRole,
         registerUser,
         updateCurrentUserProfile,
