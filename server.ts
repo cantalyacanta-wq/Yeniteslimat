@@ -278,11 +278,7 @@ function getRegisteredCourierEmails(): string[] {
   return Array.from(emails);
 }
 
-// Persistent Pooled Transporter Cache
-let cachedTransporter: nodemailer.Transporter | null = null;
-let lastSmtpConfigKey = '';
-
-function getMailTransporter() {
+function createMailTransporter() {
   const cfg = dbState.smtpConfig;
   const envHost = process.env.SMTP_HOST;
   const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
@@ -299,32 +295,46 @@ function getMailTransporter() {
   const port = isGmail ? 465 : (Number(cfg?.port) || 587);
   const secure = port === 465;
 
-  const configKey = `${user}:${pass}:${host}:${port}:${secure}:${isGmail}`;
-
   if (user && pass && cfg?.enabled !== false) {
-    if (!cachedTransporter || lastSmtpConfigKey !== configKey) {
-      lastSmtpConfigKey = configKey;
-      console.log(`[SMTP] Initializing mail transport for ${user} (service: ${isGmail ? 'gmail' : host}:${port})`);
-      
-      if (isGmail) {
-        cachedTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user, pass },
-        });
-      } else {
-        cachedTransporter = nodemailer.createTransport({
-          host,
-          port,
-          secure,
-          auth: { user, pass },
-          tls: { rejectUnauthorized: false },
-        });
-      }
-    }
-    return { transporter: cachedTransporter, fromAddress, isConfigured: true, user, host };
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      pool: false,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: { rejectUnauthorized: false },
+    } as nodemailer.TransportOptions);
+    return { transporter, fromAddress, isConfigured: true, user, host };
   }
 
   return { transporter: null, fromAddress, isConfigured: false, user, host };
+}
+
+async function sendSingleEmailWithRetry(
+  mailOptions: nodemailer.SendMailOptions,
+  maxRetries = 2
+): Promise<nodemailer.SentMessageInfo> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const { transporter } = createMailTransporter();
+    if (!transporter) {
+      throw new Error('SMTP yapılandırması eksik.');
+    }
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      return info;
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`[EMAIL RETRY] Attempt ${attempt} failed for ${mailOptions.to}: ${err.message}`);
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: string) {
@@ -489,7 +499,7 @@ ${poolUrl}
 </html>
     `;
 
-    const mailDetails = getMailTransporter();
+    const mailDetails = createMailTransporter();
     let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
     let errorMessage: string | undefined;
     let isRealDelivery = false;
@@ -497,10 +507,10 @@ ${poolUrl}
     const failedRecipients: { email: string; error: string }[] = [];
 
     if (mailDetails.transporter && mailDetails.isConfigured) {
-      // Send to all couriers in parallel using Promise.allSettled
+      // Send to all couriers in parallel with individual auto-retry
       const sendResults = await Promise.allSettled(
         recipients.map(async (targetEmail) => {
-          await mailDetails.transporter!.sendMail({
+          await sendSingleEmailWithRetry({
             from: mailDetails.fromAddress,
             to: targetEmail,
             replyTo: 'kuryeantalyam@gmail.com',
@@ -645,6 +655,24 @@ app.post('/api/requests', async (req, res) => {
   } catch (err: any) {
     console.error('Error creating request:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası' });
+  }
+});
+
+// Resend order notification email endpoint
+app.post('/api/requests/:id/resend-email', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetEmail = req.body?.targetEmail;
+    const order = dbState.requests.find((r) => r.id === id || r.trackingCode === id);
+    if (!order) {
+      res.status(404).json({ error: 'Sipariş bulunamadı.' });
+      return;
+    }
+
+    const emailResult = await sendNewOrderEmailToCouriers(order, targetEmail);
+    res.json({ success: true, orderId: order.id, trackingCode: order.trackingCode, emailResult });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

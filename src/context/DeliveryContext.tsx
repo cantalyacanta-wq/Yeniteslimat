@@ -74,6 +74,7 @@ interface DeliveryContextType {
   notificationPermission: NotificationPermission | 'unsupported';
   requestNotifications: () => Promise<boolean>;
   syncWithServer: () => Promise<void>;
+  resendOrderEmail: (orderIdOrCode: string) => Promise<{ success: boolean; message?: string }>;
   
   // Filtered lists
   poolRequests: DeliveryRequest[];
@@ -299,11 +300,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(data.requests)) {
           processIncomingRequests(data.requests);
           setRequests((prev) => {
-            if (JSON.stringify(prev) !== JSON.stringify(data.requests)) {
+            const serverIds = new Set(data.requests.map((r: any) => r.id));
+            const serverCodes = new Set(data.requests.map((r: any) => r.trackingCode));
+            
+            // Retain any pending local requests created in current session that are not yet in server list
+            const unsyncedLocals = prev.filter((r) => !serverIds.has(r.id) && !serverCodes.has(r.trackingCode));
+            
+            // Auto-forward unsynced requests to server so emails are triggered without fail
+            if (unsyncedLocals.length > 0) {
+              unsyncedLocals.forEach((uReq) => {
+                fetch('/api/requests', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(uReq),
+                }).catch(() => {});
+              });
+            }
+
+            const merged = [...data.requests];
+            unsyncedLocals.forEach((u) => {
+              if (!merged.some((m) => m.id === u.id || m.trackingCode === u.trackingCode)) {
+                merged.unshift(u);
+              }
+            });
+
+            if (JSON.stringify(prev) !== JSON.stringify(merged)) {
               try {
-                localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(data.requests));
+                localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(merged));
               } catch {}
-              return data.requests;
+              return merged;
             }
             return prev;
           });
@@ -901,17 +926,47 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 4. Send to Cloud Firestore for Immediate Cross-Device Real-Time Sync
       saveRequestToFirestore(newRequest).catch((e) => console.warn('Firestore request save error:', e));
 
-      // 5. Send to Server Backend for Cross-Device Sync
-      fetch('/api/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRequest),
-      }).catch((e) => console.warn('Failed to push new order to server:', e));
+      // 5. Send to Server Backend for Cross-Device Sync with Retry
+      const pushToServer = async (reqPayload: DeliveryRequest, attempt = 1) => {
+        try {
+          const res = await fetch('/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reqPayload),
+          });
+          if (!res.ok && attempt < 3) {
+            setTimeout(() => pushToServer(reqPayload, attempt + 1), 1000 * attempt);
+          }
+        } catch (err) {
+          if (attempt < 3) {
+            setTimeout(() => pushToServer(reqPayload, attempt + 1), 1000 * attempt);
+          }
+        }
+      };
+      pushToServer(newRequest);
 
       return newRequest;
     },
     [currentUser]
   );
+
+  // Manual or UI trigger to resend order email notification
+  const resendOrderEmail = useCallback(async (orderIdOrCode: string) => {
+    try {
+      const res = await fetch(`/api/requests/${encodeURIComponent(orderIdOrCode)}/resend-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success) {
+        return { success: true, message: 'E-posta bildirimi kuryeantalyam@gmail.com ve kuryelere başarıyla iletildi.' };
+      } else {
+        return { success: false, message: data.error || 'E-posta gönderilemedi.' };
+      }
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Bağlantı hatası' };
+    }
+  }, []);
 
   // Courier accepts order
   const acceptRequest = useCallback(
@@ -1344,6 +1399,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         notificationPermission,
         requestNotifications,
         syncWithServer,
+        resendOrderEmail,
         poolRequests,
         activeCourierDeliveries,
         myCustomerOrders,
