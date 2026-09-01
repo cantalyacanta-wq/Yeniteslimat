@@ -141,14 +141,6 @@ const AppFooter: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
-          <button
-            type="button"
-            onClick={() => setCurrentView('admin')}
-            className="flex items-center gap-1 text-emerald-400 hover:text-emerald-200 underline font-bold cursor-pointer"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Yönetici Paneli</span>
-          </button>
           <span className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>30-45 Dk Moto Kurye</span>

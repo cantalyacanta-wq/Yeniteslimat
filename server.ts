@@ -619,7 +619,7 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
 
   const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
-  const poolUrl = 'https://www.antalyateslimat.com/#pakettalebi';
+  const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
 
   const textContent = `
 YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})

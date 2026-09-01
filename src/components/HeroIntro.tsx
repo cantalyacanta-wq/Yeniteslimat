@@ -28,7 +28,8 @@ import {
   Sparkles,
   Search,
   History,
-  FileText
+  FileText,
+  LogOut
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
@@ -45,6 +46,7 @@ export const HeroIntro: React.FC = () => {
     acceptRequest,
     openAuthModal,
     rateDelivery,
+    logout,
   } = useDelivery();
 
   const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
@@ -153,15 +155,28 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* Primary "+ Yeni Paket" Button */}
-          <button
-            type="button"
-            onClick={() => setCurrentView('customer')}
-            className="px-5 py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Yeni Paket</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            {isUserLoggedIn && (
+              <button
+                type="button"
+                onClick={logout}
+                className="px-4 py-3 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                title="Oturumu Kapat"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span className="hidden sm:inline">Oturumu Kapat</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setCurrentView('customer')}
+              className="px-5 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Yeni Paket</span>
+            </button>
+          </div>
         </div>
 
         {/* Multi-Order Switcher Tabs (if more than 1 active order) */}
@@ -549,15 +564,28 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* New Package Button */}
-          <button
-            type="button"
-            onClick={() => setCurrentView('customer')}
-            className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Yeni Paket</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 self-end sm:self-center">
+            {isUserLoggedIn && (
+              <button
+                type="button"
+                onClick={logout}
+                className="px-4 py-3.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md"
+                title="Müşteri Oturumunu Kapat"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>Oturumu Kapat</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setCurrentView('customer')}
+              className="px-6 py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-sm rounded-2xl transition shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shrink-0"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Yeni Paket</span>
+            </button>
+          </div>
         </div>
 
         {/* Past Deliveries List Section (Eski Teslimatlar) */}
