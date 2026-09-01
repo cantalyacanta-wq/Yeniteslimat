@@ -282,38 +282,38 @@ export const CustomerRequestForm: React.FC = () => {
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6">
       
-      {/* Top Orange/Amber Header Bar */}
-      <div className="bg-gradient-to-r from-[#2a1705] via-[#3d2008] to-[#241203] rounded-3xl border border-amber-700/60 p-5 sm:p-6 shadow-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Emerald Header Bar */}
+      <div className="bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] rounded-3xl border border-emerald-700/60 p-5 sm:p-6 shadow-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-2xl bg-amber-500 text-white border border-amber-400/50 flex items-center justify-center text-base font-bold shrink-0 shadow-md">
+            <span className="w-9 h-9 rounded-2xl bg-emerald-500 text-white border border-emerald-400/50 flex items-center justify-center text-base font-bold shrink-0 shadow-md">
               <Package className="w-5 h-5" />
             </span>
             <span>Antalya İçi Kurye Çağır</span>
           </h1>
-          <p className="text-xs sm:text-sm text-amber-200/80 mt-1">
+          <p className="text-xs sm:text-sm text-emerald-200/80 mt-1">
             Alış ve teslimat bilgilerini girin; talebiniz anında moto kurye havuzuna düşsün.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-amber-300 bg-[#1f0e03] px-3.5 py-2 rounded-2xl border border-amber-700/50 self-start sm:self-auto">
-          <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="flex items-center gap-2 text-xs text-emerald-300 bg-[#011a14] px-3.5 py-2 rounded-2xl border border-emerald-700/50 self-start sm:self-auto">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>Antalya İçi 30-45 Dk Jet Kurye</span>
         </div>
       </div>
 
       {/* Main Form Layout */}
-      <div className="w-full max-w-4xl mx-auto bg-gradient-to-br from-[#241304] via-[#331b05] to-[#1c0d02] rounded-3xl border border-amber-700/60 p-5 sm:p-8 shadow-2xl text-white">
+      <div className="w-full max-w-4xl mx-auto bg-gradient-to-br from-[#0c1f19] via-[#091a14] to-[#040e0b] rounded-3xl border border-emerald-700/60 p-5 sm:p-8 shadow-2xl text-white">
         <form onSubmit={handleSubmit} className="space-y-7">
           
           {/* Step 1: Pickup Location (Gönderen) */}
-          <div className="space-y-4 bg-[#180b02]/90 p-4 sm:p-5 rounded-2xl border border-amber-800/50">
-            <div className="flex items-center justify-between border-b border-amber-800/60 pb-3 flex-wrap gap-2">
+          <div className="space-y-4 bg-[#05110d]/90 p-4 sm:p-5 rounded-2xl border border-emerald-800/50">
+            <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2.5 text-white font-bold text-sm">
-                <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
+                <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
                   1
                 </span>
-                <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Nereden Alınacak? (Gönderici Bilgileri)</span>
               </div>
 
@@ -323,19 +323,19 @@ export const CustomerRequestForm: React.FC = () => {
                 onClick={() => setIsSenderLocked(!isSenderLocked)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
                   isSenderLocked
-                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-xs'
-                    : 'bg-amber-950/40 border-amber-800/60 text-amber-400/80 hover:text-amber-200'
+                    ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-xs'
+                    : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-400/80 hover:text-emerald-200'
                 }`}
                 title="Sonraki siparişleriniz için bu adresi kilitler ve otomatik doldurur"
               >
                 {isSenderLocked ? (
                   <>
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Adres Kilitli (Kayıtlı)</span>
                   </>
                 ) : (
                   <>
-                    <Unlock className="w-3.5 h-3.5 text-amber-400/70" />
+                    <Unlock className="w-3.5 h-3.5 text-emerald-400/70" />
                     <span>Adresi Kilitle / Hatırla</span>
                   </>
                 )}
@@ -344,64 +344,64 @@ export const CustomerRequestForm: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Alış İlçesi *</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Alış İlçesi *</label>
                 <select
                   value={senderDistrict}
                   onChange={(e) => setSenderDistrict(e.target.value as DistrictName)}
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
                 >
                   {Object.keys(ANTALYA_DISTRICTS).map((d) => (
-                    <option key={d} value={d} className="bg-[#1f0e03] text-white">{d}</option>
+                    <option key={d} value={d} className="bg-[#0c1f19] text-white">{d}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Gönderen Adı Soyadı *</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Gönderen Adı Soyadı *</label>
                 <input
                   type="text"
                   required
                   value={senderName}
                   onChange={(e) => setSenderName(e.target.value)}
                   placeholder="Adınız Soyadınız"
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
               <input
                 type="text"
                 required
                 value={senderAddress}
                 onChange={(e) => setSenderAddress(e.target.value)}
                 placeholder="Örn: İsmet Gökşen Cad. No: 48 Daire: 2"
-                className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium"
+                className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-1.5">İletişim Telefonu *</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">İletişim Telefonu *</label>
               <input
                 type="tel"
                 required
                 value={senderPhone}
                 onChange={(e) => setSenderPhone(e.target.value)}
                 placeholder="0532 XXX XX XX"
-                className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium font-mono"
+                className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium font-mono"
               />
             </div>
           </div>
 
           {/* Step 2: Delivery Location (Alıcı) */}
-          <div className="space-y-4 bg-[#180b02]/90 p-4 sm:p-5 rounded-2xl border border-amber-800/50">
-            <div className="flex items-center justify-between border-b border-amber-800/60 pb-3 flex-wrap gap-2">
+          <div className="space-y-4 bg-[#05110d]/90 p-4 sm:p-5 rounded-2xl border border-emerald-800/50">
+            <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2.5 text-white font-bold text-sm">
-                <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
+                <span className="w-6 h-6 rounded-full bg-teal-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
                   2
                 </span>
-                <Navigation className="w-4 h-4 text-orange-400 shrink-0" />
+                <Navigation className="w-4 h-4 text-teal-400 shrink-0" />
                 <span>Nereye Teslim Edilecek? (Alıcı Bilgileri)</span>
               </div>
 
@@ -411,19 +411,19 @@ export const CustomerRequestForm: React.FC = () => {
                 onClick={() => setIsReceiverLocked(!isReceiverLocked)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
                   isReceiverLocked
-                    ? 'bg-orange-500/20 border-orange-400 text-orange-300 shadow-xs'
-                    : 'bg-amber-950/40 border-amber-800/60 text-amber-400/80 hover:text-amber-200'
+                    ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-xs'
+                    : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-400/80 hover:text-emerald-200'
                 }`}
                 title="Sonraki siparişleriniz için bu adresi kilitler ve hatırlar"
               >
                 {isReceiverLocked ? (
                   <>
-                    <Lock className="w-3.5 h-3.5 text-orange-400" />
+                    <Lock className="w-3.5 h-3.5 text-teal-400" />
                     <span>Adres Kilitli (Kayıtlı)</span>
                   </>
                 ) : (
                   <>
-                    <Unlock className="w-3.5 h-3.5 text-amber-400/70" />
+                    <Unlock className="w-3.5 h-3.5 text-emerald-400/70" />
                     <span>Adresi Kilitle / Hatırla</span>
                   </>
                 )}
@@ -432,110 +432,110 @@ export const CustomerRequestForm: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Teslimat İlçesi *</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Teslimat İlçesi *</label>
                 <select
                   value={receiverDistrict}
                   onChange={(e) => setReceiverDistrict(e.target.value as DistrictName)}
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
                 >
                   {Object.keys(ANTALYA_DISTRICTS).map((d) => (
-                    <option key={d} value={d} className="bg-[#1f0e03] text-white">{d}</option>
+                    <option key={d} value={d} className="bg-[#0c1f19] text-white">{d}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Alıcı Adı Soyadı *</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Alıcı Adı Soyadı *</label>
                 <input
                   type="text"
                   required
                   value={receiverName}
                   onChange={(e) => setReceiverName(e.target.value)}
                   placeholder="Alıcı Adı Soyadı"
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
               <input
                 type="text"
                 required
                 value={receiverAddress}
                 onChange={(e) => setReceiverAddress(e.target.value)}
                 placeholder="Örn: Atatürk Bulvarı No: 120 Daire: 4"
-                className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium"
+                className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-1.5">Alıcı Telefonu *</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Alıcı Telefonu *</label>
               <input
                 type="tel"
                 required
                 value={receiverPhone}
                 onChange={(e) => setReceiverPhone(e.target.value)}
                 placeholder="05XX XXX XX XX"
-                className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition font-medium font-mono"
+                className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium font-mono"
               />
             </div>
           </div>
 
           {/* Step 3: Package & Payment Details */}
-          <div className="space-y-4 bg-[#180b02]/90 p-4 sm:p-5 rounded-2xl border border-amber-800/50">
-            <div className="flex items-center gap-2.5 text-white font-bold text-sm border-b border-amber-800/60 pb-3">
-              <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
+          <div className="space-y-4 bg-[#05110d]/90 p-4 sm:p-5 rounded-2xl border border-emerald-800/50">
+            <div className="flex items-center gap-2.5 text-white font-bold text-sm border-b border-emerald-800/60 pb-3">
+              <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-extrabold shrink-0 shadow-xs">
                 3
               </span>
-              <Package className="w-4 h-4 text-amber-400 shrink-0" />
+              <Package className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Paket Türü & Ödeme Şekli</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Paket Türü</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Paket Türü</label>
                 <select
                   value={packageType}
                   onChange={(e) => setPackageType(e.target.value as PackageType)}
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-amber-400 outline-none"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 outline-none"
                 >
-                  <option value="food" className="bg-[#1f0e03] text-white">🍔 Yemek & Restoran Siparişi (100 ₺)</option>
-                  <option value="petshop" className="bg-[#1f0e03] text-white">🐾 Petshop Ürünleri (150 ₺)</option>
-                  <option value="market" className="bg-[#1f0e03] text-white">🛒 Market / Bakkal Siparişi (150 ₺)</option>
-                  <option value="flower" className="bg-[#1f0e03] text-white">💐 Çiçek & Hediye (150 ₺)</option>
-                  <option value="other" className="bg-[#1f0e03] text-white">📦 Diğer (Evrak, Koli, Eşya) (150 ₺)</option>
+                  <option value="food" className="bg-[#0c1f19] text-white">🍔 Yemek & Restoran Siparişi (100 ₺)</option>
+                  <option value="petshop" className="bg-[#0c1f19] text-white">🐾 Petshop Ürünleri (150 ₺)</option>
+                  <option value="market" className="bg-[#0c1f19] text-white">🛒 Market / Bakkal Siparişi (150 ₺)</option>
+                  <option value="flower" className="bg-[#0c1f19] text-white">💐 Çiçek & Hediye (150 ₺)</option>
+                  <option value="other" className="bg-[#0c1f19] text-white">📦 Diğer (Evrak, Koli, Eşya) (150 ₺)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-amber-200 mb-1.5">Paket İçerik Açıklaması</label>
+                <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Paket İçerik Açıklaması</label>
                 <input
                   type="text"
                   value={packageName}
                   onChange={(e) => setPackageName(e.target.value)}
                   placeholder="Örn: 2 porsiyon yemek, evrak dosyası, pet mama vb."
-                  className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 outline-none"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 outline-none"
                 />
               </div>
             </div>
 
             {/* Payment Methods */}
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-2">Ödeme Yöntemi</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-2">Ödeme Yöntemi</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('gonderici_odemeli')}
                   className={`p-3.5 rounded-2xl border text-xs font-bold text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                     paymentMethod === 'gonderici_odemeli'
-                      ? 'border-amber-400 bg-amber-900/70 text-white ring-2 ring-amber-400/50 shadow-md'
-                      : 'border-amber-800/60 bg-[#120701] text-amber-200 hover:bg-amber-950/60'
+                      ? 'border-emerald-400 bg-emerald-900/70 text-white ring-2 ring-emerald-400/50 shadow-md'
+                      : 'border-emerald-800/60 bg-[#06120d] text-emerald-200 hover:bg-emerald-950/60'
                   }`}
                 >
                   <span className="text-lg">📤</span>
                   <span className="font-extrabold text-sm">Gönderici Ödemeli</span>
-                  <span className="text-[11px] font-normal text-amber-200/80">Ücret çıkış noktasında ödenir</span>
+                  <span className="text-[11px] font-normal text-emerald-200/80">Ücret çıkış noktasında ödenir</span>
                 </button>
 
                 <button
@@ -543,25 +543,25 @@ export const CustomerRequestForm: React.FC = () => {
                   onClick={() => setPaymentMethod('alici_odemeli')}
                   className={`p-3.5 rounded-2xl border text-xs font-bold text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                     paymentMethod === 'alici_odemeli'
-                      ? 'border-amber-400 bg-amber-900/70 text-white ring-2 ring-amber-400/50 shadow-md'
-                      : 'border-amber-800/60 bg-[#120701] text-amber-200 hover:bg-amber-950/60'
+                      ? 'border-emerald-400 bg-emerald-900/70 text-white ring-2 ring-emerald-400/50 shadow-md'
+                      : 'border-emerald-800/60 bg-[#06120d] text-emerald-200 hover:bg-emerald-950/60'
                   }`}
                 >
                   <span className="text-lg">📥</span>
                   <span className="font-extrabold text-sm">Alıcı Ödemeli</span>
-                  <span className="text-[11px] font-normal text-amber-200/80">Ücret teslim noktasında ödenir</span>
+                  <span className="text-[11px] font-normal text-emerald-200/80">Ücret teslim noktasında ödenir</span>
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-amber-200 mb-1.5">Kuryeye Not (Opsiyonel)</label>
+              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Kuryeye Not (Opsiyonel)</label>
               <input
                 type="text"
                 value={noteForCourier}
                 onChange={(e) => setNoteForCourier(e.target.value)}
                 placeholder="Örn: Zile basıp güvenliğe bırakabilirsiniz."
-                className="w-full bg-[#120701] border border-amber-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-amber-700/60 focus:border-amber-400 outline-none"
+                className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 outline-none"
               />
             </div>
           </div>
@@ -575,30 +575,30 @@ export const CustomerRequestForm: React.FC = () => {
           )}
 
           {/* Summary & Protected Action Bar */}
-          <div className="bg-[#150901] border border-amber-600/60 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-amber-800/60 pb-3 flex-wrap gap-2">
-              <div className="text-xs text-amber-300">
+          <div className="bg-[#04140f] border border-emerald-600/60 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3 flex-wrap gap-2">
+              <div className="text-xs text-emerald-300">
                 <span className="font-extrabold text-white text-sm">{senderDistrict}</span> ➔ <span className="font-extrabold text-white text-sm">{receiverDistrict}</span>
               </div>
               <div className="text-right">
-                <span className="text-[11px] text-amber-400/80 block font-medium">Tahmini Mesafe & Süre</span>
-                <span className="text-xs font-bold text-amber-200">{estimate.distanceKm} km • ~{estimate.durationMins} dk</span>
+                <span className="text-[11px] text-emerald-400/80 block font-medium">Tahmini Mesafe & Süre</span>
+                <span className="text-xs font-bold text-emerald-200">{estimate.distanceKm} km • ~{estimate.durationMins} dk</span>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1">
               <div>
-                <span className="text-xs text-amber-300/80 block font-medium">
+                <span className="text-xs text-emerald-300/80 block font-medium">
                   Kurye Hizmet Bedeli ({packageType === 'food' ? 'Yemek Menüsü' : 'Standart Paket'})
                 </span>
-                <span className="text-3xl font-black text-amber-400">{estimate.price} ₺</span>
+                <span className="text-3xl font-black text-emerald-400">{estimate.price} ₺</span>
               </div>
 
               {/* Protected Submit Button (Disabled while submitting to avoid multiple duplicate requests) */}
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-8 py-4 bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-extrabold text-base rounded-2xl transition-all shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2.5 cursor-pointer min-w-[220px] ${
+                className={`px-8 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition-all shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer min-w-[220px] ${
                   isSubmitting ? 'opacity-60 cursor-not-allowed scale-98' : 'active:scale-98'
                 }`}
               >

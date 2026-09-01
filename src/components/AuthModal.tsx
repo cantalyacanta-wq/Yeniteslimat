@@ -170,12 +170,12 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-gradient-to-br from-[#241304] via-[#331b05] to-[#1c0d02] rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-amber-700/60 space-y-4 text-white my-auto max-h-[92vh] overflow-y-auto">
+      <div className="bg-gradient-to-br from-[#0c1f19] via-[#091a14] to-[#040e0b] rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-emerald-700/60 space-y-4 text-white my-auto max-h-[92vh] overflow-y-auto">
         
         {/* Header with Close */}
-        <div className="flex items-center justify-between border-b border-amber-800/60 pb-3">
+        <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md text-white bg-amber-500">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-900/50">
               {isCourierFlow ? <Bike className="w-5 h-5" /> : <User className="w-5 h-5" />}
             </div>
             <div>
@@ -188,7 +188,7 @@ export const AuthModal: React.FC = () => {
                   ? 'Ücretsiz Müşteri Kaydı'
                   : 'Müşteri Girişi'}
               </h3>
-              <p className="text-xs text-amber-200/80">
+              <p className="text-xs text-emerald-300/80">
                 {isCourierFlow ? 'Antalya Kurye Kazanç Havuzu' : 'Antalya Şehir İçi Paket Gönderimi'}
               </p>
             </div>
@@ -197,7 +197,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="button"
             onClick={closeAuthModal}
-            className="w-7 h-7 rounded-full bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/60 flex items-center justify-center transition cursor-pointer"
+            className="w-7 h-7 rounded-full bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -205,21 +205,21 @@ export const AuthModal: React.FC = () => {
 
         {/* Notice Alert if present */}
         {authModalNotice && (
-          <div className="bg-amber-950/80 border border-amber-500/60 rounded-xl p-2.5 text-xs text-amber-200 flex items-start gap-2 shadow-md">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="bg-emerald-950/80 border border-emerald-500/60 rounded-xl p-2.5 text-xs text-emerald-200 flex items-start gap-2 shadow-md">
+            <AlertCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div className="leading-relaxed font-medium">{authModalNotice}</div>
           </div>
         )}
 
         {/* 2-Tab Navigation for the Current Flow (Giriş Yap vs Kayıt Ol) */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-[#140801] rounded-xl border border-amber-800/60 text-xs font-bold">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
           <button
             type="button"
             onClick={() => setAuthModalTab(isCourierFlow ? 'courier_login' : 'login')}
             className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               !isRegister
-                ? 'bg-amber-500 text-white shadow-md'
-                : 'text-amber-300/80 hover:text-white'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
             }`}
           >
             <LogIn className="w-3.5 h-3.5" />
@@ -231,8 +231,8 @@ export const AuthModal: React.FC = () => {
             onClick={() => setAuthModalTab(isCourierFlow ? 'courier_register' : 'register')}
             className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               isRegister
-                ? 'bg-amber-500 text-white shadow-md'
-                : 'text-amber-300/80 hover:text-white'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
@@ -260,54 +260,54 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-amber-200 block">
+              <label className="text-xs font-bold text-emerald-200 block">
                 E-Posta Adresi veya Telefon Numarası
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-amber-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="text"
                   required
                   placeholder="ornek@email.com veya 05XX XXX XX XX"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-amber-200 block">Şifre</label>
+              <label className="text-xs font-bold text-emerald-200 block">Şifre</label>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-3 text-amber-400" />
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
             >
               <LogIn className="w-4 h-4" />
               <span>Müşteri Olarak Giriş Yap</span>
             </button>
 
-            <div className="pt-2 border-t border-amber-900/60 text-center">
-              <p className="text-xs text-amber-200/80 mb-2">
+            <div className="pt-2 border-t border-emerald-900/60 text-center">
+              <p className="text-xs text-emerald-300/80 mb-2">
                 Henüz hesabınız yok mu?
               </p>
               <button
                 type="button"
                 onClick={() => setAuthModalTab('register')}
-                className="w-full py-2 bg-amber-950/70 hover:bg-amber-900 border border-amber-700/60 text-amber-300 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                className="w-full py-2 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
               >
-                <UserPlus className="w-3.5 h-3.5 text-amber-400" />
+                <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Ücretsiz Müşteri Kaydı Oluştur</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -336,31 +336,31 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Ad Soyad *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Ad Soyad *</label>
                 <div className="relative">
-                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="text"
                     required
                     placeholder="Adınız Soyadınız"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Telefon Numarası *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Telefon Numarası *</label>
                 <div className="relative">
-                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="tel"
                     required
                     placeholder="05XX XXX XX XX"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium font-mono"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium font-mono"
                   />
                 </div>
               </div>
@@ -368,31 +368,31 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">E-Posta Adresi *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">E-Posta Adresi *</label>
                 <div className="relative">
-                  <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="email"
                     required
                     placeholder="ornek@email.com"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Bulunduğunuz İlçe</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Bulunduğunuz İlçe</label>
                 <div className="relative">
-                  <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <select
                     value={customerDistrict}
                     onChange={(e) => setCustomerDistrict(e.target.value as DistrictName)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-amber-400 outline-hidden font-medium cursor-pointer"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-emerald-400 outline-hidden font-medium cursor-pointer"
                   >
                     {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((d) => (
-                      <option key={d} value={d} className="bg-[#1f0e03] text-white">
+                      <option key={d} value={d} className="bg-[#0c1f19] text-white">
                         {d}
                       </option>
                     ))}
@@ -402,46 +402,46 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-amber-200 block">Firma / Mağaza Adı (İsteğe Bağlı)</label>
+              <label className="text-[11px] font-bold text-emerald-200 block">Firma / Mağaza Adı (İsteğe Bağlı)</label>
               <div className="relative">
-                <Building2 className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                <Building2 className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                 <input
                   type="text"
                   placeholder="Örn: Eczane, Restoran veya Butik İsmi"
                   value={customerCompany}
                   onChange={(e) => setCustomerCompany(e.target.value)}
-                  className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Şifre Belirleyin *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Belirleyin *</label>
                 <div className="relative">
-                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={customerPassword}
                     onChange={(e) => setCustomerPassword(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Şifre Tekrar *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Tekrar *</label>
                 <div className="relative">
-                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={customerPasswordConfirm}
                     onChange={(e) => setCustomerPasswordConfirm(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
@@ -449,18 +449,18 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
               <span>Kaydı Tamamla & Hemen Kurye Çağır</span>
             </button>
 
-            <div className="pt-2 border-t border-amber-900/60 text-center">
-              <span className="text-xs text-amber-200/80">Zaten müşteri hesabınız var mı? </span>
+            <div className="pt-2 border-t border-emerald-900/60 text-center">
+              <span className="text-xs text-emerald-300/80">Zaten müşteri hesabınız var mı? </span>
               <button
                 type="button"
                 onClick={() => setAuthModalTab('login')}
-                className="text-xs text-amber-400 hover:text-white underline font-bold cursor-pointer"
+                className="text-xs text-emerald-400 hover:text-white underline font-bold cursor-pointer"
               >
                 Giriş Yap
               </button>
@@ -488,54 +488,54 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-amber-200 block">
+              <label className="text-xs font-bold text-emerald-200 block">
                 Kurye E-Posta veya Telefon Numarası
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-amber-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="text"
                   required
                   placeholder="ahmet@antalyakurye.com veya 05XX XXX XX XX"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-amber-200 block">Şifre</label>
+              <label className="text-xs font-bold text-emerald-200 block">Şifre</label>
               <div className="relative">
-                <Lock className="w-4 h-4 absolute left-3 top-3 text-amber-400" />
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-2 active:scale-95"
             >
               <LogIn className="w-4 h-4" />
               <span>Kurye Olarak Giriş Yap</span>
             </button>
 
-            <div className="pt-2 border-t border-amber-900/60 text-center">
-              <p className="text-xs text-amber-200/80 mb-2">
+            <div className="pt-2 border-t border-emerald-900/60 text-center">
+              <p className="text-xs text-emerald-300/80 mb-2">
                 Henüz kurye hesabınız yok mu?
               </p>
               <button
                 type="button"
                 onClick={() => setAuthModalTab('courier_register')}
-                className="w-full py-2 bg-amber-950/70 hover:bg-amber-900 border border-amber-700/60 text-amber-300 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                className="w-full py-2 bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
               >
-                <Bike className="w-3.5 h-3.5 text-amber-400" />
+                <Bike className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Yeni Kurye Kayıt Formu</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -548,8 +548,8 @@ export const AuthModal: React.FC = () => {
         {/* =================================================================== */}
         {isCourierFlow && isRegister && (
           <form onSubmit={handleCourierRegisterSubmit} className="space-y-2.5">
-            <div className="bg-amber-950/50 border border-amber-500/40 rounded-xl p-2 text-xs text-amber-200 flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-2 text-xs text-emerald-200 flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Antalya içi bekleyen talep havuzuna katılıp anında kazanın.</span>
             </div>
 
@@ -569,31 +569,31 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Kurye Ad Soyad *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Kurye Ad Soyad *</label>
                 <div className="relative">
-                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="text"
                     required
                     placeholder="Adınız Soyadınız"
                     value={courierName}
                     onChange={(e) => setCourierName(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Telefon Numarası *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Telefon Numarası *</label>
                 <div className="relative">
-                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="tel"
                     required
                     placeholder="05XX XXX XX XX"
                     value={courierPhone}
                     onChange={(e) => setCourierPhone(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium font-mono"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium font-mono"
                   />
                 </div>
               </div>
@@ -601,33 +601,33 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">E-Posta Adresi *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">E-Posta Adresi *</label>
                 <div className="relative">
-                  <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="email"
                     required
                     placeholder="kurye@antalya.com"
                     value={courierEmail}
                     onChange={(e) => setCourierEmail(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Taşıma Aracı Tipi</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Taşıma Aracı Tipi</label>
                 <div className="relative">
-                  <Bike className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Bike className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <select
                     value={courierVehicle}
                     onChange={(e) => setCourierVehicle(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-amber-400 outline-hidden font-medium cursor-pointer"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:border-emerald-400 outline-hidden font-medium cursor-pointer"
                   >
-                    <option value="Motosiklet" className="bg-[#1f0e03] text-white">Motosiklet</option>
-                    <option value="Scooter" className="bg-[#1f0e03] text-white">Scooter</option>
-                    <option value="Bisiklet / E-Bike" className="bg-[#1f0e03] text-white">Bisiklet / E-Bike</option>
-                    <option value="Otomobil" className="bg-[#1f0e03] text-white">Otomobil</option>
+                    <option value="Motosiklet" className="bg-[#0c1f19] text-white">Motosiklet</option>
+                    <option value="Scooter" className="bg-[#0c1f19] text-white">Scooter</option>
+                    <option value="Bisiklet / E-Bike" className="bg-[#0c1f19] text-white">Bisiklet / E-Bike</option>
+                    <option value="Otomobil" className="bg-[#0c1f19] text-white">Otomobil</option>
                   </select>
                 </div>
               </div>
@@ -635,31 +635,31 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Şifre Belirleyin *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Belirleyin *</label>
                 <div className="relative">
-                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={courierPassword}
                     onChange={(e) => setCourierPassword(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-amber-200 block">Şifre Tekrar *</label>
+                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Tekrar *</label>
                 <div className="relative">
-                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-amber-400" />
+                  <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={courierPasswordConfirm}
                     onChange={(e) => setCourierPasswordConfirm(e.target.value)}
-                    className="w-full bg-[#120701] border border-amber-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-amber-700/60 focus:border-amber-400 outline-hidden font-medium"
+                    className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                   />
                 </div>
               </div>
@@ -667,18 +667,18 @@ export const AuthModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
             >
               <Bike className="w-4 h-4" />
               <span>Kurye Kaydını Tamamla & Havuzuna Katıl</span>
             </button>
 
-            <div className="pt-2 border-t border-amber-900/60 text-center">
-              <span className="text-xs text-amber-200/80">Zaten kurye hesabınız var mı? </span>
+            <div className="pt-2 border-t border-emerald-900/60 text-center">
+              <span className="text-xs text-emerald-300/80">Zaten kurye hesabınız var mı? </span>
               <button
                 type="button"
                 onClick={() => setAuthModalTab('courier_login')}
-                className="text-xs text-amber-300 hover:text-white underline font-bold cursor-pointer"
+                className="text-xs text-emerald-400 hover:text-white underline font-bold cursor-pointer"
               >
                 Kurye Girişi Yap
               </button>
