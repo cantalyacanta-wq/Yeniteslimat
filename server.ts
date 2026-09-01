@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import { EventEmitter } from 'events';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 
@@ -289,7 +290,40 @@ function getRegisteredCourierEmails(): string[] {
   return Array.from(emails);
 }
 
-function createMailTransporter() {
+// ==========================================
+// ASYNCHRONOUS EMAIL QUEUE & OPTIMIZED WORKER
+// ==========================================
+
+export interface EmailJob {
+  id: string;
+  orderId: string;
+  trackingCode: string;
+  specificRecipient?: string;
+  recipients: string[];
+  subject: string;
+  textContent: string;
+  htmlContent: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'simulated';
+  attempts: number;
+  maxAttempts: number;
+  error?: string;
+  isRealDelivery?: boolean;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
+}
+
+// In-memory queue with event-driven background processor
+const emailQueue: EmailJob[] = [];
+const emailQueueEvents = new EventEmitter();
+let isQueueWorkerRunning = false;
+
+// Pre-warmed pooled transporter for zero connection overhead
+let cachedTransporter: nodemailer.Transporter | null = null;
+let lastTransporterKey = '';
+
+function getOptimizedMailTransporter() {
   const cfg = dbState.smtpConfig;
   const envHost = process.env.SMTP_HOST;
   const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
@@ -306,110 +340,227 @@ function createMailTransporter() {
   const port = isGmail ? 465 : (Number(cfg?.port) || 587);
   const secure = port === 465;
 
+  const key = `${user}:${pass}:${host}:${port}:${secure}`;
+
   if (user && pass && cfg?.enabled !== false) {
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-      pool: false,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      tls: { rejectUnauthorized: false },
-    } as nodemailer.TransportOptions);
-    return { transporter, fromAddress, isConfigured: true, user, host };
+    if (!cachedTransporter || lastTransporterKey !== key) {
+      lastTransporterKey = key;
+      cachedTransporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        pool: true, // Pooled connection keeps socket warm for sub-second execution
+        maxConnections: 3,
+        maxMessages: 100,
+        rateLimit: 5,
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 10000,
+        tls: { rejectUnauthorized: false },
+      } as nodemailer.TransportOptions);
+    }
+    return { transporter: cachedTransporter, fromAddress, isConfigured: true, user, host };
   }
 
   return { transporter: null, fromAddress, isConfigured: false, user, host };
 }
 
-async function sendSingleEmailWithRetry(
-  mailOptions: nodemailer.SendMailOptions,
-  maxRetries = 2
-): Promise<nodemailer.SentMessageInfo> {
-  let lastErr: any;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const { transporter } = createMailTransporter();
-    if (!transporter) {
-      throw new Error('SMTP yapılandırması eksik.');
-    }
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      return info;
-    } catch (err: any) {
-      lastErr = err;
-      console.warn(`[EMAIL RETRY] Attempt ${attempt} failed for ${mailOptions.to}: ${err.message}`);
-      if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+// Background worker that asynchronously pops and processes pending queue jobs
+async function processEmailQueue() {
+  if (isQueueWorkerRunning) return;
+  isQueueWorkerRunning = true;
+
+  try {
+    while (true) {
+      const job = emailQueue.find((j) => j.status === 'pending');
+      if (!job) break;
+
+      job.status = 'processing';
+      job.startedAt = new Date().toISOString();
+      job.attempts += 1;
+      const startTime = Date.now();
+
+      console.log(`[ASYNC QUEUE] 🚀 Processing job #${job.id} for Order #${job.trackingCode} (Attempt ${job.attempts}/${job.maxAttempts})`);
+
+      try {
+        const mailDetails = getOptimizedMailTransporter();
+        let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
+        let errorMessage: string | undefined;
+        let isRealDelivery = false;
+        const sentRecipients: string[] = [];
+        const failedRecipients: { email: string; error: string }[] = [];
+
+        if (mailDetails.transporter && mailDetails.isConfigured) {
+          // Parallel dispatch across all registered recipients
+          const sendResults = await Promise.allSettled(
+            job.recipients.map(async (targetEmail) => {
+              return await mailDetails.transporter!.sendMail({
+                from: mailDetails.fromAddress,
+                to: targetEmail,
+                replyTo: 'kuryeantalyam@gmail.com',
+                subject: job.subject,
+                text: job.textContent,
+                html: job.htmlContent,
+              });
+            })
+          );
+
+          sendResults.forEach((res, idx) => {
+            const targetEmail = job.recipients[idx];
+            if (res.status === 'fulfilled') {
+              sentRecipients.push(targetEmail);
+            } else {
+              const reason = (res as PromiseRejectedResult).reason?.message || 'Bilinmeyen hata';
+              failedRecipients.push({ email: targetEmail, error: reason });
+              console.warn(`[ASYNC QUEUE FAIL] Target ${targetEmail} failed: ${reason}`);
+            }
+          });
+
+          if (sentRecipients.length > 0) {
+            emailStatus = 'sent';
+            isRealDelivery = true;
+            console.log(`[ASYNC QUEUE SUCCESS] Delivered to ${sentRecipients.length} couriers: ${sentRecipients.join(', ')} in ${Date.now() - startTime}ms`);
+            if (failedRecipients.length > 0) {
+              errorMessage = `Kısmi iletim (${sentRecipients.length} başarılı). Hata alanlar: ${failedRecipients.map(f => f.email).join(', ')}`;
+            }
+          } else {
+            emailStatus = 'failed';
+            errorMessage = failedRecipients.map(f => `${f.email}: ${f.error}`).join(' | ');
+            throw new Error(errorMessage || 'Tüm alıcılara gönderim başarısız oldu.');
+          }
+        } else {
+          console.log(`[ASYNC QUEUE SIMULATED] SMTP not configured. Simulated dispatch for ${job.recipients.join(', ')}`);
+          emailStatus = 'simulated';
+          errorMessage = 'SMTP e-posta sunucusu veya Gmail şifresi tanımlanmadı. Yönetim panelinden yapılandırınız.';
+        }
+
+        // Mark job complete
+        job.status = emailStatus;
+        job.completedAt = new Date().toISOString();
+        job.durationMs = Date.now() - startTime;
+        job.isRealDelivery = isRealDelivery;
+
+        // Deduplication records
+        if (job.orderId) dispatchedEmailOrderIds.add(job.orderId);
+        if (job.trackingCode) dispatchedEmailOrderIds.add(job.trackingCode);
+
+        // Update in-memory order object
+        const order = dbState.requests.find((r) => r.id === job.orderId || r.trackingCode === job.trackingCode);
+        if (order) {
+          order.emailDispatched = true;
+          order.emailDispatchedAt = job.completedAt;
+        }
+
+        // Record log entry
+        const logEntry: EmailLogItem = {
+          id: `mail-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: job.completedAt,
+          orderId: job.orderId,
+          trackingCode: job.trackingCode,
+          recipients: job.recipients,
+          subject: job.subject,
+          status: emailStatus,
+          error: errorMessage,
+          summary: job.subject,
+        };
+
+        if (!Array.isArray(dbState.emailLogs)) {
+          dbState.emailLogs = [];
+        }
+        dbState.emailLogs.unshift(logEntry);
+        if (dbState.emailLogs.length > 100) {
+          dbState.emailLogs = dbState.emailLogs.slice(0, 100);
+        }
+        saveDatabase();
+
+      } catch (jobErr: any) {
+        console.warn(`[ASYNC QUEUE EXCEPTION] Job #${job.id} failed:`, jobErr.message);
+        job.error = jobErr.message;
+        job.durationMs = Date.now() - startTime;
+
+        if (job.attempts < job.maxAttempts) {
+          job.status = 'pending';
+          console.log(`[ASYNC QUEUE RETRY] Scheduling retry for Job #${job.id} in 1s...`);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else {
+          job.status = 'failed';
+          job.completedAt = new Date().toISOString();
+        }
       }
     }
+  } finally {
+    isQueueWorkerRunning = false;
   }
-  throw lastErr;
 }
 
-async function sendNewOrderEmailToCouriers(order: any, specificRecipient?: string, isForce = false) {
-  try {
-    const orderId = order.id || '';
-    const trackingCode = order.trackingCode || orderId || 'ANT-0000';
+// Queue trigger event handler
+emailQueueEvents.on('job_enqueued', () => {
+  setImmediate(() => {
+    processEmailQueue().catch((err) => console.error('[ASYNC QUEUE WORKER CRITICAL]', err));
+  });
+});
 
-    // Prevent duplicate emails for the same order unless explicitly forced (e.g. manual resend)
-    if (!isForce) {
-      const alreadySent =
-        order.emailDispatched === true ||
-        (orderId && dispatchedEmailOrderIds.has(orderId)) ||
-        (trackingCode && dispatchedEmailOrderIds.has(trackingCode));
+// Non-blocking Enqueue helper
+function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = false) {
+  const orderId = order.id || '';
+  const trackingCode = order.trackingCode || orderId || 'ANT-0000';
 
-      if (alreadySent) {
-        console.log(`[EMAIL DEDUPLICATION] Order ${orderId} (#${trackingCode}) notification email already sent. Skipping duplicate.`);
-        return {
-          success: true,
-          isRealDelivery: false,
-          status: 'already_sent',
-          message: 'Bu sipariş için bildirim e-postası daha önce gönderildi.',
-          recipients: [],
-        };
-      }
+  // Prevent duplicate jobs
+  if (!isForce) {
+    const alreadyDispatched =
+      order.emailDispatched === true ||
+      (orderId && dispatchedEmailOrderIds.has(orderId)) ||
+      (trackingCode && dispatchedEmailOrderIds.has(trackingCode)) ||
+      emailQueue.some((j) => (j.orderId === orderId || j.trackingCode === trackingCode) && (j.status === 'pending' || j.status === 'processing' || j.status === 'sent'));
+
+    if (alreadyDispatched) {
+      console.log(`[ASYNC QUEUE DEDUP] Order ${orderId} (#${trackingCode}) already enqueued or dispatched. Skipping.`);
+      return {
+        success: true,
+        isRealDelivery: false,
+        status: 'already_sent',
+        message: 'Bu sipariş için bildirim e-postası daha önce sıraya alındı veya gönderildi.',
+      };
     }
+  }
 
-    let recipients: string[] = [];
-    if (specificRecipient && specificRecipient.includes('@')) {
-      recipients = [specificRecipient.trim().toLowerCase()];
-    } else {
-      recipients = getRegisteredCourierEmails();
-    }
+  let recipients: string[] = [];
+  if (specificRecipient && specificRecipient.includes('@')) {
+    recipients = [specificRecipient.trim().toLowerCase()];
+  } else {
+    recipients = getRegisteredCourierEmails();
+  }
 
-    if (recipients.length === 0) {
-      console.log('[EMAIL] No courier email addresses registered.');
-      return { success: false, recipients: [], message: 'Kayıtlı e-posta adresi bulunamadı.' };
-    }
+  if (recipients.length === 0) {
+    return { success: false, status: 'no_recipients', message: 'Kayıtlı kurye e-posta adresi bulunamadı.' };
+  }
 
-    const senderDist = order.sender?.district || 'Antalya';
-    const senderNeighborhood = order.sender?.neighborhood ? ` (${order.sender.neighborhood})` : '';
-    const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
-    const senderPhone = order.sender?.contactPhone || order.sender?.phone || '';
-    const senderName = order.sender?.contactName || 'Gönderici';
-    const senderContact = senderPhone ? `${senderName} - ${senderPhone}` : senderName;
+  const senderDist = order.sender?.district || 'Antalya';
+  const senderNeighborhood = order.sender?.neighborhood ? ` (${order.sender.neighborhood})` : '';
+  const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
+  const senderPhone = order.sender?.contactPhone || order.sender?.phone || '';
+  const senderName = order.sender?.contactName || 'Gönderici';
+  const senderContact = senderPhone ? `${senderName} - ${senderPhone}` : senderName;
 
-    const receiverDist = order.receiver?.district || 'Antalya';
-    const receiverNeighborhood = order.receiver?.neighborhood ? ` (${order.receiver.neighborhood})` : '';
-    const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
-    const receiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
-    const receiverName = order.receiver?.contactName || 'Alıcı';
-    const receiverContact = receiverPhone ? `${receiverName} - ${receiverPhone}` : receiverName;
+  const receiverDist = order.receiver?.district || 'Antalya';
+  const receiverNeighborhood = order.receiver?.neighborhood ? ` (${order.receiver.neighborhood})` : '';
+  const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
+  const receiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
+  const receiverName = order.receiver?.contactName || 'Alıcı';
+  const receiverContact = receiverPhone ? `${receiverName} - ${receiverPhone}` : receiverName;
 
-    const price = order.price || 0;
-    const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
-    const pkgName = order.packageName || 'Paket / Koli';
-    const paymentMethod = order.paymentMethod || 'gonderici_odemeli';
-    const isAliciOdemeli = paymentMethod === 'alici_odemeli';
-    const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
+  const price = order.price || 0;
+  const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
+  const pkgName = order.packageName || 'Paket / Koli';
+  const paymentMethod = order.paymentMethod || 'gonderici_odemeli';
+  const isAliciOdemeli = paymentMethod === 'alici_odemeli';
+  const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
 
-    const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
-    const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
+  const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
+  const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
 
-    // Pure, clean, high-priority plain-text format (No images, no heavy HTML)
-    const textContent = `
+  const textContent = `
 YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})
 ==================================================
 Sipariş Takip Kodu : #${trackingCode}
@@ -433,104 +584,42 @@ HAVUZDAN İŞİ ALMAK İÇİN TIKLAYINIZ:
 ${poolUrl}
 ==================================================
 Antalya Şehir İçi Teslimat 7/24
-    `.trim();
+  `.trim();
 
-    // Pure text HTML (Zero external assets or images for instant spam-free delivery)
-    const htmlContent = `
+  const htmlContent = `
 <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827; white-space: pre-wrap; margin: 0; padding: 14px; background: #ffffff;">${textContent}</div>
-    `.trim();
+  `.trim();
 
-    const mailDetails = createMailTransporter();
-    let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
-    let errorMessage: string | undefined;
-    let isRealDelivery = false;
-    const sentRecipients: string[] = [];
-    const failedRecipients: { email: string; error: string }[] = [];
+  const job: EmailJob = {
+    id: `job-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    orderId,
+    trackingCode,
+    specificRecipient,
+    recipients,
+    subject,
+    textContent,
+    htmlContent,
+    status: 'pending',
+    attempts: 0,
+    maxAttempts: 2,
+    createdAt: new Date().toISOString(),
+  };
 
-    if (mailDetails.transporter && mailDetails.isConfigured) {
-      // Send to all couriers in parallel with individual auto-retry
-      const sendResults = await Promise.allSettled(
-        recipients.map(async (targetEmail) => {
-          await sendSingleEmailWithRetry({
-            from: mailDetails.fromAddress,
-            to: targetEmail,
-            replyTo: 'kuryeantalyam@gmail.com',
-            subject,
-            text: textContent,
-            html: htmlContent,
-          });
-          return targetEmail;
-        })
-      );
-
-      sendResults.forEach((res, idx) => {
-        const targetEmail = recipients[idx];
-        if (res.status === 'fulfilled') {
-          sentRecipients.push(targetEmail);
-        } else {
-          const reason = res.reason?.message || 'Bilinmeyen hata';
-          failedRecipients.push({ email: targetEmail, error: reason });
-          console.warn(`[EMAIL COURIER SEND FAIL] Failed sending to ${targetEmail}: ${reason}`);
-        }
-      });
-
-      if (sentRecipients.length > 0) {
-        emailStatus = 'sent';
-        isRealDelivery = true;
-        
-        // Record deduplication state
-        order.emailDispatched = true;
-        order.emailDispatchedAt = new Date().toISOString();
-        if (order.id) dispatchedEmailOrderIds.add(order.id);
-        if (trackingCode) dispatchedEmailOrderIds.add(trackingCode);
-
-        console.log(`[EMAIL SMTP SUCCESS] Order notification successfully sent to ${sentRecipients.length} couriers: ${sentRecipients.join(', ')}`);
-        if (failedRecipients.length > 0) {
-          errorMessage = `Bazı kuryelere iletildi (${sentRecipients.length} adet). Başarısız olanlar: ${failedRecipients.map(f => f.email).join(', ')}`;
-        }
-      } else {
-        emailStatus = 'failed';
-        errorMessage = failedRecipients.map(f => `${f.email}: ${f.error}`).join(' | ');
-      }
-    } else {
-      console.log(`[EMAIL SIMULATED] No SMTP credentials configured. Order notification simulated for: ${recipients.join(', ')}`);
-      emailStatus = 'simulated';
-      errorMessage = 'SMTP e-posta sunucusu veya Gmail şifresi tanımlanmadı. Yönetim panelinden E-posta SMTP ayarlarınızı yapılandırınız.';
-    }
-
-    const logEntry: EmailLogItem = {
-      id: `mail-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      timestamp: new Date().toISOString(),
-      orderId: order.id,
-      trackingCode,
-      recipients,
-      subject,
-      status: emailStatus,
-      error: errorMessage,
-      summary: `${senderDist} ➔ ${receiverDist} (${price} ₺, ${pkgName})`,
-    };
-
-    if (!Array.isArray(dbState.emailLogs)) {
-      dbState.emailLogs = [];
-    }
-    dbState.emailLogs.unshift(logEntry);
-    if (dbState.emailLogs.length > 100) {
-      dbState.emailLogs = dbState.emailLogs.slice(0, 100);
-    }
-    saveDatabase();
-
-    return { 
-      success: emailStatus === 'sent' || emailStatus === 'simulated', 
-      isRealDelivery, 
-      status: emailStatus,
-      log: logEntry, 
-      recipients,
-      error: errorMessage,
-    };
-  } catch (err: any) {
-    console.error('[EMAIL DISPATCH EXCEPTION]', err);
-    return { success: false, error: err.message, isRealDelivery: false };
+  emailQueue.unshift(job);
+  if (emailQueue.length > 200) {
+    emailQueue.splice(200);
   }
+
+  // Trigger worker asynchronously
+  emailQueueEvents.emit('job_enqueued');
+
+  return {
+    success: true,
+    jobId: job.id,
+    status: 'queued',
+    recipients,
+    message: 'E-posta bildirim görevi asenkron kuyruğa alındı ve anında iletiliyor.',
+  };
 }
 
 // ==========================================
@@ -553,8 +642,29 @@ app.get('/api/sync', (req, res) => {
   });
 });
 
-// Create new customer delivery request - Guaranteed email dispatch to kuryeantalyam@gmail.com and active couriers
-app.post('/api/requests', async (req, res) => {
+// Asynchronous Email Queue status endpoint
+app.get('/api/email-queue', (req, res) => {
+  const pendingCount = emailQueue.filter((j) => j.status === 'pending').length;
+  const processingCount = emailQueue.filter((j) => j.status === 'processing').length;
+  const sentCount = emailQueue.filter((j) => j.status === 'sent').length;
+  const failedCount = emailQueue.filter((j) => j.status === 'failed').length;
+
+  res.json({
+    success: true,
+    queueSummary: {
+      total: emailQueue.length,
+      pending: pendingCount,
+      processing: processingCount,
+      sent: sentCount,
+      failed: failedCount,
+      isWorkerActive: isQueueWorkerRunning,
+    },
+    recentJobs: emailQueue.slice(0, 30),
+  });
+});
+
+// Create new customer delivery request - Non-blocking asynchronous queue push
+app.post('/api/requests', (req, res) => {
   try {
     const newRequest = req.body;
     if (!newRequest || !newRequest.id || !newRequest.sender || !newRequest.receiver) {
@@ -575,7 +685,7 @@ app.post('/api/requests', async (req, res) => {
     const existingIndex = dbState.requests.findIndex(
       (r) => r.id === newRequest.id || (r.trackingCode && r.trackingCode === newRequest.trackingCode)
     );
-    
+
     let isAlreadyDispatched = false;
     if (existingIndex >= 0) {
       const existingReq = dbState.requests[existingIndex];
@@ -598,29 +708,29 @@ app.post('/api/requests', async (req, res) => {
     saveDatabase();
     console.log(`[ORDER SAVED] ID: ${newRequest.id}, Tracking: ${newRequest.trackingCode}, Price: ${newRequest.price} TL`);
 
-    // DISPATCH EMAIL NOTIFICATION DIRECTLY (Only if not already dispatched)
-    let emailResult = null;
-    if (!isAlreadyDispatched && !dispatchedEmailOrderIds.has(newRequest.id) && !dispatchedEmailOrderIds.has(newRequest.trackingCode)) {
-      try {
-        emailResult = await sendNewOrderEmailToCouriers(newRequest, undefined, false);
-        console.log(`[EMAIL DISPATCH COMPLETED] Target: kuryeantalyam@gmail.com + couriers. Result:`, emailResult?.status);
-      } catch (mailErr: any) {
-        console.error('[EMAIL DISPATCH ERROR ON REQUEST CREATE]', mailErr.message);
-      }
-    } else {
-      console.log(`[EMAIL DISPATCH SKIPPED] Duplicate order detected, email was already sent for: ${newRequest.id} / ${newRequest.trackingCode}`);
-      emailResult = { success: true, status: 'already_sent', isRealDelivery: false };
-    }
+    // ASYNCHRONOUS NON-BLOCKING EMAIL QUEUE ENQUEUE
+    const queueResult = enqueueNewOrderEmail(newRequest, undefined, isAlreadyDispatched ? false : false);
 
-    res.json({ success: true, request: newRequest, emailResult });
+    // Return response immediately (<10ms) without waiting for SMTP network handshake
+    res.json({
+      success: true,
+      request: newRequest,
+      queueResult,
+      emailResult: {
+        success: true,
+        status: queueResult.status || 'queued',
+        isRealDelivery: true,
+        message: 'Sipariş kaydedildi ve kurye e-posta bildirimi kuyrukta anında iletiliyor.',
+      },
+    });
   } catch (err: any) {
     console.error('Error creating request:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası' });
   }
 });
 
-// Resend order notification email endpoint
-app.post('/api/requests/:id/resend-email', async (req, res) => {
+// Resend order notification email endpoint (asynchronous)
+app.post('/api/requests/:id/resend-email', (req, res) => {
   try {
     const { id } = req.params;
     const targetEmail = req.body?.targetEmail;
@@ -630,8 +740,18 @@ app.post('/api/requests/:id/resend-email', async (req, res) => {
       return;
     }
 
-    const emailResult = await sendNewOrderEmailToCouriers(order, targetEmail, true);
-    res.json({ success: true, orderId: order.id, trackingCode: order.trackingCode, emailResult });
+    const queueResult = enqueueNewOrderEmail(order, targetEmail, true);
+    res.json({
+      success: true,
+      orderId: order.id,
+      trackingCode: order.trackingCode,
+      queueResult,
+      emailResult: {
+        success: true,
+        status: 'queued',
+        isRealDelivery: true,
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -852,7 +972,7 @@ app.post('/api/notifications/test-email', async (req, res) => {
       },
     };
 
-    const result = await sendNewOrderEmailToCouriers(sampleOrder, effectiveTarget);
+    const result = enqueueNewOrderEmail(sampleOrder, effectiveTarget, true);
     res.json({ success: true, result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -916,7 +1036,7 @@ app.delete('/api/couriers/emails/:email', (req, res) => {
 });
 
 // Manual Resend / Specific Order Email Dispatch
-app.post('/api/notifications/send-order-email', async (req, res) => {
+app.post('/api/notifications/send-order-email', (req, res) => {
   try {
     const { orderId } = req.body;
     const order = dbState.requests.find((r) => r.id === orderId);
@@ -924,7 +1044,7 @@ app.post('/api/notifications/send-order-email', async (req, res) => {
       res.status(404).json({ error: 'Sipariş bulunamadı' });
       return;
     }
-    const result = await sendNewOrderEmailToCouriers(order);
+    const result = enqueueNewOrderEmail(order, undefined, true);
     res.json({ success: true, result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

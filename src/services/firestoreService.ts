@@ -110,3 +110,31 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
     console.error('[Firestore] Failed to delete user:', err);
   }
 }
+
+const EMAIL_QUEUE_COLLECTION = 'email_queue';
+
+// Add email job to Firestore queue
+export async function enqueueEmailToFirestore(job: {
+  orderId: string;
+  trackingCode: string;
+  recipients: string[];
+  subject: string;
+  textContent: string;
+  status: 'pending' | 'processing' | 'sent' | 'failed';
+  attempts?: number;
+}): Promise<void> {
+  try {
+    const jobId = `job-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const docRef = doc(db, EMAIL_QUEUE_COLLECTION, jobId);
+    await setDoc(docRef, {
+      id: jobId,
+      ...job,
+      attempts: job.attempts || 0,
+      maxAttempts: 2,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[Firestore] Failed to enqueue email job:', err);
+  }
+}
+

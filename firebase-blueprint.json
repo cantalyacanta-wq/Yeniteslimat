@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "DeliveryRequest": {
+      "title": "DeliveryRequest",
+      "description": "Antalya city courier delivery request model",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "trackingCode": { "type": "string" },
+        "status": { "type": "string" },
+        "packageType": { "type": "string" },
+        "packageName": { "type": "string" },
+        "price": { "type": "number" },
+        "courierEarnings": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "urgency": { "type": "string" },
+        "sender": { "type": "object" },
+        "receiver": { "type": "object" },
+        "assignedCourierId": { "type": "string" },
+        "emailDispatched": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "trackingCode", "status", "price"]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "System user or courier profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "courier", "admin"] },
+        "district": { "type": "string" },
+        "isOnline": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "EmailQueueJob": {
+      "title": "EmailQueueJob",
+      "description": "Asynchronous background email dispatch queue for notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "trackingCode": { "type": "string" },
+        "recipients": { "type": "array" },
+        "subject": { "type": "string" },
+        "textContent": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "processing", "sent", "failed"] },
+        "attempts": { "type": "number" },
+        "error": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "processedAt": { "type": "string" }
+      },
+      "required": ["id", "orderId", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/delivery_requests/{requestId}": {
+      "schema": "DeliveryRequest",
+      "description": "Active and completed delivery requests in Antalya"
+    },
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "User and courier accounts"
+    },
+    "/email_queue/{jobId}": {
+      "schema": "EmailQueueJob",
+      "description": "Asynchronous email task queue for instant SMTP delivery"
+    }
+  }
+}
