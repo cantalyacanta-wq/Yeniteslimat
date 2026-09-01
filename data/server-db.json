@@ -84,6 +84,33 @@
   ],
   "requests": [
     {
+      "id": "req-live-1788256138918",
+      "trackingCode": "ANT-6397",
+      "sender": {
+        "district": "Muratpaşa",
+        "neighborhood": "Lara",
+        "addressDetail": "Şirinyalı Mah. 1487 Sokak No:12",
+        "contactName": "Mustafa Kaya",
+        "contactPhone": "0533 111 22 33"
+      },
+      "receiver": {
+        "district": "Kepez",
+        "neighborhood": "Fabrikalar",
+        "addressDetail": "Fikri Erten Cad. No:45",
+        "contactName": "Zeynep Çelik",
+        "contactPhone": "0544 555 66 77"
+      },
+      "packageType": "food",
+      "packageName": "Öğle Yemeği Paketi",
+      "price": 220,
+      "courierEarnings": 180,
+      "paymentMethod": "gonderici_odemeli",
+      "urgency": "standard",
+      "status": "pending_pool",
+      "createdAt": "2026-09-01T09:48:59.058Z",
+      "updatedAt": "2026-09-01T09:48:59.058Z"
+    },
+    {
       "id": "test-order-1788191689110",
       "trackingCode": "ANT-392045",
       "sender": {
@@ -168,6 +195,43 @@
   ],
   "emailLogs": [
     {
+      "id": "mail-1788256139634-500",
+      "timestamp": "2026-09-01T09:48:59.634Z",
+      "orderId": "req-live-1788256138918",
+      "trackingCode": "ANT-6397",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Kepez | 220 TL (Gönderici Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Kepez (220 ₺, Öğle Yemeği Paketi)"
+    },
+    {
+      "id": "mail-1788256134618-511",
+      "timestamp": "2026-09-01T09:48:54.618Z",
+      "orderId": "req-test-1788256133890",
+      "trackingCode": "ANT-1413",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Konyaaltı | 250 TL (Alıcı Ödemeli)",
+      "status": "sent",
+      "summary": "Muratpaşa ➔ Konyaaltı (250 ₺, Örnek Test Paketi (Elektronik & Belge))"
+    },
+    {
+      "id": "mail-1788256102320-223",
+      "timestamp": "2026-09-01T09:48:22.320Z",
+      "orderId": "req-test-1788256102211",
+      "trackingCode": "ANT-6689",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "⚡ [YENİ SİPARİŞ] Muratpaşa -> Konyaaltı | 250 TL (Alıcı Ödemeli)",
+      "status": "failed",
+      "error": "kuryeantalyam@gmail.com: C0FCB4F7C17F0000:error:0A00010B:SSL routines:tls_validate_record_header:wrong version number:../deps/openssl/openssl/ssl/record/methods/tlsany_meth.c:77:\n",
+      "summary": "Muratpaşa ➔ Konyaaltı (250 ₺, Örnek Test Paketi (Elektronik & Belge))"
+    },
+    {
       "id": "mail-1788191689899-259",
       "timestamp": "2026-08-31T15:54:49.899Z",
       "orderId": "test-order-1788191689110",
@@ -245,5 +309,5 @@
     "lastTestStatus": "success",
     "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
   },
-  "updatedAt": "2026-08-31T15:54:49.899Z"
+  "updatedAt": "2026-09-01T09:48:59.634Z"
 }

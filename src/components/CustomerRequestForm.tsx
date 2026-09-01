@@ -19,10 +19,15 @@ import {
   Navigation,
   Lock,
   Unlock,
-  Check
+  Check,
+  Calculator,
+  Route,
+  ArrowUpDown,
+  Compass,
+  Gauge
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
-import { ANTALYA_DISTRICTS, calculateDeliveryEstimate } from '../data/antalyaDistricts';
+import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { useDelivery } from '../context/DeliveryContext';
 
 const SENDER_LOCKED_STORAGE_KEY = 'antalya_kurye_locked_sender_address_v6';
@@ -208,10 +213,22 @@ export const CustomerRequestForm: React.FC = () => {
     }
   }, [currentUser, isSenderLocked]);
 
-  // Real-time calculation
+  // Real-time calculation of distance, duration and price
   const estimate = useMemo(() => {
     return calculateDeliveryEstimate(senderDistrict, receiverDistrict, packageType, urgency);
   }, [senderDistrict, receiverDistrict, packageType, urgency]);
+
+  // Swap sender and receiver locations
+  const handleSwapLocations = () => {
+    setSenderDistrict(receiverDistrict);
+    setReceiverDistrict(senderDistrict);
+    const tempAddr = senderAddress;
+    setSenderAddress(receiverAddress);
+    setReceiverAddress(tempAddr);
+  };
+
+  // State for showing interactive district matrix
+  const [showMatrixModal, setShowMatrixModal] = useState<boolean>(false);
 
   // Submit request to courier pool and seamlessly route to tracking view
   const handleSubmit = (e: React.FormEvent) => {
@@ -392,6 +409,80 @@ export const CustomerRequestForm: React.FC = () => {
                 placeholder="0532 XXX XX XX"
                 className="w-full bg-[#021813] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-600/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium font-mono"
               />
+            </div>
+          </div>
+
+          {/* Real-Time Distance & Route Calculator Widget */}
+          <div className="bg-gradient-to-r from-[#011d17] via-[#022a21] to-[#011d17] p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/50 shadow-lg relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-700/40 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/60 flex items-center justify-center text-emerald-300">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-2">
+                    <span>Mesafe & Rota Hesaplayıcı</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+                      Canlı
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-emerald-300/80 mt-0.5">
+                    Antalya ilçe ve güzergah matrisi üzerinden otomatik hesaplanan sürüş mesafesi
+                  </p>
+                </div>
+              </div>
+
+              {/* Swap Button */}
+              <button
+                type="button"
+                onClick={handleSwapLocations}
+                className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/60 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-xs"
+                title="Başlangıç ve varış noktalarını yer değiştir"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Noktaları Değiştir</span>
+              </button>
+            </div>
+
+            {/* Live Distance Gauge Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3.5">
+              {/* Route Summary */}
+              <div className="bg-[#011410]/80 rounded-xl p-3 border border-emerald-800/60 flex flex-col justify-center">
+                <span className="text-[10px] font-semibold text-emerald-400/90 uppercase tracking-wider block">Seçili Güzergah</span>
+                <div className="text-xs sm:text-sm font-bold text-white mt-1 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-emerald-300 font-extrabold">{senderDistrict}</span>
+                  <Route className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span className="text-teal-300 font-extrabold">{receiverDistrict}</span>
+                </div>
+              </div>
+
+              {/* Estimated Distance */}
+              <div className="bg-[#011410]/80 rounded-xl p-3 border border-emerald-500/40 flex items-center justify-between shadow-inner">
+                <div>
+                  <span className="text-[10px] font-semibold text-emerald-400/90 uppercase tracking-wider block">Yaklaşık Mesafe</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-xl sm:text-2xl font-black text-amber-300 tracking-tight">{estimate.distanceKm}</span>
+                    <span className="text-xs font-bold text-emerald-400">km</span>
+                  </div>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-400">
+                  <Gauge className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Estimated Duration */}
+              <div className="bg-[#011410]/80 rounded-xl p-3 border border-emerald-800/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-semibold text-emerald-400/90 uppercase tracking-wider block">Tahmini Kurye Süresi</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-xl sm:text-2xl font-black text-emerald-200 tracking-tight">~{estimate.durationMins}</span>
+                    <span className="text-xs font-bold text-emerald-400">dakika</span>
+                  </div>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                  <Compass className="w-5 h-5" />
+                </div>
+              </div>
             </div>
           </div>
 

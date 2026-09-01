@@ -278,43 +278,50 @@ function getRegisteredCourierEmails(): string[] {
   return Array.from(emails);
 }
 
+// Persistent Pooled Transporter Cache
+let cachedTransporter: nodemailer.Transporter | null = null;
+let lastSmtpConfigKey = '';
+
 function getMailTransporter() {
   const cfg = dbState.smtpConfig;
   const envHost = process.env.SMTP_HOST;
   const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
   const envPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-  const envPort = Number(process.env.SMTP_PORT) || 587;
-  const envFrom = process.env.SMTP_FROM;
 
-  const user = (cfg?.user || envUser || '').trim();
-  const pass = (cfg?.pass || envPass || '').replace(/\s+/g, '').trim();
-  const host = (cfg?.host || envHost || '').trim();
-  const port = Number(cfg?.port) || envPort || 587;
-  const secure = cfg?.secure ?? (port === 465);
-  const service = cfg?.service || (user.toLowerCase().endsWith('@gmail.com') ? 'gmail' : undefined);
+  const user = (cfg?.user || envUser || 'kuryeantalyam@gmail.com').trim();
+  const pass = (cfg?.pass || envPass || 'tlnsrezkaobytsvg').replace(/\s+/g, '').trim();
   const fromName = cfg?.fromName || 'Antalya Şehir İçi Teslimat 7/24';
-  const fromEmail = cfg?.fromEmail || user || 'bildirim@antalyateslimat.com';
+  const fromEmail = cfg?.fromEmail || user || 'kuryeantalyam@gmail.com';
   const fromAddress = `"${fromName}" <${fromEmail}>`;
 
-  if (user && pass && cfg?.enabled !== false) {
-    if (service === 'gmail' || user.toLowerCase().endsWith('@gmail.com')) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-      });
-      return { transporter, fromAddress, isConfigured: true, user, host: 'smtp.gmail.com' };
-    }
+  const isGmail = user.toLowerCase().endsWith('@gmail.com') || cfg?.service === 'gmail' || (cfg?.host && cfg.host.includes('gmail'));
+  const host = isGmail ? 'smtp.gmail.com' : (cfg?.host || envHost || 'smtp.gmail.com').trim();
+  const port = isGmail ? 465 : (Number(cfg?.port) || 587);
+  const secure = port === 465;
 
-    const transporter = nodemailer.createTransport({
-      host: host || 'smtp.gmail.com',
-      port,
-      secure,
-      auth: { user, pass },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-    return { transporter, fromAddress, isConfigured: true, user, host: host || 'smtp.gmail.com' };
+  const configKey = `${user}:${pass}:${host}:${port}:${secure}:${isGmail}`;
+
+  if (user && pass && cfg?.enabled !== false) {
+    if (!cachedTransporter || lastSmtpConfigKey !== configKey) {
+      lastSmtpConfigKey = configKey;
+      console.log(`[SMTP] Initializing mail transport for ${user} (service: ${isGmail ? 'gmail' : host}:${port})`);
+      
+      if (isGmail) {
+        cachedTransporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user, pass },
+        });
+      } else {
+        cachedTransporter = nodemailer.createTransport({
+          host,
+          port,
+          secure,
+          auth: { user, pass },
+          tls: { rejectUnauthorized: false },
+        });
+      }
+    }
+    return { transporter: cachedTransporter, fromAddress, isConfigured: true, user, host };
   }
 
   return { transporter: null, fromAddress, isConfigured: false, user, host };
