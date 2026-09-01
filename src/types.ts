@@ -122,6 +122,10 @@ export interface DeliveryRequest {
   // Rating
   customerRating?: number;
   customerFeedback?: string;
+
+  // Email Notification
+  emailDispatched?: boolean;
+  emailDispatchedAt?: string;
 }
 
 export interface DistrictData {

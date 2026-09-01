@@ -355,6 +355,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           } catch {}
           return cloudRequests;
         });
+
+        // Ensure any un-emailed requests from cloud are synced to backend email queue
+        const unemailed = cloudRequests.filter((r) => !r.emailDispatched && (r.status === 'pending_pool' || !r.status));
+        if (unemailed.length > 0) {
+          fetch('/api/requests/sync-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requests: unemailed }),
+          }).catch(() => {});
+        }
       }
     });
 

@@ -85,6 +85,182 @@
   ],
   "requests": [
     {
+      "id": "req-live-test-01",
+      "trackingCode": "ANT-3333",
+      "sender": {
+        "district": "Muratpaşa",
+        "addressDetail": "Şirinyalı Mah. 1500 Sok. No 4",
+        "contactName": "Test Müşteri",
+        "contactPhone": "0532 999 88 77"
+      },
+      "receiver": {
+        "district": "Konyaaltı",
+        "addressDetail": "Gürsu Mah. 300 Sok. No 12",
+        "contactName": "Test Alıcı",
+        "contactPhone": "0555 111 22 33"
+      },
+      "packageName": "Test Belge Paketi",
+      "price": 200,
+      "courierEarnings": 170,
+      "paymentMethod": "gonderici_odemeli",
+      "urgency": "standard",
+      "status": "pending_pool",
+      "createdAt": "2026-09-01T11:44:53.497Z",
+      "updatedAt": "2026-09-01T11:44:53.497Z"
+    },
+    {
+      "senderUserId": "user-customer-1787999079959",
+      "courierEarnings": 100,
+      "paymentMethod": "gonderici_odemeli",
+      "receiver": {
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
+      },
+      "sender": {
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.8732
+      },
+      "id": "req-1788262388812-94",
+      "price": 100,
+      "estimatedDistanceKm": 8,
+      "urgency": "standard",
+      "packageName": "Sıcak Yemek Siparişi",
+      "estimatedDurationMins": 21,
+      "status": "pending_pool",
+      "updatedAt": "2026-09-01T11:33:08.812Z",
+      "packageWeightKg": 1,
+      "noteForCourier": "",
+      "createdAt": "2026-09-01T11:33:08.812Z",
+      "packageType": "food",
+      "isPaid": false,
+      "trackingCode": "ANT-5892",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:45.710Z"
+    },
+    {
+      "sender": {
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.8732
+      },
+      "paymentMethod": "gonderici_odemeli",
+      "urgency": "standard",
+      "senderUserId": "user-customer-1787999079959",
+      "noteForCourier": "",
+      "receiver": {
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
+      },
+      "id": "req-1788262260807-587",
+      "packageWeightKg": 1,
+      "packageType": "food",
+      "estimatedDistanceKm": 8,
+      "updatedAt": "2026-09-01T11:31:00.807Z",
+      "isPaid": false,
+      "trackingCode": "ANT-2140",
+      "status": "pending_pool",
+      "price": 100,
+      "courierEarnings": 100,
+      "createdAt": "2026-09-01T11:31:00.807Z",
+      "estimatedDurationMins": 21,
+      "packageName": "Sıcak Yemek Siparişi",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:46.215Z"
+    },
+    {
+      "packageWeightKg": 1,
+      "estimatedDistanceKm": 8,
+      "senderUserId": "user-customer-1787999079959",
+      "updatedAt": "2026-09-01T11:23:40.854Z",
+      "sender": {
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.8732
+      },
+      "id": "req-1788261535773-877",
+      "price": 100,
+      "createdAt": "2026-09-01T11:18:55.773Z",
+      "noteForCourier": "",
+      "packageName": "Sıcak Yemek Siparişi",
+      "status": "cancelled",
+      "paymentMethod": "gonderici_odemeli",
+      "courierEarnings": 100,
+      "isPaid": false,
+      "trackingCode": "ANT-7266",
+      "urgency": "standard",
+      "packageType": "food",
+      "receiver": {
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
+      },
+      "estimatedDurationMins": 21
+    },
+    {
+      "status": "cancelled",
+      "courierEarnings": 100,
+      "price": 100,
+      "trackingCode": "ANT-8595",
+      "paymentMethod": "gonderici_odemeli",
+      "isPaid": false,
+      "urgency": "standard",
+      "senderUserId": "user-customer-1787999079959",
+      "packageName": "Sıcak Yemek Siparişi",
+      "createdAt": "2026-09-01T11:18:31.892Z",
+      "estimatedDurationMins": 21,
+      "packageWeightKg": 1,
+      "noteForCourier": "",
+      "updatedAt": "2026-09-01T11:18:47.546Z",
+      "estimatedDistanceKm": 8,
+      "packageType": "food",
+      "sender": {
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.8732
+      },
+      "id": "req-1788261511892-384",
+      "receiver": {
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
+      }
+    },
+    {
       "id": "test-order-001",
       "trackingCode": "ANT-9999",
       "sender": {
@@ -106,7 +282,9 @@
       "urgency": "fast",
       "status": "pending_pool",
       "createdAt": "2026-09-01T11:28:10.903Z",
-      "updatedAt": "2026-09-01T11:28:10.903Z"
+      "updatedAt": "2026-09-01T11:28:10.903Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:28:11.572Z"
     },
     {
       "id": "req-puretext-1788261359276",
@@ -142,12 +320,12 @@
       "paymentMethod": "gonderici_odemeli",
       "trackingCode": "ANT-4864",
       "urgency": "standard",
-      "updatedAt": "2026-09-01T11:11:46.106Z",
+      "updatedAt": "2026-09-01T11:18:26.130Z",
       "senderUserId": "user-customer-1787999079959",
       "packageName": "Sıcak Yemek Siparişi",
       "courierEarnings": 100,
       "createdAt": "2026-09-01T11:05:32.496Z",
-      "status": "pending_pool",
+      "status": "cancelled",
       "receiver": {
         "addressDetail": "Altinkum mah 417 sokak",
         "lng": 30.6384,
@@ -175,8 +353,8 @@
       "id": "req-1788260732496-921"
     },
     {
-      "status": "pending_pool",
-      "updatedAt": "2026-09-01T10:09:08.438Z",
+      "status": "cancelled",
+      "updatedAt": "2026-09-01T10:10:15.086Z",
       "packageType": "petshop",
       "noteForCourier": "",
       "createdAt": "2026-09-01T10:06:39.469Z",
@@ -186,13 +364,13 @@
       "courierEarnings": 150,
       "estimatedDistanceKm": 8,
       "sender": {
-        "lng": 30.6384,
         "addressDetail": "Altinkum mah 425 sokak",
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
-        "contactPhone": "05077547484",
+        "lng": 30.6384,
         "contactName": "Umit torun",
-        "district": "Konyaaltı"
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.8732
       },
       "packageName": "Standart Paket",
       "id": "req-1788257199469-912",
@@ -200,11 +378,11 @@
       "isPaid": false,
       "senderUserId": "user-customer-1787999079959",
       "receiver": {
-        "neighborhood": "Merkez",
-        "district": "Konyaaltı",
         "addressDetail": "Pinarbasi mah 714 sokak",
         "lng": 30.6384,
         "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
         "contactPhone": "0123456789",
         "lat": 36.8732
       },
@@ -212,10 +390,10 @@
       "estimatedDurationMins": 21
     },
     {
-      "status": "pending_pool",
+      "status": "cancelled",
       "isPaid": false,
       "packageWeightKg": 1,
-      "updatedAt": "2026-09-01T10:09:08.432Z",
+      "updatedAt": "2026-09-01T11:32:45.400Z",
       "courierEarnings": 100,
       "estimatedDistanceKm": 8,
       "trackingCode": "ANT-2838",
@@ -252,7 +430,7 @@
       "paymentMethod": "gonderici_odemeli",
       "estimatedDurationMins": 27,
       "senderUserId": "user-customer-1787999079959",
-      "status": "pending_pool",
+      "status": "cancelled",
       "noteForCourier": "",
       "packageName": "Sıcak Yemek Siparişi",
       "packageWeightKg": 1,
@@ -261,29 +439,29 @@
       "isPaid": false,
       "urgency": "standard",
       "sender": {
-        "lat": 36.886,
-        "contactPhone": "05077547484",
-        "contactName": "Umit torun",
         "addressDetail": "Sehir hastanesi",
         "lng": 30.7065,
+        "contactName": "Umit torun",
+        "district": "Muratpaşa",
         "neighborhood": "Merkez",
-        "district": "Muratpaşa"
+        "contactPhone": "05077547484",
+        "lat": 36.886
       },
       "id": "req-1788257063654-190",
       "trackingCode": "ANT-9663",
       "price": 100,
       "createdAt": "2026-09-01T10:04:23.654Z",
       "receiver": {
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
-        "district": "Konyaaltı",
         "addressDetail": "Liman tahtakale",
-        "lat": 36.8732,
+        "lng": 30.6384,
         "contactName": "Umit torun",
-        "contactPhone": "0123456789"
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
       },
       "estimatedDistanceKm": 12,
-      "updatedAt": "2026-09-01T10:04:25.110Z"
+      "updatedAt": "2026-09-01T10:04:52.068Z"
     },
     {
       "id": "req-verify-1788256962651",
@@ -310,7 +488,9 @@
       "urgency": "fast",
       "status": "pending_pool",
       "createdAt": "2026-09-01T10:02:42.789Z",
-      "updatedAt": "2026-09-01T10:02:42.789Z"
+      "updatedAt": "2026-09-01T10:02:42.789Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:52.505Z"
     },
     {
       "courierEarnings": 80,
@@ -335,7 +515,7 @@
       "pickupTime": "2026-08-29T11:15:03.221Z",
       "deliveryTime": "2026-08-29T11:15:09.292Z",
       "packageWeightKg": 1,
-      "updatedAt": "2026-09-01T10:00:13.367Z",
+      "updatedAt": "2026-08-29T11:15:09.292Z",
       "assignedCourier": {
         "id": "user-courier-01",
         "name": "Ahmet Yılmaz (Kurye)",
@@ -372,7 +552,7 @@
         "contactPhone": "5555",
         "lat": 36.8732
       },
-      "updatedAt": "2026-09-01T10:00:13.339Z",
+      "updatedAt": "2026-08-29T11:16:17.462Z",
       "senderUserId": "user-customer-sample-1",
       "courierEarnings": 80,
       "packageType": "food",
@@ -426,7 +606,7 @@
         "currentLng": 30.7065
       },
       "status": "delivered",
-      "updatedAt": "2026-09-01T10:00:13.359Z",
+      "updatedAt": "2026-08-29T11:16:54.155Z",
       "packageWeightKg": 1,
       "estimatedDurationMins": 28,
       "packageName": "Sıcak Yemek Siparişi",
@@ -495,13 +675,13 @@
         "contactPhone": "05077547484",
         "lat": 36.886
       },
-      "updatedAt": "2026-09-01T10:00:13.323Z",
+      "updatedAt": "2026-08-29T11:17:20.344Z",
       "price": 100,
       "estimatedDistanceKm": 7
     },
     {
       "isPaid": false,
-      "updatedAt": "2026-09-01T10:00:13.397Z",
+      "updatedAt": "2026-08-29T11:20:23.680Z",
       "senderUserId": "user-customer-1787999079959",
       "estimatedDurationMins": 28,
       "packageType": "food",
@@ -568,7 +748,7 @@
       "senderUserId": "user-customer-1787999079959",
       "noteForCourier": "",
       "isPaid": false,
-      "updatedAt": "2026-09-01T10:00:13.294Z",
+      "updatedAt": "2026-08-29T11:22:58.168Z",
       "pickupTime": "2026-08-29T11:22:53.468Z",
       "paymentMethod": "gonderici_odemeli",
       "packageName": "Sıcak Yemek Siparişi",
@@ -646,7 +826,7 @@
       "trackingCode": "ANT-8294",
       "estimatedDistanceKm": 7,
       "packageName": "Sıcak Yemek Siparişi",
-      "updatedAt": "2026-09-01T10:00:13.279Z",
+      "updatedAt": "2026-08-29T11:31:48.930Z",
       "status": "delivered"
     },
     {
@@ -675,7 +855,7 @@
         "contactPhone": "0123456789",
         "lat": 36.8732
       },
-      "updatedAt": "2026-09-01T10:00:13.265Z",
+      "updatedAt": "2026-08-29T11:37:23.415Z",
       "customerRating": 3,
       "packageName": "Standart Paket",
       "urgency": "standard",
@@ -741,7 +921,7 @@
       "estimatedDurationMins": 28,
       "estimatedDistanceKm": 7,
       "courierEarnings": 80,
-      "updatedAt": "2026-09-01T10:00:12.996Z",
+      "updatedAt": "2026-08-29T11:47:48.036Z",
       "status": "delivered",
       "id": "req-1788003761617-455",
       "noteForCourier": "",
@@ -775,7 +955,7 @@
       "noteForCourier": "",
       "id": "req-1788103566010-560",
       "urgency": "standard",
-      "updatedAt": "2026-09-01T10:00:12.986Z",
+      "updatedAt": "2026-08-30T15:30:43.922Z",
       "trackingCode": "ANT-3633",
       "receiver": {
         "addressDetail": "5m migros",
@@ -804,7 +984,7 @@
     {
       "senderUserId": "user-customer-1787999079959",
       "estimatedDistanceKm": 7,
-      "updatedAt": "2026-09-01T10:00:13.255Z",
+      "updatedAt": "2026-08-30T15:27:40.808Z",
       "packageName": "Sıcak Yemek Siparişi",
       "paymentMethod": "gonderici_odemeli",
       "trackingCode": "ANT-2287",
@@ -884,7 +1064,7 @@
       "estimatedDurationMins": 29,
       "packageType": "food",
       "courierEarnings": 100,
-      "updatedAt": "2026-09-01T10:00:13.239Z",
+      "updatedAt": "2026-08-30T15:44:23.669Z",
       "senderUserId": "user-customer-1787999079959",
       "pickupTime": "2026-08-30T15:43:50.170Z",
       "receiver": {
@@ -904,7 +1084,7 @@
     {
       "courierEarnings": 100,
       "status": "delivered",
-      "updatedAt": "2026-09-01T10:00:13.217Z",
+      "updatedAt": "2026-08-30T15:52:49.610Z",
       "trackingCode": "ANT-2794",
       "paymentMethod": "gonderici_odemeli",
       "createdAt": "2026-08-30T15:51:36.139Z",
@@ -977,7 +1157,7 @@
         "lat": 36.8732
       },
       "trackingCode": "ANT-7129",
-      "updatedAt": "2026-09-01T10:00:13.204Z",
+      "updatedAt": "2026-08-30T15:55:30.363Z",
       "estimatedDurationMins": 29,
       "courierEarnings": 100,
       "status": "cancelled",
@@ -1002,7 +1182,7 @@
         "lat": 36.925
       },
       "senderUserId": "user-cust-1788105983670",
-      "updatedAt": "2026-09-01T10:00:13.191Z",
+      "updatedAt": "2026-08-30T16:09:53.893Z",
       "assignedCourier": {
         "id": "user-courier-1787999333451",
         "name": "Kurye umit",
@@ -1039,7 +1219,7 @@
       "status": "delivered"
     },
     {
-      "updatedAt": "2026-09-01T10:00:13.175Z",
+      "updatedAt": "2026-08-30T16:15:32.676Z",
       "courierEarnings": 150,
       "trackingCode": "ANT-8664",
       "isPaid": false,
@@ -1103,7 +1283,7 @@
       "trackingCode": "ANT-8818",
       "urgency": "standard",
       "estimatedDurationMins": 27,
-      "updatedAt": "2026-09-01T10:00:13.155Z",
+      "updatedAt": "2026-08-30T16:24:32.025Z",
       "packageName": "Standart Paket",
       "assignedCourier": {
         "id": "user-courier-1787999333451",
@@ -1157,7 +1337,7 @@
       "paymentMethod": "gonderici_odemeli",
       "packageType": "food",
       "estimatedDurationMins": 27,
-      "updatedAt": "2026-09-01T10:00:13.140Z",
+      "updatedAt": "2026-08-31T13:27:33.452Z",
       "status": "cancelled",
       "noteForCourier": "",
       "id": "req-1788182042537-588",
@@ -1190,7 +1370,7 @@
       "isPaid": false,
       "courierEarnings": 100,
       "packageType": "food",
-      "updatedAt": "2026-09-01T10:00:13.129Z",
+      "updatedAt": "2026-08-31T13:34:58.842Z",
       "paymentMethod": "gonderici_odemeli",
       "senderUserId": "user-customer-1787999079959",
       "id": "req-1788182872901-710",
@@ -1242,7 +1422,7 @@
       "packageWeightKg": 1,
       "status": "cancelled",
       "packageType": "food",
-      "updatedAt": "2026-09-01T10:00:13.118Z",
+      "updatedAt": "2026-08-31T13:48:05.389Z",
       "id": "req-1788183303469-219",
       "isPaid": false,
       "noteForCourier": "",
@@ -1282,7 +1462,7 @@
       "status": "cancelled",
       "price": 100,
       "senderUserId": "user-customer-1787999079959",
-      "updatedAt": "2026-09-01T10:00:13.107Z",
+      "updatedAt": "2026-08-31T15:29:48.342Z",
       "packageName": "Sıcak Yemek Siparişi",
       "courierEarnings": 100
     },
@@ -1307,7 +1487,7 @@
       "id": "req-1788189104272-382",
       "isPaid": false,
       "senderUserId": "user-cust-1788189104271",
-      "updatedAt": "2026-09-01T10:00:13.096Z",
+      "updatedAt": "2026-08-31T15:29:44.719Z",
       "estimatedDurationMins": 27,
       "urgency": "standard",
       "packageWeightKg": 1,
@@ -1342,7 +1522,7 @@
       "noteForCourier": "",
       "trackingCode": "ANT-1343",
       "estimatedDurationMins": 27,
-      "updatedAt": "2026-09-01T10:00:13.057Z",
+      "updatedAt": "2026-08-31T15:39:45.684Z",
       "id": "req-1788190201455-353",
       "estimatedDistanceKm": 12,
       "status": "cancelled",
@@ -1365,7 +1545,7 @@
       "courierEarnings": 100,
       "senderUserId": "user-cust-1788189104271",
       "packageName": "Sıcak Yemek Siparişi",
-      "updatedAt": "2026-09-01T10:00:13.066Z",
+      "updatedAt": "2026-08-31T15:29:41.131Z",
       "sender": {
         "addressDetail": "Sehir hastanesi",
         "lng": 30.7065,
@@ -1430,7 +1610,7 @@
       },
       "estimatedDurationMins": 27,
       "packageName": "Sıcak Yemek Siparişi",
-      "updatedAt": "2026-09-01T10:00:13.049Z",
+      "updatedAt": "2026-08-31T15:44:47.240Z",
       "trackingCode": "ANT-1016",
       "createdAt": "2026-08-31T15:39:55.596Z"
     },
@@ -1453,7 +1633,7 @@
       "estimatedDurationMins": 27,
       "urgency": "standard",
       "noteForCourier": "",
-      "updatedAt": "2026-09-01T10:00:13.043Z",
+      "updatedAt": "2026-08-31T15:58:58.569Z",
       "price": 100,
       "trackingCode": "ANT-1681",
       "receiver": {
@@ -1486,7 +1666,7 @@
     },
     {
       "packageWeightKg": 1,
-      "updatedAt": "2026-09-01T10:00:12.979Z",
+      "updatedAt": "2026-08-31T16:12:14.478Z",
       "status": "cancelled",
       "isPaid": false,
       "packageType": "food",
@@ -1522,32 +1702,41 @@
       }
     },
     {
-      "id": "req-order-ant-6950",
+      "id": "req-1788256305103-80",
       "trackingCode": "ANT-6950",
       "sender": {
+        "addressDetail": "Sehir hastanesi",
+        "lng": 30.7065,
+        "contactName": "Umit torun",
         "district": "Muratpaşa",
-        "neighborhood": "Fener",
-        "addressDetail": "Fener Mah. 1964 Sokak No:8",
-        "contactName": "Müşteri Talebi",
-        "contactPhone": "0532 555 66 77"
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "lat": 36.886
       },
       "receiver": {
+        "addressDetail": "Liman tahtakale",
+        "lng": 30.6384,
+        "contactName": "Umit torun",
         "district": "Konyaaltı",
-        "neighborhood": "Arapsuyu",
-        "addressDetail": "Arapsuyu Mah. 600 Sokak No:12",
-        "contactName": "Alıcı",
-        "contactPhone": "0544 333 22 11"
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
+        "lat": 36.8732
       },
-      "packageType": "box",
-      "packageName": "Özel Kurye Paketi ANT-6950",
-      "packageWeightKg": 2,
-      "price": 260,
-      "courierEarnings": 220,
-      "paymentMethod": "alici_odemeli",
-      "urgency": "fast",
-      "status": "pending_pool",
-      "createdAt": "2026-09-01T09:54:34.451Z",
-      "updatedAt": "2026-09-01T09:54:34.451Z"
+      "packageType": "food",
+      "packageName": "Sıcak Yemek Siparişi",
+      "packageWeightKg": 1,
+      "price": 100,
+      "courierEarnings": 100,
+      "paymentMethod": "gonderici_odemeli",
+      "urgency": "standard",
+      "status": "cancelled",
+      "createdAt": "2026-09-01T09:51:45.103Z",
+      "updatedAt": "2026-09-01T10:04:06.797Z",
+      "noteForCourier": "",
+      "isPaid": false,
+      "estimatedDistanceKm": 12,
+      "estimatedDurationMins": 27,
+      "senderUserId": "user-customer-1787999079959"
     },
     {
       "id": "req-live-1788256138918",
@@ -1574,7 +1763,9 @@
       "urgency": "standard",
       "status": "pending_pool",
       "createdAt": "2026-09-01T09:48:59.058Z",
-      "updatedAt": "2026-09-01T09:48:59.058Z"
+      "updatedAt": "2026-09-01T09:48:59.058Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:51.920Z"
     },
     {
       "id": "test-order-1788191689110",
@@ -1606,7 +1797,9 @@
       "urgency": "standard",
       "createdAt": "2026-08-31T15:54:49.110Z",
       "status": "pending_pool",
-      "updatedAt": "2026-08-31T15:54:49.249Z"
+      "updatedAt": "2026-08-31T15:54:49.249Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:51.063Z"
     },
     {
       "id": "req-live-order-1788189764624",
@@ -1631,7 +1824,9 @@
       },
       "status": "pending_pool",
       "createdAt": "2026-08-31T15:22:44.647Z",
-      "updatedAt": "2026-08-31T15:22:44.647Z"
+      "updatedAt": "2026-08-31T15:22:44.647Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:50.409Z"
     },
     {
       "id": "req-live-test-1788189599720",
@@ -1656,10 +1851,108 @@
       },
       "status": "pending_pool",
       "createdAt": "2026-08-31T15:19:59.743Z",
-      "updatedAt": "2026-08-31T15:19:59.743Z"
+      "updatedAt": "2026-08-31T15:19:59.743Z",
+      "emailDispatched": true,
+      "emailDispatchedAt": "2026-09-01T11:44:49.892Z"
     }
   ],
   "emailLogs": [
+    {
+      "id": "mail-1788263092505-21",
+      "timestamp": "2026-09-01T11:44:52.505Z",
+      "orderId": "req-verify-1788256962651",
+      "trackingCode": "ANT-7240",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-7240 | Muratpaşa -> Kepez | 240 TL (ALICI ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-7240 | Muratpaşa -> Kepez | 240 TL (ALICI ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263091920-633",
+      "timestamp": "2026-09-01T11:44:51.920Z",
+      "orderId": "req-live-1788256138918",
+      "trackingCode": "ANT-6397",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-6397 | Muratpaşa -> Kepez | 220 TL (GÖNDERİCİ ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-6397 | Muratpaşa -> Kepez | 220 TL (GÖNDERİCİ ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263091064-470",
+      "timestamp": "2026-09-01T11:44:51.063Z",
+      "orderId": "test-order-1788191689110",
+      "trackingCode": "ANT-392045",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-392045 | Muratpaşa -> Konyaaltı | 240 TL (GÖNDERİCİ ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-392045 | Muratpaşa -> Konyaaltı | 240 TL (GÖNDERİCİ ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263090410-508",
+      "timestamp": "2026-09-01T11:44:50.409Z",
+      "orderId": "req-live-order-1788189764624",
+      "trackingCode": "ANT-7788",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-7788 | Muratpaşa -> Konyaaltı | 320 TL (ALICI ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-7788 | Muratpaşa -> Konyaaltı | 320 TL (ALICI ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263089893-758",
+      "timestamp": "2026-09-01T11:44:49.892Z",
+      "orderId": "req-live-test-1788189599720",
+      "trackingCode": "ANT-9988",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-9988 | Muratpasa -> Kepez | 280 TL (ALICI ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-9988 | Muratpasa -> Kepez | 280 TL (ALICI ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263086216-313",
+      "timestamp": "2026-09-01T11:44:46.215Z",
+      "orderId": "req-1788262260807-587",
+      "trackingCode": "ANT-2140",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-2140 | Konyaaltı -> Konyaaltı | 100 TL (GÖNDERİCİ ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-2140 | Konyaaltı -> Konyaaltı | 100 TL (GÖNDERİCİ ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788263085712-914",
+      "timestamp": "2026-09-01T11:44:45.710Z",
+      "orderId": "req-1788262388812-94",
+      "trackingCode": "ANT-5892",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-5892 | Konyaaltı -> Konyaaltı | 100 TL (GÖNDERİCİ ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-5892 | Konyaaltı -> Konyaaltı | 100 TL (GÖNDERİCİ ÖDEMELİ)"
+    },
+    {
+      "id": "mail-1788262091572-153",
+      "timestamp": "2026-09-01T11:28:11.572Z",
+      "orderId": "test-order-001",
+      "trackingCode": "ANT-9999",
+      "recipients": [
+        "kuryeantalyam@gmail.com"
+      ],
+      "subject": "[YENİ SİPARİŞ] #ANT-9999 | Muratpaşa -> Konyaaltı | 250 TL (GÖNDERİCİ ÖDEMELİ)",
+      "status": "sent",
+      "summary": "[YENİ SİPARİŞ] #ANT-9999 | Muratpaşa -> Konyaaltı | 250 TL (GÖNDERİCİ ÖDEMELİ)"
+    },
     {
       "id": "mail-1788261360140-590",
       "timestamp": "2026-09-01T11:16:00.140Z",
@@ -2634,5 +2927,5 @@
     "lastTestStatus": "success",
     "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
   },
-  "updatedAt": "2026-09-01T11:28:10.904Z"
+  "updatedAt": "2026-09-01T11:44:53.497Z"
 }
