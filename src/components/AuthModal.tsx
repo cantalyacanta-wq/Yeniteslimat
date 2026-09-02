@@ -354,7 +354,7 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">
+              <label className="text-xs font-bold text-orange-400 block">
                 E-Posta Adresi veya Telefon Numarası
               </label>
               <div className="relative">
@@ -371,7 +371,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">Şifre</label>
+              <label className="text-xs font-bold text-orange-400 block">Şifre</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
@@ -391,18 +391,6 @@ export const AuthModal: React.FC = () => {
               <LogIn className="w-4 h-4" />
               <span>Müşteri Olarak Giriş Yap</span>
             </button>
-
-            {/* Quick Demo Customer Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('user-customer-sample-1', 'customer')}
-                className="w-full py-2 bg-[#041a14] hover:bg-[#06291f] border border-emerald-600/40 text-emerald-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>⚡ Hızlı Giriş: Deniz Akdeniz (Şifre: 123)</span>
-              </button>
-            </div>
 
             <div className="pt-2 border-t border-emerald-900/60 text-center">
               <p className="text-xs text-emerald-300/80 mb-2">
@@ -442,7 +430,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Ad Soyad *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Ad Soyad *</label>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -457,7 +445,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Telefon Numarası *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Telefon Numarası *</label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -474,7 +462,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">E-Posta Adresi *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">E-Posta Adresi *</label>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -489,7 +477,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Bulunduğunuz İlçe</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Bulunduğunuz İlçe</label>
                 <div className="relative">
                   <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <select
@@ -508,7 +496,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-emerald-200 block">Firma / Mağaza Adı (İsteğe Bağlı)</label>
+              <label className="text-[11px] font-bold text-orange-400 block">Firma / Mağaza Adı (İsteğe Bağlı)</label>
               <div className="relative">
                 <Building2 className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                 <input
@@ -523,7 +511,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Belirleyin *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Şifre Belirleyin *</label>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -538,7 +526,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Tekrar *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Şifre Tekrar *</label>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -594,7 +582,7 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">
+              <label className="text-xs font-bold text-orange-400 block">
                 Kurye E-Posta, İsim veya Telefon Numarası
               </label>
               <div className="relative">
@@ -611,7 +599,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">Şifre</label>
+              <label className="text-xs font-bold text-orange-400 block">Şifre</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
@@ -631,27 +619,6 @@ export const AuthModal: React.FC = () => {
               <Bike className="w-4 h-4" />
               <span>Kurye Olarak Giriş Yap</span>
             </button>
-
-            {/* Quick Demo Courier Buttons */}
-            <div className="space-y-1.5 pt-1">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('user-courier-01', 'courier')}
-                className="w-full py-2 bg-[#1a1404] hover:bg-[#292006] border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>⚡ Hızlı Giriş: Ahmet Yılmaz (Kurye - Şifre: 123)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('user-courier-02', 'courier')}
-                className="w-full py-2 bg-[#1a1404] hover:bg-[#292006] border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>⚡ Hızlı Giriş: Mustafa Demir (Kurye - Şifre: 123)</span>
-              </button>
-            </div>
 
             <div className="pt-2 border-t border-emerald-900/60 text-center">
               <p className="text-xs text-emerald-300/80 mb-2">
@@ -696,7 +663,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Kurye Ad Soyad *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Kurye Ad Soyad *</label>
                 <div className="relative">
                   <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -711,7 +678,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Telefon Numarası *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Telefon Numarası *</label>
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -728,7 +695,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">E-Posta Adresi *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">E-Posta Adresi *</label>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -743,7 +710,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Taşıma Aracı Tipi</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Taşıma Aracı Tipi</label>
                 <div className="relative">
                   <Bike className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <select
@@ -762,7 +729,7 @@ export const AuthModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Belirleyin *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Şifre Belirleyin *</label>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -777,7 +744,7 @@ export const AuthModal: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-emerald-200 block">Şifre Tekrar *</label>
+                <label className="text-[11px] font-bold text-orange-400 block">Şifre Tekrar *</label>
                 <div className="relative">
                   <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
                   <input
@@ -833,7 +800,7 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">
+              <label className="text-xs font-bold text-orange-400 block">
                 Yönetici E-Posta veya Kullanıcı Adı
               </label>
               <div className="relative">
@@ -850,7 +817,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-200 block">Yönetici Şifresi</label>
+              <label className="text-xs font-bold text-orange-400 block">Yönetici Şifresi</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
@@ -870,18 +837,6 @@ export const AuthModal: React.FC = () => {
               <ShieldCheck className="w-4 h-4" />
               <span>Yönetici Olarak Giriş Yap</span>
             </button>
-
-            {/* Quick Demo Admin Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('user-admin-01', 'admin')}
-                className="w-full py-2 bg-[#041a14] hover:bg-[#06291f] border border-teal-500/40 text-teal-300 font-bold text-[11px] rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>⚡ Hızlı Yönetici Girişi (Şifre: admin)</span>
-              </button>
-            </div>
           </form>
         )}
 

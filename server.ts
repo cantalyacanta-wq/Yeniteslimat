@@ -211,8 +211,16 @@ function loadDatabase() {
           parsed.couriers.forEach((c: any) => courierMap.set(c.id, { ...(courierMap.get(c.id) || {}), ...c }));
         }
 
-        // Clean out any old mock requests
-        const cleanRequests = parsed.requests.filter((r: any) => r && r.id && !String(r.id).startsWith('req-sample-'));
+        // Clean out any old mock or test requests
+        const cleanRequests = parsed.requests.filter((r: any) => 
+          r && 
+          r.id && 
+          !String(r.id).startsWith('req-sample-') &&
+          !String(r.id).startsWith('req-test-') &&
+          !String(r.id).startsWith('test-') &&
+          r.trackingCode !== 'ANT-5892' &&
+          r.trackingCode !== 'ANT-9999'
+        );
 
         const existingSmtp = parsed.smtpConfig || {};
         const savedPass = (existingSmtp.pass && existingSmtp.pass.trim() !== '') ? existingSmtp.pass : 'tlnsrezkaobytsvg';
@@ -619,7 +627,7 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
 
   const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
-  const poolUrl = 'https://www.antalyateslimat.com/pakettalebi';
+  const poolUrl = 'https://www.antalyateslimat.com/#pakettalebi';
 
   const textContent = `
 YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})
@@ -747,15 +755,25 @@ function initFirestoreSync() {
 // Initial Firestore connection trigger
 initFirestoreSync();
 
-// Periodic background sweep every 5 seconds to guarantee NO request ever misses email notification
+// Periodic background sweep every 5 seconds to guarantee NO real customer request misses email notification
 setInterval(() => {
   if (Array.isArray(dbState.requests)) {
     dbState.requests.forEach((r) => {
+      const isTestOrder =
+        !r ||
+        !r.id ||
+        String(r.id).startsWith('req-sample-') ||
+        String(r.id).startsWith('req-test-') ||
+        String(r.id).startsWith('test-') ||
+        r.trackingCode === 'ANT-5892' ||
+        r.trackingCode === 'ANT-9999';
+
+      if (isTestOrder) return;
+
       const isUnsent = !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
         const isPendingPool = r.status === 'pending_pool' || !r.status;
-        const isAnt5892 = r.trackingCode === 'ANT-5892' || String(r.id).includes('5892');
-        if (isPendingPool || isAnt5892) {
+        if (isPendingPool) {
           console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed order #${r.trackingCode} (${r.id})...`);
           enqueueNewOrderEmail(r, undefined, false);
         }
