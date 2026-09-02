@@ -30,7 +30,6 @@ export const AuthModal: React.FC = () => {
     authModalNotice,
     loginUser,
     registerUser,
-    switchUser,
     setCurrentView,
   } = useDelivery();
 
@@ -93,18 +92,6 @@ export const AuthModal: React.FC = () => {
     } else {
       setLoginError(res.message || 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.');
     }
-  };
-
-  // Quick 1-Click Demo Login Helper
-  const handleQuickDemoLogin = (userId: string, targetView: 'courier' | 'customer' | 'admin') => {
-    setLoginError(null);
-    setLoginSuccess('Hızlı oturum açılıyor...');
-    switchUser(userId);
-    setTimeout(() => {
-      setCurrentView(targetView);
-      closeAuthModal();
-      setLoginSuccess(null);
-    }, 400);
   };
 
   // Handle Customer Register
@@ -243,67 +230,47 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Role Type Selector Tabs */}
-        <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginError(null);
-              setAuthModalTab('login');
-            }}
-            className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              !isCourierFlow
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                : 'text-emerald-300/80 hover:text-white'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Müşteri</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setLoginError(null);
-              setAuthModalTab('courier_login');
-            }}
-            className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              isCourierFlow
-                ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
-                : 'text-emerald-300/80 hover:text-white'
-            }`}
-          >
-            <Bike className="w-4 h-4" />
-            <span>Kurye</span>
-          </button>
-        </div>
-
         {/* 2-Tab Navigation for the Current Flow (Giriş Yap vs Kayıt Ol) */}
         <div className="grid grid-cols-2 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
           <button
             type="button"
-            onClick={() => setAuthModalTab(isCourierFlow ? 'courier_login' : 'login')}
+            onClick={() => {
+              setLoginError(null);
+              setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
+            }}
             className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               !isRegister
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                ? isCourierFlow
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Giriş Yap</span>
+            {isCourierFlow ? (
+              <Bike className="w-3.5 h-3.5" />
+            ) : (
+              <LogIn className="w-3.5 h-3.5" />
+            )}
+            <span>{isCourierFlow ? 'Kurye Girişi' : 'Giriş Yap'}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setAuthModalTab(isCourierFlow ? 'courier_register' : 'register')}
+            onClick={() => {
+              setCustomerError(null);
+              setCourierError(null);
+              setAuthModalTab(isCourierFlow ? 'courier_register' : 'register');
+            }}
             className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
               isRegister
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                ? isCourierFlow
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>Kayıt Ol</span>
+            <span>{isCourierFlow ? 'Kurye Kayıt Ol' : 'Kayıt Ol'}</span>
           </button>
         </div>
 
