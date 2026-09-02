@@ -23,6 +23,7 @@ interface DeliveryContextType {
   currentUser: UserAccount;
   users: UserAccount[];
   courierUsers: UserAccount[];
+  customerUsers: UserAccount[];
   switchUser: (userId: string) => void;
   setCurrentUser: (user: UserAccount) => void;
   loginUser: (identifier: string, passwordInput?: string, expectedRole?: 'customer' | 'courier' | 'admin') => { success: boolean; user?: UserAccount; message?: string };
@@ -36,15 +37,18 @@ interface DeliveryContextType {
   addCourier: (data: { name: string; phone: string; email: string; password?: string; district?: DistrictName }) => UserAccount;
   deleteCourier: (courierId: string) => void;
   updateCourier: (courierId: string, data: Partial<UserAccount>) => void;
+  addCustomer: (data: { name: string; phone: string; email: string; password?: string; district?: DistrictName; companyName?: string }) => UserAccount;
+  deleteCustomer: (customerId: string) => void;
+  updateCustomer: (customerId: string, data: Partial<UserAccount>) => void;
 
   // Auth Modal Controls
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  authModalTab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login';
-  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login') => void;
+  authModalTab: 'login' | 'register' | 'courier_login' | 'courier_register';
+  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'courier_register') => void;
   authModalNotice: string | null;
   setAuthModalNotice: (notice: string | null) => void;
-  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login', notice?: string | null) => void;
+  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register', notice?: string | null) => void;
   closeAuthModal: () => void;
 
   // Requests
@@ -117,16 +121,23 @@ const ALL_ORDER_KEYS = [
   'antalya_kurye_database_v4_orders',
 ];
 
-// Helper to safely determine initial view from URL hash or localStorage
-const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile' => {
+// Helper to safely determine initial view from URL hash, pathname, or localStorage
+const getInitialView = (): 'home' | 'customer' | 'courier' | 'tracker' | 'history' | 'profile' | 'admin' => {
   try {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').trim().toLowerCase();
-      if (['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(hash)) {
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      
+      if (['admin', 'yonetim', 'yonetimpaneli', 'panel', 'yonetici'].some(k => hash.includes(k) || path.includes(k) || search.includes(k))) {
+        return 'admin';
+      }
+
+      if (['home', 'customer', 'courier', 'tracker', 'history', 'profile', 'admin'].includes(hash)) {
         return hash as any;
       }
       const saved = localStorage.getItem(STORAGE_CURRENT_VIEW_KEY) || sessionStorage.getItem(STORAGE_CURRENT_VIEW_KEY);
-      if (saved && ['home', 'customer', 'courier', 'tracker', 'history', 'profile'].includes(saved)) {
+      if (saved && ['home', 'customer', 'courier', 'tracker', 'history', 'profile', 'admin'].includes(saved)) {
         return saved as any;
       }
     }
@@ -238,7 +249,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 5. Global Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register' | 'admin_login'>('courier_login');
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
 
   // Ref to track active user and requests for real-time notifications & vibration across devices
@@ -398,7 +409,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [processIncomingRequests, syncWithServer]);
 
-  const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'admin_login' = 'login', notice: string | null = null) => {
+  const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'courier_register' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
     setAuthModalNotice(notice);
     setIsAuthModalOpen(true);
@@ -828,6 +839,69 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).catch((e) => console.warn('Failed to update courier on server:', e));
+  }, []);
+
+  // Admin add customer
+  const addCustomer = useCallback((data: { name: string; phone: string; email: string; password?: string; district?: DistrictName; companyName?: string }): UserAccount => {
+    const newCustomer: UserAccount = {
+      id: `user-customer-${Date.now()}`,
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email.trim().toLowerCase(),
+      password: data.password?.trim() || '123',
+      role: 'customer',
+      district: data.district || 'Muratpaşa',
+      companyName: data.companyName?.trim() || '',
+      createdAt: new Date().toISOString(),
+      totalOrders: 0,
+      totalEarnings: 0,
+    };
+    setUsers((prev) => [newCustomer, ...prev]);
+    playSuccessSound();
+
+    saveUserToFirestore(newCustomer).catch(() => {});
+
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    }).catch((e) => console.warn('Failed to sync new customer to server:', e));
+
+    return newCustomer;
+  }, []);
+
+  // Admin delete customer
+  const deleteCustomer = useCallback((customerId: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== customerId));
+    if (currentUserId === customerId) {
+      setCurrentUserId(INITIAL_USERS[0].id);
+    }
+    playAcceptSound();
+
+    deleteUserFromFirestore(customerId).catch(() => {});
+
+    fetch(`/api/users/${customerId}`, {
+      method: 'DELETE',
+    }).catch((e) => console.warn('Failed to delete customer on server:', e));
+  }, [currentUserId]);
+
+  // Admin update customer
+  const updateCustomer = useCallback((customerId: string, data: Partial<UserAccount>) => {
+    setUsers((prev) => prev.map((u) => {
+      if (u.id === customerId) {
+        const updated = { ...u, ...data };
+        saveUserToFirestore(updated).catch(() => {});
+        return updated;
+      }
+      return u;
+    }));
+    playAcceptSound();
+
+    fetch(`/api/users/${customerId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch((e) => console.warn('Failed to update customer on server:', e));
   }, []);
 
   // Logout feature - cleanly resets to guest customer & classic home view
@@ -1383,6 +1457,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 
   const courierUsers = users.filter((u) => u.role === 'courier');
+  const customerUsers = users.filter((u) => u.role === 'customer');
 
   const completedTodayCount = requests.filter((r) => r.status === 'delivered').length;
   const inTransitCount = requests.filter(
@@ -1399,6 +1474,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         currentUser,
         users,
         courierUsers,
+        customerUsers,
         switchUser,
         setCurrentUser,
         loginUser,
@@ -1412,6 +1488,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addCourier,
         deleteCourier,
         updateCourier,
+        addCustomer,
+        deleteCustomer,
+        updateCustomer,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalTab,

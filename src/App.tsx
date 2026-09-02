@@ -7,9 +7,19 @@ import { CourierPool } from './components/CourierPool';
 import { OrderTracker } from './components/OrderTracker';
 import { OrderHistory } from './components/OrderHistory';
 import { AdminManagement } from './components/AdminManagement';
+import { AdminLoginGate } from './components/AdminLoginGate';
 import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { Bike, ShieldCheck, Zap } from 'lucide-react';
+
+const checkIsAdminRoute = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname.toLowerCase();
+  const s = window.location.search.toLowerCase();
+  const h = window.location.hash.toLowerCase();
+  const keywords = ['admin', 'yonetim', 'yonetimpaneli', 'yonetici', 'panel'];
+  return keywords.some((k) => p.includes(k) || s.includes(k) || h.includes(k));
+};
 
 const MainContent: React.FC = () => {
   const { currentView, currentUser, setCurrentView, openAuthModal, switchUser } = useDelivery();
@@ -73,41 +83,7 @@ const MainContent: React.FC = () => {
             currentUser.role === 'admin' ? (
               <AdminManagement />
             ) : (
-              <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
-                <div className="w-14 h-14 rounded-2xl bg-teal-500/20 border border-teal-500/40 text-teal-400 mx-auto flex items-center justify-center">
-                  <ShieldCheck className="w-7 h-7" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-extrabold text-white">Yönetici Yetkisi Gerekli</h3>
-                  <p className="text-xs text-emerald-300/80">
-                    Yönetim paneli kurye onayları, irsaliyeler ve sistem kontrolü içindir.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => switchUser('user-admin-01')}
-                    className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Yönetici Olarak Paneli Aç</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('admin_login')}
-                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer"
-                  >
-                    Yönetici Girişi Yap
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('home')}
-                    className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
-                  >
-                    Ana Sayfaya Dön
-                  </button>
-                </div>
-              </div>
+              <AdminLoginGate />
             )
           )}
           {currentView === 'history' && <OrderHistory />}
@@ -151,6 +127,53 @@ const AppFooter: React.FC = () => {
   );
 };
 
+const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
+  const { setCurrentView } = useDelivery();
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      if (checkIsAdminRoute()) {
+        setCurrentView('admin');
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, [setCurrentView]);
+
+  return (
+    <>
+      {/* Global Auth Modal */}
+      <AuthModal />
+
+      {/* Dedicated Standalone /pakettalebi Route View */}
+      {isPaketTalebiRoute ? (
+        <div className="flex-1 w-full">
+          <PaketTalebiPoolPage />
+        </div>
+      ) : (
+        <>
+          {/* Responsive Navbar */}
+          <Navbar />
+
+          {/* Dynamic Views */}
+          <div className="flex-1 w-full max-w-full">
+            <MainContent />
+          </div>
+
+          {/* Minimal Responsive Footer */}
+          <AppFooter />
+        </>
+      )}
+    </>
+  );
+};
+
 export default function App() {
   const [isPaketTalebiRoute, setIsPaketTalebiRoute] = useState<boolean>(checkIsPaketTalebiRoute);
 
@@ -171,28 +194,7 @@ export default function App() {
   return (
     <DeliveryProvider>
       <div className="min-h-screen bg-gradient-to-b from-[#021814] via-[#03241e] to-[#011410] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden m-0 p-0">
-        {/* Global Auth Modal */}
-        <AuthModal />
-
-        {/* Dedicated Standalone /pakettalebi Route View */}
-        {isPaketTalebiRoute ? (
-          <div className="flex-1 w-full">
-            <PaketTalebiPoolPage />
-          </div>
-        ) : (
-          <>
-            {/* Responsive Navbar (Without links to /pakettalebi as requested) */}
-            <Navbar />
-
-            {/* Dynamic Views */}
-            <div className="flex-1 w-full max-w-full">
-              <MainContent />
-            </div>
-
-            {/* Minimal Responsive Footer */}
-            <AppFooter />
-          </>
-        )}
+        <AppViewRouter isPaketTalebiRoute={isPaketTalebiRoute} />
       </div>
     </DeliveryProvider>
   );

@@ -35,6 +35,11 @@ import {
   HelpCircle,
   Send,
   Info,
+  Edit3,
+  Building,
+  ShoppingBag,
+  LogOut,
+  Calendar,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
@@ -46,9 +51,14 @@ export const AdminManagement: React.FC = () => {
     currentUser,
     users,
     courierUsers,
+    customerUsers,
     addCourier,
     deleteCourier,
     updateCourier,
+    addCustomer,
+    deleteCustomer,
+    updateCustomer,
+    logout,
     requests,
     poolRequests,
     acceptRequest,
@@ -63,10 +73,54 @@ export const AdminManagement: React.FC = () => {
     activeStats,
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'couriers' | 'orders' | 'emails' | 'system'>('orders');
+  const [activeTab, setActiveTab] = useState<'customers' | 'couriers' | 'orders' | 'emails' | 'system'>('customers');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
+
+  // Customer Management State
+  const [searchCustomerQuery, setSearchCustomerQuery] = useState('');
+  const [customerDistrictFilter, setCustomerDistrictFilter] = useState<string>('all');
+  const [selectedCustomerForOrders, setSelectedCustomerForOrders] = useState<UserAccount | null>(null);
+  const [showCustomerPasswords, setShowCustomerPasswords] = useState<Record<string, boolean>>({});
+
+  // Add Customer Modal State
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [addCustName, setAddCustName] = useState('');
+  const [addCustPhone, setAddCustPhone] = useState('');
+  const [addCustEmail, setAddCustEmail] = useState('');
+  const [addCustPassword, setAddCustPassword] = useState('123');
+  const [addCustDistrict, setAddCustDistrict] = useState<DistrictName>('Muratpaşa');
+  const [addCustCompany, setAddCustCompany] = useState('');
+  const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
+  const [addCustomerSuccess, setAddCustomerSuccess] = useState<string | null>(null);
+
+  // Edit Customer Modal State
+  const [editingCustomer, setEditingCustomer] = useState<UserAccount | null>(null);
+  const [editCustName, setEditCustName] = useState('');
+  const [editCustPhone, setEditCustPhone] = useState('');
+  const [editCustEmail, setEditCustEmail] = useState('');
+  const [editCustPassword, setEditCustPassword] = useState('');
+  const [editCustDistrict, setEditCustDistrict] = useState<DistrictName>('Muratpaşa');
+  const [editCustCompany, setEditCustCompany] = useState('');
+  const [editCustSuccess, setEditCustSuccess] = useState<string | null>(null);
+
+  // Delete Customer Confirmation State
+  const [deletingCustomer, setDeletingCustomer] = useState<UserAccount | null>(null);
+
+  // Courier Management State
+  const [searchCourierQuery, setSearchCourierQuery] = useState('');
+  const [courierDistrictFilter, setCourierDistrictFilter] = useState<string>('all');
+  const [showCourierPasswords, setShowCourierPasswords] = useState<Record<string, boolean>>({});
+
+  // Edit Courier Modal State
+  const [editingCourier, setEditingCourier] = useState<UserAccount | null>(null);
+  const [editCourName, setEditCourName] = useState('');
+  const [editCourPhone, setEditCourPhone] = useState('');
+  const [editCourEmail, setEditCourEmail] = useState('');
+  const [editCourPassword, setEditCourPassword] = useState('');
+  const [editCourDistrict, setEditCourDistrict] = useState<DistrictName>('Muratpaşa');
+  const [editCourSuccess, setEditCourSuccess] = useState<string | null>(null);
 
   // Email Notification Tab State
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
@@ -382,6 +436,153 @@ export const AdminManagement: React.FC = () => {
   const [assigningOrder, setAssigningOrder] = useState<DeliveryRequest | null>(null);
   const [selectedCourierForAssign, setSelectedCourierForAssign] = useState<string>('');
 
+  // Handle Add Customer Form
+  const handleAddCustomerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddCustomerError(null);
+    setAddCustomerSuccess(null);
+
+    if (!addCustName.trim()) {
+      setAddCustomerError('Lütfen müşteri ad ve soyadını giriniz.');
+      return;
+    }
+    if (!addCustPhone.trim()) {
+      setAddCustomerError('Lütfen müşteri telefon numarasını giriniz.');
+      return;
+    }
+    if (!addCustEmail.trim()) {
+      setAddCustomerError('Lütfen müşteri e-posta adresini giriniz.');
+      return;
+    }
+
+    try {
+      const created = addCustomer({
+        name: addCustName.trim(),
+        phone: addCustPhone.trim(),
+        email: addCustEmail.trim(),
+        password: addCustPassword.trim() || '123',
+        district: addCustDistrict,
+        companyName: addCustCompany.trim(),
+      });
+
+      setAddCustomerSuccess(`${created.name} başarıyla sisteme müşteri olarak eklendi.`);
+      setAddCustName('');
+      setAddCustPhone('');
+      setAddCustEmail('');
+      setAddCustPassword('123');
+      setAddCustCompany('');
+      setTimeout(() => {
+        setIsAddCustomerOpen(false);
+        setAddCustomerSuccess(null);
+      }, 1000);
+    } catch (err: any) {
+      setAddCustomerError(err?.message || 'Müşteri eklenirken bir hata oluştu.');
+    }
+  };
+
+  // Handle Delete Customer
+  const handleConfirmDeleteCustomer = () => {
+    if (deletingCustomer) {
+      deleteCustomer(deletingCustomer.id);
+      setDeletingCustomer(null);
+    }
+  };
+
+  // Open Edit Customer Modal
+  const handleOpenEditCustomer = (cust: UserAccount) => {
+    setEditingCustomer(cust);
+    setEditCustName(cust.name);
+    setEditCustPhone(cust.phone);
+    setEditCustEmail(cust.email);
+    setEditCustPassword(cust.password || '');
+    setEditCustDistrict(cust.district || 'Muratpaşa');
+    setEditCustCompany(cust.companyName || '');
+    setEditCustSuccess(null);
+  };
+
+  // Handle Save Edit Customer
+  const handleSaveEditCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+
+    updateCustomer(editingCustomer.id, {
+      name: editCustName.trim(),
+      phone: editCustPhone.trim(),
+      email: editCustEmail.trim(),
+      password: editCustPassword.trim() || editingCustomer.password,
+      district: editCustDistrict,
+      companyName: editCustCompany.trim(),
+    });
+
+    setEditCustSuccess('Müşteri bilgileri başarıyla güncellendi.');
+    setTimeout(() => {
+      setEditingCustomer(null);
+      setEditCustSuccess(null);
+    }, 900);
+  };
+
+  // Open Edit Courier Modal
+  const handleOpenEditCourier = (cour: UserAccount) => {
+    setEditingCourier(cour);
+    setEditCourName(cour.name);
+    setEditCourPhone(cour.phone);
+    setEditCourEmail(cour.email);
+    setEditCourPassword(cour.password || '');
+    setEditCourDistrict(cour.district || 'Muratpaşa');
+    setEditCourSuccess(null);
+  };
+
+  // Handle Save Edit Courier
+  const handleSaveEditCourier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourier) return;
+
+    updateCourier(editingCourier.id, {
+      name: editCourName.trim(),
+      phone: editCourPhone.trim(),
+      email: editCourEmail.trim(),
+      password: editCourPassword.trim() || editingCourier.password,
+      district: editCourDistrict,
+    });
+
+    setEditCourSuccess('Kurye bilgileri başarıyla güncellendi.');
+    setTimeout(() => {
+      setEditingCourier(null);
+      setEditCourSuccess(null);
+    }, 900);
+  };
+
+  // Filtered Customers
+  const filteredCustomers = customerUsers.filter((cust) => {
+    if (customerDistrictFilter !== 'all' && cust.district !== customerDistrictFilter) return false;
+    if (searchCustomerQuery.trim()) {
+      const q = searchCustomerQuery.toLowerCase();
+      const match =
+        (cust.name || '').toLowerCase().includes(q) ||
+        (cust.phone || '').toLowerCase().includes(q) ||
+        (cust.email || '').toLowerCase().includes(q) ||
+        (cust.companyName || '').toLowerCase().includes(q) ||
+        (cust.district || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  // Filtered Couriers
+  const filteredCouriers = courierUsers.filter((cour) => {
+    if (courierDistrictFilter !== 'all' && cour.district !== courierDistrictFilter) return false;
+    if (searchCourierQuery.trim()) {
+      const q = searchCourierQuery.toLowerCase();
+      const match =
+        (cour.name || '').toLowerCase().includes(q) ||
+        (cour.phone || '').toLowerCase().includes(q) ||
+        (cour.email || '').toLowerCase().includes(q) ||
+        (cour.district || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
   // Handle Add Courier Form
   const handleAddCourierSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,30 +683,59 @@ export const AdminManagement: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-emerald-300/80 mt-0.5">
-              Kurye ekleme & silme, canlı havuz ve paket sipariş denetim merkezi.
+              Müşteri & kurye yönetimi, canlı havuz ve sipariş denetim merkezi.
             </p>
           </div>
         </div>
 
-        {/* Quick Stats Pill */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap text-xs">
-          <div className="bg-[#011410] px-3.5 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
-            <span className="text-[10px] text-emerald-400/80 block">Kurye Sayısı</span>
-            <strong className="text-sm sm:text-base font-black text-white">{courierUsers.length} Kurye</strong>
+        {/* Quick Stats & Lock Panel Button */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
+          <div className="bg-[#011410] px-3 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
+            <span className="text-[10px] text-emerald-400/80 block">Müşteriler</span>
+            <strong className="text-sm font-black text-white">{customerUsers.length} Müşteri</strong>
           </div>
-          <div className="bg-[#011410] px-3.5 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
-            <span className="text-[10px] text-emerald-400/80 block">Havuzda Bekleyen</span>
-            <strong className="text-sm sm:text-base font-black text-amber-400">{poolRequests.length} Sipariş</strong>
+          <div className="bg-[#011410] px-3 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
+            <span className="text-[10px] text-emerald-400/80 block">Kuryeler</span>
+            <strong className="text-sm font-black text-white">{courierUsers.length} Kurye</strong>
           </div>
-          <div className="bg-[#011410] px-3.5 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
-            <span className="text-[10px] text-emerald-400/80 block">Toplam Sipariş</span>
-            <strong className="text-sm sm:text-base font-black text-teal-300">{requests.length} Adet</strong>
+          <div className="bg-[#011410] px-3 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
+            <span className="text-[10px] text-emerald-400/80 block">Havuzda</span>
+            <strong className="text-sm font-black text-amber-400">{poolRequests.length} Sipariş</strong>
           </div>
+          
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              if (typeof window !== 'undefined') {
+                window.location.hash = '';
+              }
+              setCurrentView('home');
+            }}
+            title="Yönetim panelini kilitle ve ana sayfaya dön"
+            className="px-3.5 py-2.5 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
+          >
+            <LogOut className="w-4 h-4 text-rose-400" />
+            <span className="hidden sm:inline">Güvenli Çıkış</span>
+          </button>
         </div>
       </div>
 
       {/* Navigation Tabs Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('customers')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
+            activeTab === 'customers'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Müşteri Yönetimi ({customerUsers.length})</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('couriers')}
@@ -563,46 +793,342 @@ export const AdminManagement: React.FC = () => {
       </div>
 
       {/* ===================================================================== */}
-      {/* TAB 1: KURYE YÖNETİMİ (KURYE EKLEME VE SİLME) */}
+      {/* TAB: MÜŞTERİ YÖNETİMİ (CUSTOMER MANAGEMENT) */}
       {/* ===================================================================== */}
-      {activeTab === 'couriers' && (
-        <div className="space-y-4">
-          {/* Action Bar */}
-          <div className="bg-[#021d17] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
-            <div>
-              <h3 className="font-extrabold text-base flex items-center gap-2 text-white">
-                <Bike className="w-5 h-5 text-emerald-400" />
-                <span>Sistemdeki Kuryeler ({courierUsers.length})</span>
-              </h3>
-              <p className="text-xs text-emerald-300/80 mt-0.5">
-                Antalya bölgesinde çalışan kuryelerin listesi, durumları ve yönetim işlemleri.
-              </p>
+      {activeTab === 'customers' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Action & Filter Bar */}
+          <div className="bg-[#021d17] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 space-y-3 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-extrabold text-base flex items-center gap-2 text-white">
+                  <Users className="w-5 h-5 text-emerald-400" />
+                  <span>Kayıtlı Müşteriler ({customerUsers.length})</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80 mt-0.5">
+                  Sistemdeki tüm bireysel ve kurumsal müşterilerin iletişim, adres ve sipariş bilgileri.
+                </p>
+              </div>
+
+              {/* "+ Yeni Müşteri Ekle" Primary Action */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddCustomerError(null);
+                  setAddCustomerSuccess(null);
+                  setIsAddCustomerOpen(true);
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Yeni Müşteri Ekle</span>
+              </button>
             </div>
 
-            {/* "+ Yeni Kurye Ekle" Primary Action */}
-            <button
-              type="button"
-              onClick={() => {
-                setAddCourierError(null);
-                setAddCourierSuccess(null);
-                setIsAddCourierOpen(true);
-              }}
-              className="px-5 py-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Yeni Kurye Ekle</span>
-            </button>
+            {/* Search & Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-emerald-800/40">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-emerald-400" />
+                <input
+                  type="text"
+                  value={searchCustomerQuery}
+                  onChange={(e) => setSearchCustomerQuery(e.target.value)}
+                  placeholder="Müşteri adı, telefon, e-posta veya firma ara..."
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl pl-10 pr-3 py-2 text-xs text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-medium"
+                />
+                {searchCustomerQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchCustomerQuery('')}
+                    className="absolute right-3 top-2.5 text-emerald-500 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <select
+                    value={customerDistrictFilter}
+                    onChange={(e) => setCustomerDistrictFilter(e.target.value)}
+                    className="bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-xs text-emerald-200 focus:border-emerald-400 outline-hidden font-medium cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="all">Tüm İlçeler</option>
+                    {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((district) => (
+                      <option key={district} value={district} className="bg-[#021f19] text-white">
+                        {district}
+                      </option>
+                    ))}
+                  </select>
+                  <Filter className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-emerald-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer List Cards / Grid */}
+          {filteredCustomers.length === 0 ? (
+            <div className="bg-[#021f19] rounded-3xl border border-emerald-800/60 p-10 text-center text-white space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-400 mx-auto flex items-center justify-center">
+                <Users className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-white">Müşteri Bulunamadı</h4>
+              <p className="text-xs text-emerald-300/80 max-w-sm mx-auto">
+                {searchCustomerQuery || customerDistrictFilter !== 'all'
+                  ? 'Arama kriterlerinize uygun kayıtlı müşteri bulunamadı.'
+                  : 'Sisteme yeni bir müşteri kaydetmek için yukarıdaki "+ Yeni Müşteri Ekle" butonunu kullanabilirsiniz.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsAddCustomerOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                + Yeni Müşteri Tanımla
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredCustomers.map((cust) => {
+                const customerOrders = requests.filter(
+                  (r) =>
+                    r.senderUserId === cust.id ||
+                    r.sender?.contactPhone === cust.phone ||
+                    r.sender?.contactEmail === cust.email
+                );
+                const totalSpent = customerOrders.reduce((acc, curr) => acc + (curr.price || 0), 0);
+                const isPasswordVisible = !!showCustomerPasswords[cust.id];
+
+                return (
+                  <div
+                    key={cust.id}
+                    className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 hover:border-emerald-400 transition p-5 flex flex-col justify-between gap-4 text-white shadow-xl"
+                  >
+                    <div className="space-y-3">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-2 border-b border-emerald-800/50 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center font-bold text-white text-sm shadow-md">
+                            {cust.name ? cust.name.charAt(0).toUpperCase() : 'M'}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                              <span>{cust.name}</span>
+                            </h4>
+                            {cust.companyName && (
+                              <span className="text-[11px] text-amber-300 font-semibold flex items-center gap-1 mt-0.5">
+                                <Building className="w-3 h-3 text-amber-400" />
+                                <span>{cust.companyName}</span>
+                              </span>
+                            )}
+                            <span className="text-[11px] text-emerald-300/80 font-medium block">
+                              {cust.district || 'Muratpaşa'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Customer Badge */}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-950 border border-teal-500/40 text-teal-300">
+                          Müşteri
+                        </span>
+                      </div>
+
+                      {/* Contact & Password Info */}
+                      <div className="bg-[#011410] p-3 rounded-2xl border border-emerald-800/40 space-y-2 text-xs">
+                        <div className="flex items-center justify-between text-emerald-300/90">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <a
+                              href={`tel:${cust.phone}`}
+                              className="font-mono hover:text-emerald-200 underline decoration-dotted"
+                            >
+                              {cust.phone}
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-emerald-300/90 truncate">
+                          <div className="flex items-center gap-2 truncate">
+                            <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <a
+                              href={`mailto:${cust.email}`}
+                              className="truncate hover:text-emerald-200 underline decoration-dotted"
+                            >
+                              {cust.email}
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Password display with toggle */}
+                        <div className="flex items-center justify-between pt-1 border-t border-emerald-900/50 text-emerald-300/90">
+                          <div className="flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="text-[11px] text-emerald-400/80">Giriş Şifresi:</span>
+                            <span className="font-mono font-bold text-amber-300 text-xs">
+                              {isPasswordVisible ? (cust.password || '123') : '••••••'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowCustomerPasswords((prev) => ({
+                                ...prev,
+                                [cust.id]: !prev[cust.id],
+                              }))
+                            }
+                            className="p-1 hover:bg-emerald-900/60 rounded text-emerald-400 hover:text-white transition cursor-pointer"
+                            title={isPasswordVisible ? 'Şifreyi Gizle' : 'Şifreyi Göster'}
+                          >
+                            {isPasswordVisible ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Orders & Total Spent */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
+                          <span className="text-[10px] text-emerald-400/80 block">Toplam Sipariş</span>
+                          <strong className="text-sm font-bold text-white flex items-center gap-1">
+                            <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{customerOrders.length} Adet</span>
+                          </strong>
+                        </div>
+                        <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
+                          <span className="text-[10px] text-emerald-400/80 block">Toplam Harcama</span>
+                          <strong className="text-sm font-bold text-emerald-400">{totalSpent} ₺</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions: View Orders, Edit, Delete */}
+                    <div className="pt-3 border-t border-emerald-800/50 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCustomerForOrders(cust)}
+                        className="px-3 py-2 bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer flex-1 justify-center"
+                      >
+                        <Package className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Sipariş Geçmişi ({customerOrders.length})</span>
+                      </button>
+
+                      {/* Edit Customer Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditCustomer(cust)}
+                        title="Müşteri Bilgilerini Düzenle"
+                        className="p-2 bg-teal-950/70 hover:bg-teal-900 text-teal-300 border border-teal-800/60 rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      {/* Delete Customer Button */}
+                      <button
+                        type="button"
+                        onClick={() => setDeletingCustomer(cust)}
+                        title="Müşteriyi Sistemden Sil"
+                        className="p-2 bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: KURYE YÖNETİMİ (COURIER MANAGEMENT) */}
+      {/* ===================================================================== */}
+      {activeTab === 'couriers' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Action & Filter Bar */}
+          <div className="bg-[#021d17] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 space-y-3 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-extrabold text-base flex items-center gap-2 text-white">
+                  <Bike className="w-5 h-5 text-emerald-400" />
+                  <span>Sistemdeki Kuryeler ({courierUsers.length})</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80 mt-0.5">
+                  Antalya bölgesinde çalışan kuryelerin iletişim, bölge, şifre ve kazanç denetimi.
+                </p>
+              </div>
+
+              {/* "+ Yeni Kurye Ekle" Primary Action */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddCourierError(null);
+                  setAddCourierSuccess(null);
+                  setIsAddCourierOpen(true);
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Yeni Kurye Ekle</span>
+              </button>
+            </div>
+
+            {/* Search & Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-emerald-800/40">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-emerald-400" />
+                <input
+                  type="text"
+                  value={searchCourierQuery}
+                  onChange={(e) => setSearchCourierQuery(e.target.value)}
+                  placeholder="Kurye adı, telefon veya e-posta ara..."
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl pl-10 pr-3 py-2 text-xs text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-medium"
+                />
+                {searchCourierQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchCourierQuery('')}
+                    className="absolute right-3 top-2.5 text-emerald-500 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <select
+                    value={courierDistrictFilter}
+                    onChange={(e) => setCourierDistrictFilter(e.target.value)}
+                    className="bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-2 text-xs text-emerald-200 focus:border-emerald-400 outline-hidden font-medium cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="all">Tüm İlçeler</option>
+                    {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((district) => (
+                      <option key={district} value={district} className="bg-[#021f19] text-white">
+                        {district}
+                      </option>
+                    ))}
+                  </select>
+                  <Filter className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-emerald-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Courier List Cards / Grid */}
-          {courierUsers.length === 0 ? (
+          {filteredCouriers.length === 0 ? (
             <div className="bg-[#021f19] rounded-3xl border border-emerald-800/60 p-10 text-center text-white space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-emerald-400 mx-auto flex items-center justify-center">
                 <Bike className="w-6 h-6" />
               </div>
-              <h4 className="text-base font-bold text-white">Kayıtlı Kurye Bulunmuyor</h4>
+              <h4 className="text-base font-bold text-white">Kurye Bulunamadı</h4>
               <p className="text-xs text-emerald-300/80 max-w-sm mx-auto">
-                Sisteme yeni bir kurye eklemek için yukarıdaki "+ Yeni Kurye Ekle" butonunu kullanabilirsiniz.
+                {searchCourierQuery || courierDistrictFilter !== 'all'
+                  ? 'Arama kriterlerinize uygun kayıtlı kurye bulunamadı.'
+                  : 'Sisteme yeni bir kurye eklemek için yukarıdaki "+ Yeni Kurye Ekle" butonunu kullanabilirsiniz.'}
               </p>
               <button
                 type="button"
@@ -614,104 +1140,156 @@ export const AdminManagement: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courierUsers.map((courier) => (
-                <div
-                  key={courier.id}
-                  className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 hover:border-emerald-400 transition p-5 flex flex-col justify-between gap-4 text-white shadow-xl"
-                >
-                  <div className="space-y-3">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2 border-b border-emerald-800/50 pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-white text-sm shadow-md">
-                          {courier.name.split(' ')[0][0]}
+              {filteredCouriers.map((courier) => {
+                const isPasswordVisible = !!showCourierPasswords[courier.id];
+
+                return (
+                  <div
+                    key={courier.id}
+                    className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-700/60 hover:border-emerald-400 transition p-5 flex flex-col justify-between gap-4 text-white shadow-xl"
+                  >
+                    <div className="space-y-3">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-2 border-b border-emerald-800/50 pb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-bold text-white text-sm shadow-md">
+                            {courier.name.split(' ')[0][0]}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-sm text-white">
+                              {courier.name}
+                            </h4>
+                            <span className="text-[11px] text-emerald-300/80 font-medium">
+                              {courier.district || 'Antalya'}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-extrabold text-sm text-white">
-                            {courier.name}
-                          </h4>
-                          <span className="text-[11px] text-emerald-300/80 font-medium">
-                            {courier.district || 'Antalya'}
-                          </span>
+
+                        {/* Online status indicator */}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-500/40 text-emerald-300 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                          Aktif
+                        </span>
+                      </div>
+
+                      {/* Contact & Details */}
+                      <div className="bg-[#011410] p-3 rounded-2xl border border-emerald-800/40 space-y-1.5 text-xs">
+                        <div className="flex items-center gap-2 text-emerald-300/90">
+                          <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <a
+                            href={`tel:${courier.phone}`}
+                            className="font-mono hover:text-emerald-200 underline decoration-dotted"
+                          >
+                            {courier.phone}
+                          </a>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-emerald-300/90 truncate">
+                          <div className="flex items-center gap-2 truncate">
+                            <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <a
+                              href={`mailto:${courier.email}`}
+                              className="truncate hover:text-emerald-200 underline decoration-dotted"
+                            >
+                              {courier.email}
+                            </a>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('emails');
+                              handleSendTestEmail(courier.email);
+                            }}
+                            title="Bu kuryeye test e-postası gönder"
+                            className="px-2 py-0.5 rounded bg-emerald-900/80 hover:bg-emerald-800 text-[10px] text-emerald-300 font-bold border border-emerald-700/50 transition cursor-pointer shrink-0 flex items-center gap-1"
+                          >
+                            <Send className="w-2.5 h-2.5" />
+                            <span>Test Mail</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 text-emerald-300/90">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Bölge: <strong>{courier.district || 'Muratpaşa'}</strong></span>
+                        </div>
+
+                        {/* Password display with toggle */}
+                        <div className="flex items-center justify-between pt-1 border-t border-emerald-900/50 text-emerald-300/90">
+                          <div className="flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span className="text-[11px] text-emerald-400/80">Giriş Şifresi:</span>
+                            <span className="font-mono font-bold text-amber-300 text-xs">
+                              {isPasswordVisible ? (courier.password || '1234') : '••••••'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowCourierPasswords((prev) => ({
+                                ...prev,
+                                [courier.id]: !prev[courier.id],
+                              }))
+                            }
+                            className="p-1 hover:bg-emerald-900/60 rounded text-emerald-400 hover:text-white transition cursor-pointer"
+                            title={isPasswordVisible ? 'Şifreyi Gizle' : 'Şifreyi Göster'}
+                          >
+                            {isPasswordVisible ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Online status indicator */}
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-500/40 text-emerald-300 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                        Aktif
-                      </span>
+                      {/* Earnings & Total Deliveries */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
+                          <span className="text-[10px] text-emerald-400/80 block">Toplam Teslimat</span>
+                          <strong className="text-sm font-bold text-white">{courier.totalOrders || 0} Adet</strong>
+                        </div>
+                        <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
+                          <span className="text-[10px] text-emerald-400/80 block">Kazanılan Tutar</span>
+                          <strong className="text-sm font-bold text-amber-400">{courier.totalEarnings || 0} ₺</strong>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Contact & Details (No motor model, no plate) */}
-                    <div className="bg-[#011410] p-3 rounded-2xl border border-emerald-800/40 space-y-1.5 text-xs">
-                      <div className="flex items-center gap-2 text-emerald-300/90">
-                        <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="font-mono">{courier.phone}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-emerald-300/90 truncate">
-                        <div className="flex items-center gap-2 truncate">
-                          <Mail className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="truncate">{courier.email}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab('emails');
-                            handleSendTestEmail(courier.email);
-                          }}
-                          title="Bu kuryeye test e-postası gönder"
-                          className="px-2 py-0.5 rounded bg-emerald-900/80 hover:bg-emerald-800 text-[10px] text-emerald-300 font-bold border border-emerald-700/50 transition cursor-pointer shrink-0 flex items-center gap-1"
-                        >
-                          <Send className="w-2.5 h-2.5" />
-                          <span>Test Mail</span>
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 text-emerald-300/90">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>Bölge: <strong>{courier.district || 'Muratpaşa'}</strong></span>
-                      </div>
-                    </div>
+                    {/* Actions: Delete Courier, Edit Courier & Switch to Courier */}
+                    <div className="pt-3 border-t border-emerald-800/50 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          switchUser(courier.id);
+                          setCurrentView('courier');
+                        }}
+                        className="px-3 py-2 bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer flex-1 justify-center"
+                      >
+                        <Bike className="w-3.5 h-3.5" />
+                        <span>Kurye Olarak Gör</span>
+                      </button>
 
-                    {/* Earnings & Total Deliveries */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
-                        <span className="text-[10px] text-emerald-400/80 block">Toplam Teslimat</span>
-                        <strong className="text-sm font-bold text-white">{courier.totalOrders || 0} Adet</strong>
-                      </div>
-                      <div className="bg-[#011914] p-2.5 rounded-xl border border-emerald-800/30">
-                        <span className="text-[10px] text-emerald-400/80 block">Kazanılan Tutar</span>
-                        <strong className="text-sm font-bold text-amber-400">{courier.totalEarnings || 0} ₺</strong>
-                      </div>
+                      {/* Edit Courier Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditCourier(courier)}
+                        title="Kurye Bilgilerini Düzenle"
+                        className="p-2 bg-teal-950/70 hover:bg-teal-900 text-teal-300 border border-teal-800/60 rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      {/* Delete Courier Button */}
+                      <button
+                        type="button"
+                        onClick={() => setDeletingCourier(courier)}
+                        title="Kuryeyi Sistemden Sil"
+                        className="p-2 bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-
-                  {/* Actions: Delete Courier & Switch to Courier */}
-                  <div className="pt-3 border-t border-emerald-800/50 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        switchUser(courier.id);
-                        setCurrentView('courier');
-                      }}
-                      className="px-3 py-2 bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer flex-1 justify-center"
-                    >
-                      <Bike className="w-3.5 h-3.5" />
-                      <span>Kurye Olarak Gör</span>
-                    </button>
-
-                    {/* Delete Courier Button */}
-                    <button
-                      type="button"
-                      onClick={() => setDeletingCourier(courier)}
-                      title="Kuryeyi Sistemden Sil"
-                      className="p-2 bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition cursor-pointer shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1775,6 +2353,558 @@ export const AdminManagement: React.FC = () => {
           order={selectedReceiptOrder}
           onClose={() => setSelectedReceiptOrder(null)}
         />
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 5: ADD NEW CUSTOMER MODAL */}
+      {/* ===================================================================== */}
+      {isAddCustomerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-teal-600/70 p-5 sm:p-7 max-w-md w-full text-white shadow-2xl space-y-5 animate-in fade-in zoom-in-95 relative max-h-[90vh] overflow-y-auto">
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setIsAddCustomerOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-emerald-400 hover:text-white rounded-xl hover:bg-emerald-900/60 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-600/40 shrink-0">
+                <UserPlus className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-white">Yeni Müşteri Ekle</h3>
+                <p className="text-xs text-emerald-300/80">Sisteme yeni bireysel veya kurumsal müşteri tanımlayın.</p>
+              </div>
+            </div>
+
+            {addCustomerError && (
+              <div className="p-3 bg-rose-950/80 border border-rose-600/80 text-rose-200 text-xs rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{addCustomerError}</span>
+              </div>
+            )}
+
+            {addCustomerSuccess && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{addCustomerSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddCustomerSubmit} className="space-y-3.5 text-xs">
+              {/* Ad Soyad */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Müşteri / Yetkili Adı *</label>
+                <input
+                  type="text"
+                  required
+                  value={addCustName}
+                  onChange={(e) => setAddCustName(e.target.value)}
+                  placeholder="Örn: Mehmet Demir"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Firma Adı (Opsiyonel) */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Firma / Kurum Adı (Opsiyonel)</label>
+                <input
+                  type="text"
+                  value={addCustCompany}
+                  onChange={(e) => setAddCustCompany(e.target.value)}
+                  placeholder="Örn: Demir Hukuk Bürosu"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Telefon */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Telefon Numarası *</label>
+                <input
+                  type="tel"
+                  required
+                  value={addCustPhone}
+                  onChange={(e) => setAddCustPhone(e.target.value)}
+                  placeholder="0532 555 66 77"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* E-posta */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">E-posta Adresi *</label>
+                <input
+                  type="email"
+                  required
+                  value={addCustEmail}
+                  onChange={(e) => setAddCustEmail(e.target.value)}
+                  placeholder="mehmet@example.com"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Şifre */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Giriş Şifresi</label>
+                <input
+                  type="text"
+                  value={addCustPassword}
+                  onChange={(e) => setAddCustPassword(e.target.value)}
+                  placeholder="123"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white placeholder-emerald-600 focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* İlçe */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">İlçe</label>
+                <select
+                  value={addCustDistrict}
+                  onChange={(e) => setAddCustDistrict(e.target.value as DistrictName)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-emerald-200 focus:border-emerald-400 outline-hidden font-medium cursor-pointer"
+                >
+                  {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((districtName) => (
+                    <option key={districtName} value={districtName} className="bg-[#021f19] text-white">
+                      {districtName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-gradient-to-r from-teal-500 via-teal-600 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white font-extrabold text-sm rounded-2xl transition shadow-lg shadow-teal-500/30 cursor-pointer active:scale-98"
+                >
+                  Müşteriyi Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 6: EDIT CUSTOMER MODAL */}
+      {/* ===================================================================== */}
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-teal-600/70 p-5 sm:p-7 max-w-md w-full text-white shadow-2xl space-y-5 animate-in fade-in zoom-in-95 relative max-h-[90vh] overflow-y-auto">
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setEditingCustomer(null)}
+              className="absolute top-4 right-4 p-1.5 text-emerald-400 hover:text-white rounded-xl hover:bg-emerald-900/60 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-600/40 shrink-0">
+                <Edit3 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-white">Müşteri Bilgilerini Düzenle</h3>
+                <p className="text-xs text-emerald-300/80">{editingCustomer.name}</p>
+              </div>
+            </div>
+
+            {editCustSuccess && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{editCustSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditCustomer} className="space-y-3.5 text-xs">
+              {/* Ad Soyad */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Müşteri / Yetkili Adı *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCustName}
+                  onChange={(e) => setEditCustName(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Firma Adı */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Firma / Kurum Adı</label>
+                <input
+                  type="text"
+                  value={editCustCompany}
+                  onChange={(e) => setEditCustCompany(e.target.value)}
+                  placeholder="Örn: ABC Ticaret"
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Telefon */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Telefon Numarası *</label>
+                <input
+                  type="tel"
+                  required
+                  value={editCustPhone}
+                  onChange={(e) => setEditCustPhone(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* E-posta */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">E-posta Adresi *</label>
+                <input
+                  type="email"
+                  required
+                  value={editCustEmail}
+                  onChange={(e) => setEditCustEmail(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Şifre */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Giriş Şifresi</label>
+                <input
+                  type="text"
+                  value={editCustPassword}
+                  onChange={(e) => setEditCustPassword(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* İlçe */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">İlçe</label>
+                <select
+                  value={editCustDistrict}
+                  onChange={(e) => setEditCustDistrict(e.target.value as DistrictName)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-emerald-200 focus:border-emerald-400 outline-hidden font-medium cursor-pointer"
+                >
+                  {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((districtName) => (
+                    <option key={districtName} value={districtName} className="bg-[#021f19] text-white">
+                      {districtName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="py-2.5 px-3 bg-[#011410] hover:bg-[#022019] text-emerald-300 border border-emerald-800/60 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  İptal
+                </button>
+
+                <button
+                  type="submit"
+                  className="py-2.5 px-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md"
+                >
+                  Değişiklikleri Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 7: DELETE CUSTOMER CONFIRMATION MODAL */}
+      {/* ===================================================================== */}
+      {deletingCustomer && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-rose-600/70 p-6 max-w-sm w-full text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-950 border border-rose-600/60 text-rose-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-base text-white">Müşteriyi Silmek İstiyor musunuz?</h3>
+              <p className="text-xs text-emerald-300/80">
+                <strong>{deletingCustomer.name}</strong> ({deletingCustomer.email}) adlı müşteri sistemden silinecektir.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingCustomer(null)}
+                className="py-2.5 px-3 bg-[#011410] hover:bg-[#022019] text-emerald-300 border border-emerald-800/60 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCustomer}
+                className="py-2.5 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md shadow-rose-600/40"
+              >
+                Evet, Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 8: CUSTOMER ORDERS HISTORY MODAL */}
+      {/* ===================================================================== */}
+      {selectedCustomerForOrders && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-emerald-600/70 p-5 sm:p-7 max-w-2xl w-full text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95 relative max-h-[90vh] overflow-y-auto">
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setSelectedCustomerForOrders(null)}
+              className="absolute top-4 right-4 p-1.5 text-emerald-400 hover:text-white rounded-xl hover:bg-emerald-900/60 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-emerald-800/50 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-600/40 shrink-0">
+                <Package className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                  <span>{selectedCustomerForOrders.name}</span>
+                  <span className="text-xs px-2 py-0.5 bg-teal-950 border border-teal-500/50 text-teal-300 rounded-md font-medium">
+                    Sipariş Geçmişi
+                  </span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">
+                  {selectedCustomerForOrders.phone} • {selectedCustomerForOrders.email}
+                  {selectedCustomerForOrders.companyName && ` • ${selectedCustomerForOrders.companyName}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Orders list */}
+            {(() => {
+              const customerOrders = requests.filter(
+                (r) =>
+                  r.senderUserId === selectedCustomerForOrders.id ||
+                  r.sender?.contactPhone === selectedCustomerForOrders.phone ||
+                  r.sender?.contactEmail === selectedCustomerForOrders.email
+              );
+
+              if (customerOrders.length === 0) {
+                return (
+                  <div className="p-8 text-center bg-[#011410] rounded-2xl border border-emerald-800/40 space-y-2">
+                    <ShoppingBag className="w-10 h-10 text-emerald-600 mx-auto" />
+                    <p className="text-sm font-bold text-white">Henüz Kayıtlı Sipariş Yok</p>
+                    <p className="text-xs text-emerald-400/80">Bu müşteriye ait verilmiş teslimat talebi bulunmuyor.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  <div className="text-xs text-emerald-400/80 flex items-center justify-between">
+                    <span>Toplam {customerOrders.length} adet sipariş bulundu</span>
+                    <span className="font-bold text-white">
+                      Toplam: {customerOrders.reduce((a, b) => a + (b.price || 0), 0)} ₺
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                    {customerOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="bg-[#011410] p-4 rounded-2xl border border-emerald-800/40 hover:border-emerald-600/60 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-amber-300">{order.trackingCode}</span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase ${
+                                order.status === 'delivered'
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/50'
+                                  : order.status === 'cancelled'
+                                  ? 'bg-rose-950 text-rose-300 border border-rose-600/50'
+                                  : 'bg-amber-950 text-amber-300 border border-amber-600/50'
+                              }`}
+                            >
+                              {order.status === 'delivered'
+                                ? 'Teslim Edildi'
+                                : order.status === 'cancelled'
+                                ? 'İptal Edildi'
+                                : order.status === 'in_transit'
+                                ? 'Yolda'
+                                : order.status === 'picked_up'
+                                ? 'Alındı'
+                                : order.status === 'accepted'
+                                ? 'Kurye Atandı'
+                                : 'Bekliyor'}
+                            </span>
+                          </div>
+                          <p className="font-bold text-white">{order.packageName || 'Kurye Paketi'}</p>
+                          <div className="flex items-center gap-2 text-emerald-300/80 text-[11px]">
+                            <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                            <span>
+                              {order.sender?.district} ➔ {order.receiver?.district}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-emerald-400/60">
+                            Alıcı: {order.receiver?.contactName} ({order.receiver?.contactPhone})
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-900/40">
+                          <span className="font-black text-base text-emerald-400">{order.price} ₺</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedReceiptOrder(order);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 rounded-lg text-[11px] font-bold border border-emerald-700/60 transition cursor-pointer flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>Fiş / Makbuz</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL 9: EDIT COURIER MODAL */}
+      {/* ===================================================================== */}
+      {editingCourier && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-emerald-600/70 p-5 sm:p-7 max-w-md w-full text-white shadow-2xl space-y-5 animate-in fade-in zoom-in-95 relative max-h-[90vh] overflow-y-auto">
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setEditingCourier(null)}
+              className="absolute top-4 right-4 p-1.5 text-emerald-400 hover:text-white rounded-xl hover:bg-emerald-900/60 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-600/40 shrink-0">
+                <Edit3 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-white">Kurye Bilgilerini Düzenle</h3>
+                <p className="text-xs text-emerald-300/80">{editingCourier.name}</p>
+              </div>
+            </div>
+
+            {editCourSuccess && (
+              <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-200 text-xs rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{editCourSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditCourier} className="space-y-3.5 text-xs">
+              {/* Ad Soyad */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Kurye Adı ve Soyadı *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCourName}
+                  onChange={(e) => setEditCourName(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Telefon */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Telefon Numarası *</label>
+                <input
+                  type="tel"
+                  required
+                  value={editCourPhone}
+                  onChange={(e) => setEditCourPhone(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* E-posta */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">E-posta Adresi *</label>
+                <input
+                  type="email"
+                  required
+                  value={editCourEmail}
+                  onChange={(e) => setEditCourEmail(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-medium"
+                />
+              </div>
+
+              {/* Şifre */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Kurye Giriş Şifresi</label>
+                <input
+                  type="text"
+                  value={editCourPassword}
+                  onChange={(e) => setEditCourPassword(e.target.value)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-400 outline-hidden font-mono"
+                />
+              </div>
+
+              {/* İlçe */}
+              <div className="space-y-1">
+                <label className="font-bold text-emerald-200 block">Çalışma Bölgesi (İlçe)</label>
+                <select
+                  value={editCourDistrict}
+                  onChange={(e) => setEditCourDistrict(e.target.value as DistrictName)}
+                  className="w-full bg-[#011410] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-emerald-200 focus:border-emerald-400 outline-hidden font-medium cursor-pointer"
+                >
+                  {(Object.keys(ANTALYA_DISTRICTS) as DistrictName[]).map((districtName) => (
+                    <option key={districtName} value={districtName} className="bg-[#021f19] text-white">
+                      {districtName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourier(null)}
+                  className="py-2.5 px-3 bg-[#011410] hover:bg-[#022019] text-emerald-300 border border-emerald-800/60 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  İptal
+                </button>
+
+                <button
+                  type="submit"
+                  className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md"
+                >
+                  Değişiklikleri Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </div>
