@@ -1,5 +1,5 @@
 {
-  "name": "Antalya Şehir İçi Teslimat 7/24",
+  "name": "Antalya Teslimat 7/24",
   "description": "Antalya genelinde 7/24 acil moto kurye, hızlı paket gönderimi ve anlık teslimat takip sistemi.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
