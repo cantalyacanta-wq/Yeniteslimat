@@ -1,6 +1,6 @@
 {
   "name": "Antalya Teslimat 7/24",
-  "description": "Antalya genelinde 7/24 acil moto kurye, hızlı paket gönderimi ve anlık teslimat takip sistemi.",
+  "description": "Antalya Paket Gönder ve Kurye Çağır: Muratpaşa, Konyaaltı, Kepez ve tüm Antalya'da 30-45 dakikada acil paket gönder, nöbetçi moto kurye ve anlık canlı teslimat takibi.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

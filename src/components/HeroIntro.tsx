@@ -730,13 +730,16 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Headline */}
+          {/* Main Headline for Google Search Ranking */}
           <div className="space-y-3.5">
             <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
-              Paketlerinizi hızlı ve güvenli şekilde gönderin
+              Antalya Paket Gönder & Kurye Çağır
             </h1>
+            <p className="text-base sm:text-lg font-medium text-emerald-300">
+              7/24 Acil Moto Kurye • Muratpaşa, Konyaaltı, Kepez & Tüm Antalya
+            </p>
             <p className="text-sm sm:text-base text-emerald-100/85 leading-relaxed max-w-2xl mx-auto">
-              Antalya'nın tüm ilçelerine ortalama 30-45 dakikada motorlu kurye ile güvenli teslimat. Talebinizi oluşturun, en yakın kuryemiz paketinizi kapınızdan alsın.
+              Antalya'da acil paket gönder, tek tıkla en yakın kuryeyi çağır. 30-45 dakikada jet motorlu kurye teslimatı, canlı radar takip ve alıcı/gönderici ödeme güvencesi.
             </p>
           </div>
 
@@ -750,13 +753,46 @@ export const HeroIntro: React.FC = () => {
               className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
             >
               <Plus className="w-5 h-5" />
-              <span>Hemen Yeni Kurye Çağır</span>
+              <span>Hemen Yeni Kurye Çağır & Paket Gönder</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>
 
+          {/* 3 Core Services Highlight (Google Target Keywords) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-left">
+            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                <Package className="w-4 h-4 text-emerald-400" />
+                <span>Antalya Paket Gönder</span>
+              </div>
+              <p className="text-[11px] text-emerald-200/80 leading-normal">
+                Evrak, koli, anahtar, çiçek ve hediyelikleri kapınızdan alıp Antalya içi dilediğiniz adrese teslim ediyoruz.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                <Bike className="w-4 h-4 text-amber-400" />
+                <span>Kurye Çağır (7/24)</span>
+              </div>
+              <p className="text-[11px] text-emerald-200/80 leading-normal">
+                Tek tıkla konumunuza en yakın profesyonel moto kuryeyi çağırın, kuryeniz 15-20 dakikada kapınıza gelsin.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+              <div className="flex items-center gap-2 text-teal-300 font-bold text-sm">
+                <Clock className="w-4 h-4 text-teal-400" />
+                <span>Acil Paket Gönder</span>
+              </div>
+              <p className="text-[11px] text-emerald-200/80 leading-normal">
+                Gecikmeye tahammülü olmayan gönderileriniz için 30-45 dakikada süper ekspres jet teslimat.
+              </p>
+            </div>
+          </div>
+
           {/* 4 Feature Badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1">
               <span className="text-xs font-bold text-emerald-300 block">⚡ Jet Teslimat</span>
               <span className="text-[11px] text-emerald-200/70 block">30-45 Dakika</span>
@@ -872,21 +908,35 @@ export const HeroIntro: React.FC = () => {
         <div className="p-6 rounded-3xl bg-[#021d17] border border-emerald-800/50 shadow-xl space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>Antalya Acil Kurye Hizmeti Hakkında Sıkça Sorulanlar</span>
+            <span>Antalya Paket Gönder, Kurye Çağır & Acil Teslimat SSS</span>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="font-bold text-emerald-300">⚡ Antalya'da kurye teslimatı kaç dakika sürer?</h4>
+              <h4 className="font-bold text-emerald-300">📦 Antalya paket gönder: Paketimi nasıl gönderebilirim?</h4>
               <p className="text-slate-300 leading-relaxed">
-                Şehir içi standart teslimat süremiz ortalama 30-45 dakikadır. Kuryeniz siparişi kabul ettiği andan itibaren canlı radar üzerinden konumunu izleyebilirsiniz.
+                Web sitemizden 'Hemen Yeni Kurye Çağır & Paket Gönder' butonuna basarak alıcı ve gönderici adres bilgilerini girin. Kuryemiz en kısa sürede adresinize gelerek paketi kapınızdan alır ve alıcıya teslim eder.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">🏍️ Kurye çağır: Antalya'da moto kurye nasıl çağrılır?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Antalya içi Muratpaşa, Konyaaltı veya Kepez'de bulunduğunuz konuma tek dokunuşla moto kurye çağırabilirsiniz. Talebiniz anında bölgedeki aktif moto kurye havuzumuza düşer.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
+              <h4 className="font-bold text-emerald-300">⚡ Acil paket gönder: Teslimat kaç dakikada adrese ulaşır?</h4>
+              <p className="text-slate-300 leading-relaxed">
+                Acil paket gönderimlerinizde şehir içi ortalama teslimat süresi 30 ile 45 dakikadır. Canlı radar ekranımızdan kuryenizin paketle olan hareketini haritada anlık izleyebilirsiniz.
               </p>
             </div>
 
             <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
               <h4 className="font-bold text-emerald-300">💳 Alıcı ödemeli paket gönderebilir miyim?</h4>
               <p className="text-slate-300 leading-relaxed">
-                Evet! Sipariş oluştururken 'Alıcı Ödemeli' seçeneğini seçebilirsiniz. Kuryemiz teslimat esnasında ücreti alıcıdan tahsil eder.
+                Evet! Sipariş oluştururken 'Alıcı Ödemeli' seçeneğini seçtiğinizde teslimat ücreti paket teslim edilirken alıcıdan tahsil edilir.
               </p>
             </div>
 
@@ -898,9 +948,9 @@ export const HeroIntro: React.FC = () => {
             </div>
 
             <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
-              <h4 className="font-bold text-emerald-300">📦 Hangi ilçelere gönderim yapılıyor?</h4>
+              <h4 className="font-bold text-emerald-300">📍 Hangi ilçelere kurye ve paket gönderimi yapılıyor?</h4>
               <p className="text-slate-300 leading-relaxed">
-                Muratpaşa, Konyaaltı, Kepez başta olmak üzere Döşemealtı, Aksu, Serik, Kemer, Alanya ve Manavgat ilçelerine kurye gönderimi mevcuttur.
+                Muratpaşa, Konyaaltı, Kepez başta olmak üzere Lara, Döşemealtı, Aksu, Serik, Kemer, Alanya ve Manavgat ilçelerine kesintisiz hizmet verilmektedir.
               </p>
             </div>
           </div>

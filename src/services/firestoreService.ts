@@ -4,7 +4,6 @@ import {
   setDoc, 
   getDocs, 
   onSnapshot, 
-  updateDoc, 
   deleteDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -81,11 +80,11 @@ export async function saveRequestToFirestore(request: DeliveryRequest): Promise<
   }
 }
 
-// Update delivery request in Firestore
+// Update delivery request in Firestore safely with merge: true so it never fails with NOT_FOUND if document does not exist yet
 export async function updateRequestInFirestore(requestId: string, updates: Partial<DeliveryRequest>): Promise<void> {
   try {
     const docRef = doc(db, REQUESTS_COLLECTION, requestId);
-    await updateDoc(docRef, JSON.parse(JSON.stringify(updates)));
+    await setDoc(docRef, JSON.parse(JSON.stringify(updates)), { merge: true });
   } catch (err) {
     console.error('[Firestore] Failed to update request:', err);
   }

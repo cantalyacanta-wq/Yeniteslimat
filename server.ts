@@ -5,7 +5,7 @@ import { EventEmitter } from 'events';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
 
 const app = express();
 const PORT = 3000;
@@ -482,14 +482,15 @@ async function processEmailQueue() {
           order.emailDispatchedAt = job.completedAt;
         }
 
-        // Update Firestore document directly
+        // Update Firestore document directly (using setDoc with merge: true so it never fails if document does not exist yet)
         if (serverFirestoreDb && job.orderId) {
           try {
             const reqDocRef = doc(serverFirestoreDb, 'delivery_requests', job.orderId);
-            updateDoc(reqDocRef, {
-              emailDispatched: true,
-              emailDispatchedAt: job.completedAt,
-            }).catch((e) => console.warn('[FIRESTORE UPDATE DISPATCH ERR]', e.message));
+            const docPayload = order
+              ? { ...order, emailDispatched: true, emailDispatchedAt: job.completedAt }
+              : { emailDispatched: true, emailDispatchedAt: job.completedAt };
+            setDoc(reqDocRef, JSON.parse(JSON.stringify(docPayload)), { merge: true })
+              .catch((e) => console.warn('[FIRESTORE UPDATE DISPATCH ERR]', e.message));
           } catch (e: any) {
             console.warn('[FIRESTORE DOC REF ERR]', e.message);
           }
@@ -764,7 +765,9 @@ setInterval(() => {
         !r.id ||
         String(r.id).startsWith('req-sample-') ||
         String(r.id).startsWith('req-test-') ||
+        String(r.id).startsWith('req-live-test') ||
         String(r.id).startsWith('test-') ||
+        r.trackingCode === 'ANT-3333' ||
         r.trackingCode === 'ANT-5892' ||
         r.trackingCode === 'ANT-9999';
 
@@ -781,6 +784,43 @@ setInterval(() => {
     });
   }
 }, 5000);
+
+// ==========================================
+// SEO & ROBOTS CRAWLER ROUTES
+// ==========================================
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`# robots.txt for Antalya Teslimat 7/24
+User-agent: *
+Allow: /
+Disallow: /api/
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://www.antalyateslimat.com/sitemap.xml
+`);
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://www.antalyateslimat.com/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://www.antalyateslimat.com/app-logo.png</image:loc>
+      <image:title>Antalya Paket Gönder &amp; Kurye Çağır</image:title>
+      <image:caption>Antalya 7/24 Şehir İçi Acil Moto Kurye ve Paket Gönderim Servisi</image:caption>
+    </image:image>
+  </url>
+</urlset>`);
+});
 
 // ==========================================
 // REST API ENDPOINTS

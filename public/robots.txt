@@ -1,0 +1,14 @@
+# robots.txt for Antalya Teslimat 7/24
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+# Googlebot & Bingbot specific
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://www.antalyateslimat.com/sitemap.xml
