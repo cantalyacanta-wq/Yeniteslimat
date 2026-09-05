@@ -54,18 +54,18 @@ const MainContent: React.FC = () => {
                 <div className="flex flex-col gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => switchUser('user-courier-01')}
+                    onClick={() => openAuthModal('courier_login')}
                     className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Bike className="w-4 h-4" />
-                    <span>Ahmet Yılmaz (Kurye) Olarak Havuzu Aç</span>
+                    <span>Kurye Girişi Yap (Kayıtlı Şifrenizle)</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => openAuthModal('courier_login')}
-                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer"
+                    onClick={() => openAuthModal('courier_register')}
+                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Farklı Kurye Girişi Yap
+                    <span>Yeni Kurye Başvurusu / Kayıt Ol</span>
                   </button>
                   <button
                     type="button"

@@ -1077,20 +1077,18 @@ app.post('/api/auth/login', (req, res) => {
       }
     }
 
-    // Password verification
-    if (password !== undefined && password.trim() !== '') {
-      const userExpected = (found.password || '123').trim();
-      const entered = password.trim();
-      const isValid =
-        entered === userExpected ||
-        (found.role === 'admin' && (entered === 'admin' || entered === '123' || entered === '123456' || entered === 'admin123')) ||
-        (found.role === 'courier' && (entered === '123' || entered === '123456' || entered === 'admin')) ||
-        (found.role === 'customer' && (entered === '123' || entered === '123456'));
+    // Password verification - Strictly enforce user's registered password (no default/role bypasses)
+    if (!password || password.trim() === '') {
+      res.status(400).json({ error: 'Lütfen şifrenizi giriniz.' });
+      return;
+    }
 
-      if (!isValid) {
-        res.status(401).json({ error: 'Girdiğiniz şifre hatalıdır!' });
-        return;
-      }
+    const userExpected = (found.password || '').trim();
+    const entered = password.trim();
+
+    if (entered !== userExpected) {
+      res.status(401).json({ error: 'Girdiğiniz şifre hatalıdır! Lütfen kayıt olurken belirlediğiniz şifreyi giriniz.' });
+      return;
     }
 
     res.json({ success: true, user: found });

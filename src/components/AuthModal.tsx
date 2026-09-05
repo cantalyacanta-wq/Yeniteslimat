@@ -72,6 +72,16 @@ export const AuthModal: React.FC = () => {
     setLoginError(null);
     setLoginSuccess(null);
 
+    if (!identifier.trim()) {
+      setLoginError('Lütfen e-posta veya telefon numaranızı giriniz.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setLoginError('Lütfen kayıt olurken belirlediğiniz şifrenizi giriniz.');
+      return;
+    }
+
     const targetRole: UserRole = isCourierFlow ? 'courier' : 'customer';
     const res = loginUser(identifier, password, targetRole);
 
@@ -311,12 +321,13 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-orange-400 block">Şifre</label>
+              <label className="text-xs font-bold text-orange-400 block">Şifre *</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
-                  placeholder="Şifreniz (Örn: 123)"
+                  required
+                  placeholder="Kayıtlı şifreniz"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
@@ -539,12 +550,13 @@ export const AuthModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-orange-400 block">Şifre</label>
+              <label className="text-xs font-bold text-orange-400 block">Şifre *</label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-emerald-400" />
                 <input
                   type="password"
-                  placeholder="Şifreniz (Varsayılan: 123)"
+                  required
+                  placeholder="Kayıtlı şifreniz"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"

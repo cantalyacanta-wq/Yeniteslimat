@@ -635,23 +635,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    // PASSWORD VERIFICATION
-    if (passwordInput !== undefined && passwordInput.trim() !== '') {
-      const userExpectedPassword = (found.password || '123').trim();
-      const enteredPassword = passwordInput.trim();
+    // PASSWORD VERIFICATION - Strictly enforce user's registered password (no default/role bypasses)
+    if (!passwordInput || passwordInput.trim() === '') {
+      return {
+        success: false,
+        message: 'Lütfen şifrenizi giriniz.',
+      };
+    }
 
-      const isDefaultValid = 
-        enteredPassword === userExpectedPassword ||
-        (found.role === 'admin' && (enteredPassword === 'admin' || enteredPassword === '123' || enteredPassword === '123456' || enteredPassword === 'admin123')) ||
-        (found.role === 'courier' && (enteredPassword === '123' || enteredPassword === '123456' || enteredPassword === 'admin')) ||
-        (found.role === 'customer' && (enteredPassword === '123' || enteredPassword === '123456'));
+    const userExpectedPassword = (found.password || '').trim();
+    const enteredPassword = passwordInput.trim();
 
-      if (!isDefaultValid) {
-        return { 
-          success: false, 
-          message: 'Girdiğiniz şifre hatalıdır! Lütfen şifrenizi kontrol edip tekrar deneyiniz.' 
-        };
-      }
+    if (enteredPassword !== userExpectedPassword) {
+      return { 
+        success: false, 
+        message: 'Girdiğiniz şifre hatalıdır! Lütfen kayıt olurken belirlediğiniz şifreyi giriniz.' 
+      };
     }
 
     // Password matches! Log in
@@ -678,7 +677,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         name: role === 'courier' ? 'Yeni Moto Kurye' : role === 'admin' ? 'Sistem Yöneticisi' : 'Yeni Müşteri',
         phone: '0532 000 00 00',
         email: `${role}@antalyakurye.com`,
-        password: '123456',
+        password: '',
         role,
         createdAt: new Date().toISOString(),
       };
@@ -692,7 +691,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const registerUser = useCallback((userData: Omit<UserAccount, 'id' | 'createdAt' | 'totalOrders' | 'totalEarnings'>): UserAccount => {
     const newUser: UserAccount = {
       ...userData,
-      password: userData.password?.trim() || '123456',
+      password: userData.password?.trim() || '',
       id: `user-${userData.role}-${Date.now()}`,
       createdAt: new Date().toISOString(),
       totalOrders: 0,
@@ -732,7 +731,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         email: data.email.trim().toLowerCase(),
         district: data.district || 'Muratpaşa',
         companyName: data.company?.trim(),
-        password: data.password?.trim() || '123456',
+        password: data.password?.trim() || '',
         role: 'customer',
       });
       return { success: true, user };
@@ -748,7 +747,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: data.phone.trim(),
         email: data.email.trim().toLowerCase(),
         vehicleType: data.vehicle?.trim() || 'Motosiklet',
-        password: data.password?.trim() || '123',
+        password: data.password?.trim() || '',
         role: 'courier',
         district: 'Muratpaşa',
         isOnline: true,
