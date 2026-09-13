@@ -36,6 +36,19 @@ export const INITIAL_USERS: UserAccount[] = [
     isOnline: true,
   },
   {
+    id: 'user-courier-1787999333451',
+    name: 'Kurye Ümit',
+    phone: '0123456789',
+    email: 'cantalyacanta@gmail.com',
+    password: '666',
+    role: 'courier',
+    district: 'Muratpaşa',
+    createdAt: '2026-08-29T10:28:53.451Z',
+    totalOrders: 10,
+    totalEarnings: 890,
+    isOnline: true,
+  },
+  {
     id: 'user-courier-02',
     name: 'Mustafa Demir (Kurye)',
     phone: '0555 222 33 44',
@@ -61,6 +74,17 @@ export const INITIAL_USERS: UserAccount[] = [
 ];
 
 export const INITIAL_COURIERS: CourierInfo[] = [
+  {
+    id: 'user-courier-1787999333451',
+    name: 'Kurye Ümit',
+    phone: '0123456789',
+    email: 'cantalyacanta@gmail.com',
+    district: 'Muratpaşa',
+    rating: 5.0,
+    totalDeliveries: 10,
+    currentLat: 36.8860,
+    currentLng: 30.7065,
+  },
   {
     id: 'user-courier-01',
     name: 'Ahmet Yılmaz (Kurye)',

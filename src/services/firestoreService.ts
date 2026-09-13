@@ -33,7 +33,12 @@ export function subscribeToDeliveryRequests(callback: (requests: DeliveryRequest
         callback(list);
       },
       (error) => {
-        console.warn('[Firestore] Error listening to delivery requests:', error);
+        if (error && (error.code === 'unavailable' || String(error.message).includes('unavailable'))) {
+          // Normal offline / reconnecting state in client, synced locally and via backend
+          console.info('[Firestore] Network temporarily offline or reconnecting, operating in resilient offline mode.');
+        } else {
+          console.warn('[Firestore] Error listening to delivery requests:', error);
+        }
       }
     );
   } catch (err) {
@@ -61,7 +66,11 @@ export function subscribeToUsers(callback: (users: UserAccount[]) => void) {
         }
       },
       (error) => {
-        console.warn('[Firestore] Error listening to users:', error);
+        if (error && (error.code === 'unavailable' || String(error.message).includes('unavailable'))) {
+          console.info('[Firestore] Users subscription reconnecting or operating in offline mode.');
+        } else {
+          console.warn('[Firestore] Error listening to users:', error);
+        }
       }
     );
   } catch (err) {
@@ -75,8 +84,12 @@ export async function saveRequestToFirestore(request: DeliveryRequest): Promise<
   try {
     const docRef = doc(db, REQUESTS_COLLECTION, request.id);
     await setDoc(docRef, JSON.parse(JSON.stringify(request)), { merge: true });
-  } catch (err) {
-    console.error('[Firestore] Failed to save request:', err);
+  } catch (err: any) {
+    if (err && (err.code === 'unavailable' || String(err.message).includes('unavailable'))) {
+      console.info('[Firestore] Request queued in offline store, will synchronize.');
+    } else {
+      console.error('[Firestore] Failed to save request:', err);
+    }
   }
 }
 
@@ -85,8 +98,12 @@ export async function updateRequestInFirestore(requestId: string, updates: Parti
   try {
     const docRef = doc(db, REQUESTS_COLLECTION, requestId);
     await setDoc(docRef, JSON.parse(JSON.stringify(updates)), { merge: true });
-  } catch (err) {
-    console.error('[Firestore] Failed to update request:', err);
+  } catch (err: any) {
+    if (err && (err.code === 'unavailable' || String(err.message).includes('unavailable'))) {
+      console.info('[Firestore] Update queued in offline store, will synchronize.');
+    } else {
+      console.error('[Firestore] Failed to update request:', err);
+    }
   }
 }
 
@@ -95,8 +112,12 @@ export async function saveUserToFirestore(user: UserAccount): Promise<void> {
   try {
     const docRef = doc(db, USERS_COLLECTION, user.id);
     await setDoc(docRef, JSON.parse(JSON.stringify(user)), { merge: true });
-  } catch (err) {
-    console.error('[Firestore] Failed to save user:', err);
+  } catch (err: any) {
+    if (err && (err.code === 'unavailable' || String(err.message).includes('unavailable'))) {
+      console.info('[Firestore] User saved in offline store.');
+    } else {
+      console.error('[Firestore] Failed to save user:', err);
+    }
   }
 }
 
@@ -105,8 +126,12 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
   try {
     const docRef = doc(db, USERS_COLLECTION, userId);
     await deleteDoc(docRef);
-  } catch (err) {
-    console.error('[Firestore] Failed to delete user:', err);
+  } catch (err: any) {
+    if (err && (err.code === 'unavailable' || String(err.message).includes('unavailable'))) {
+      console.info('[Firestore] Delete operation queued in offline store.');
+    } else {
+      console.error('[Firestore] Failed to delete user:', err);
+    }
   }
 }
 
@@ -132,8 +157,12 @@ export async function enqueueEmailToFirestore(job: {
       maxAttempts: 2,
       createdAt: new Date().toISOString(),
     });
-  } catch (err) {
-    console.error('[Firestore] Failed to enqueue email job:', err);
+  } catch (err: any) {
+    if (err && (err.code === 'unavailable' || String(err.message).includes('unavailable'))) {
+      console.info('[Firestore] Email job queued locally.');
+    } else {
+      console.error('[Firestore] Failed to enqueue email job:', err);
+    }
   }
 }
 

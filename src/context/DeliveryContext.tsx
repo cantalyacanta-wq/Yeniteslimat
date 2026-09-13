@@ -393,6 +393,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           try {
             localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
           } catch {}
+
+          // Ensure cloud users (especially couriers) are synchronized with server email dispatcher
+          fetch('/api/users/sync-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ users: merged }),
+          }).catch(() => {});
+
           return merged;
         });
       }

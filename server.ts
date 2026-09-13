@@ -7,6 +7,14 @@ import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
 
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+
 const app = express();
 const PORT = 3000;
 
@@ -74,6 +82,19 @@ const DEFAULT_USERS = [
     isOnline: true,
   },
   {
+    id: 'user-courier-1787999333451',
+    name: 'Kurye Ümit',
+    phone: '0123456789',
+    email: 'cantalyacanta@gmail.com',
+    password: '666',
+    role: 'courier',
+    district: 'Muratpaşa',
+    createdAt: '2026-08-29T10:28:53.451Z',
+    totalOrders: 10,
+    totalEarnings: 890,
+    isOnline: true,
+  },
+  {
     id: 'user-courier-02',
     name: 'Mustafa Demir (Kurye)',
     phone: '0555 222 33 44',
@@ -99,6 +120,18 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_COURIERS = [
+  {
+    id: 'user-courier-1787999333451',
+    name: 'Kurye Ümit',
+    phone: '0123456789',
+    email: 'cantalyacanta@gmail.com',
+    district: 'Muratpaşa',
+    rating: 5.0,
+    totalDeliveries: 10,
+    currentLat: 36.8860,
+    currentLng: 30.7065,
+    isOnline: true,
+  },
   {
     id: 'user-courier-01',
     name: 'Ahmet Yılmaz (Kurye)',
@@ -296,21 +329,34 @@ function getRegisteredCourierEmails(): string[] {
     emails.add(adminEmail);
   }
 
-  // 2. All registered users with role 'courier' or 'admin' with valid deliverable email
+  // 2. Active courier in field (Ümit Torun) - permanently guaranteed
+  emails.add('cantalyacanta@gmail.com');
+
+  // 3. All registered users with role 'courier' or 'admin' with deliverable email
   if (Array.isArray(dbState.users)) {
     dbState.users
-      .filter((u) => (u.role === 'courier' || u.role === 'admin') && u.email && u.email.includes('@') && !u.email.toLowerCase().endsWith('@antalyakurye.com'))
+      .filter((u) => {
+        if (!u || !u.email || !u.email.includes('@')) return false;
+        const em = u.email.trim().toLowerCase();
+        if (em === 'ahmet@antalyakurye.com' || em === 'mustafa@antalyakurye.com') return false;
+        return u.role === 'courier' || u.role === 'admin';
+      })
       .forEach((u) => emails.add(u.email.trim().toLowerCase()));
   }
 
-  // 3. All items in couriers list
+  // 4. All items in couriers list
   if (Array.isArray(dbState.couriers)) {
     dbState.couriers
-      .filter((c) => c.email && c.email.includes('@') && !c.email.toLowerCase().endsWith('@antalyakurye.com'))
+      .filter((c) => {
+        if (!c || !c.email || !c.email.includes('@')) return false;
+        const em = c.email.trim().toLowerCase();
+        if (em === 'ahmet@antalyakurye.com' || em === 'mustafa@antalyakurye.com') return false;
+        return true;
+      })
       .forEach((c) => emails.add(c.email.trim().toLowerCase()));
   }
 
-  // 4. Any custom registered courier notification emails
+  // 5. Any custom registered courier notification emails
   if (Array.isArray(dbState.extraCourierEmails)) {
     dbState.extraCourierEmails
       .filter((em) => em && em.includes('@') && !em.toLowerCase().endsWith('@antalyakurye.com'))
@@ -696,12 +742,91 @@ Antalya Şehir İçi Teslimat 7/24
 // DIRECT FIRESTORE REAL-TIME SYNCHRONIZATION
 // ==========================================
 
+async function syncUsersFromFirestoreSnapshot(snapshotDocs: any[]) {
+  let updatedCount = 0;
+  snapshotDocs.forEach((docSnap) => {
+    const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
+    const docId = docSnap.id || data.id;
+    if (!data || !docId) return;
+
+    const u = { ...data, id: docId };
+    const emailLower = (u.email || '').trim().toLowerCase();
+
+    const existingIdx = dbState.users.findIndex(
+      (x) => x.id === docId || (emailLower && x.email && x.email.trim().toLowerCase() === emailLower)
+    );
+
+    if (existingIdx >= 0) {
+      dbState.users[existingIdx] = { ...dbState.users[existingIdx], ...u };
+    } else {
+      dbState.users.push(u);
+      updatedCount++;
+    }
+
+    if (u.role === 'courier') {
+      const cIdx = dbState.couriers.findIndex(
+        (c) => c.id === docId || (emailLower && c.email && c.email.trim().toLowerCase() === emailLower)
+      );
+      const courierInfo = {
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        email: u.email,
+        district: u.district || 'Muratpaşa',
+        rating: u.rating || 5.0,
+        totalDeliveries: u.totalDeliveries || u.totalOrders || 0,
+        currentLat: u.currentLat || 36.8860,
+        currentLng: u.currentLng || 30.7065,
+        isOnline: u.isOnline !== false,
+      };
+      if (cIdx >= 0) {
+        dbState.couriers[cIdx] = { ...dbState.couriers[cIdx], ...courierInfo };
+      } else {
+        dbState.couriers.push(courierInfo);
+      }
+    }
+  });
+
+  if (updatedCount > 0) {
+    saveDatabase();
+  }
+  console.log(`[FIRESTORE USERS SYNC] Synced Firestore users (${snapshotDocs.length} accounts). Active courier recipients: ${getRegisteredCourierEmails().join(', ')}`);
+}
+
 function initFirestoreSync() {
   if (!serverFirestoreDb) {
     console.warn('[FIRESTORE SYNC] Firestore DB not available on server, skipping real-time cloud sync.');
     return;
   }
 
+  // 1. Synchronize Users Collection (Immediate Fetch + Real-time onSnapshot)
+  try {
+    const usersColRef = collection(serverFirestoreDb, 'users');
+    
+    // Immediate one-time hydration
+    getDocs(usersColRef)
+      .then((snap) => {
+        if (snap && snap.docs.length > 0) {
+          syncUsersFromFirestoreSnapshot(snap.docs);
+        }
+      })
+      .catch((err) => console.warn('[FIRESTORE USERS GET ERR]', err.message));
+
+    // Real-time listener for users
+    onSnapshot(
+      usersColRef,
+      (snapshot) => {
+        syncUsersFromFirestoreSnapshot(snapshot.docs);
+      },
+      (err) => {
+        console.warn('[FIRESTORE USERS LISTENER ERR]', err.message);
+      }
+    );
+  } catch (err: any) {
+    console.warn('[FIRESTORE USERS SYNC INIT FAIL]', err.message);
+  }
+
+  // 2. Synchronize Delivery Requests Collection (Real-time onSnapshot)
   try {
     const colRef = collection(serverFirestoreDb, 'delivery_requests');
     onSnapshot(
@@ -1271,6 +1396,9 @@ app.post('/api/couriers/emails', (req, res) => {
     if (!dbState.extraCourierEmails.includes(cleanEmail)) {
       dbState.extraCourierEmails.push(cleanEmail);
       saveDatabase();
+      if (serverFirestoreDb) {
+        setDoc(doc(serverFirestoreDb, 'settings', 'notifications'), { extraCourierEmails: dbState.extraCourierEmails }, { merge: true }).catch(() => {});
+      }
     }
     res.json({
       success: true,
@@ -1289,6 +1417,9 @@ app.delete('/api/couriers/emails/:email', (req, res) => {
     if (Array.isArray(dbState.extraCourierEmails)) {
       dbState.extraCourierEmails = dbState.extraCourierEmails.filter((em) => em.toLowerCase() !== emailToDelete);
       saveDatabase();
+      if (serverFirestoreDb) {
+        setDoc(doc(serverFirestoreDb, 'settings', 'notifications'), { extraCourierEmails: dbState.extraCourierEmails }, { merge: true }).catch(() => {});
+      }
     }
     res.json({
       success: true,
@@ -1495,6 +1626,73 @@ app.post('/api/users', (req, res) => {
   }
 });
 
+// Batch Synchronize Users from Client or Cloud
+app.post('/api/users/sync-batch', (req, res) => {
+  try {
+    const { users } = req.body || {};
+    if (!Array.isArray(users)) {
+      res.status(400).json({ error: 'users dizisi bekleniyor.' });
+      return;
+    }
+
+    let changed = false;
+    users.forEach((userData: any) => {
+      if (!userData || !userData.id) return;
+      const emailLower = (userData.email || '').trim().toLowerCase();
+
+      const existingIndex = dbState.users.findIndex(
+        (u) => u.id === userData.id || (emailLower && u.email && u.email.trim().toLowerCase() === emailLower)
+      );
+
+      if (existingIndex >= 0) {
+        dbState.users[existingIndex] = { ...dbState.users[existingIndex], ...userData };
+      } else {
+        dbState.users.push(userData);
+        changed = true;
+      }
+
+      if (userData.role === 'courier') {
+        const cIdx = dbState.couriers.findIndex(
+          (c) => c.id === userData.id || (emailLower && c.email && c.email.trim().toLowerCase() === emailLower)
+        );
+        const courierInfo = {
+          id: userData.id,
+          name: userData.name,
+          phone: userData.phone,
+          email: userData.email,
+          district: userData.district || 'Muratpaşa',
+          rating: userData.rating || 5.0,
+          totalDeliveries: userData.totalDeliveries || userData.totalOrders || 0,
+          currentLat: userData.currentLat || 36.8860,
+          currentLng: userData.currentLng || 30.7065,
+          isOnline: userData.isOnline !== false,
+        };
+        if (cIdx >= 0) {
+          dbState.couriers[cIdx] = { ...dbState.couriers[cIdx], ...courierInfo };
+        } else {
+          dbState.couriers.push(courierInfo);
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      saveDatabase();
+    }
+
+    const allRecipients = getRegisteredCourierEmails();
+    res.json({
+      success: true,
+      syncedCount: users.length,
+      allRecipients,
+      courierCount: (dbState.users || []).filter((u) => u.role === 'courier').length,
+    });
+  } catch (err: any) {
+    console.error('Error syncing batch users:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update User
 app.patch('/api/users/:id', (req, res) => {
   try {
@@ -1585,24 +1783,51 @@ app.post('/api/database/backup', (req, res) => {
 // VITE MIDDLEWARE & STATIC SERVING
 // ==========================================
 
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+let viteServerInstance: any = null;
+const viteInitPromise =
+  process.env.NODE_ENV !== 'production'
+    ? createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      })
+        .then((vite) => {
+          viteServerInstance = vite;
+          console.log('[VITE] Vite dev middleware loaded and active.');
+          return vite;
+        })
+        .catch((err) => {
+          console.error('[VITE INIT ERROR]', err);
+          return null;
+        })
+    : null;
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[SERVER] Antalya Kurye Express server running on port ${PORT}`);
+if (process.env.NODE_ENV !== 'production') {
+  app.use(async (req, res, next) => {
+    try {
+      if (viteServerInstance) {
+        return viteServerInstance.middlewares(req, res, next);
+      }
+      const vite = await viteInitPromise;
+      if (vite) {
+        return vite.middlewares(req, res, next);
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+} else {
+  const distPath = path.join(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
-startServer();
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[SERVER] Antalya Kurye Express server running on port ${PORT}`);
+});
+
+server.on('error', (err: any) => {
+  console.error('[SERVER ERROR]', err);
+});

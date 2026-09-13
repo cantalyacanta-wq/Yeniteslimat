@@ -1,13 +1,28 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
 
 // Initialize Firebase App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Cloud Firestore using database ID if defined in config
-export const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// In browser and iframe environments, WebChannel streaming can be blocked or buffered by proxies/iframes,
+// causing "Could not reach Cloud Firestore backend. Connection failed 1 times. [code=unavailable]".
+// Using experimentalForceLongPolling ensures rock-solid connectivity across all browser/iframe contexts.
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(
+    app,
+    {
+      experimentalForceLongPolling: true,
+    },
+    firebaseConfig.firestoreDatabaseId || undefined
+  );
+} catch {
+  firestoreDb = firebaseConfig.firestoreDatabaseId
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
+}
 
+export const db = firestoreDb;
 export default app;
+
