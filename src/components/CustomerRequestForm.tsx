@@ -500,11 +500,11 @@ export const CustomerRequestForm: React.FC = () => {
                   onChange={(e) => setPackageType(e.target.value as PackageType)}
                   className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 outline-none"
                 >
-                  <option value="food" className="bg-[#0c1f19] text-white">🍔 Yemek & Restoran Siparişi (100 ₺)</option>
-                  <option value="petshop" className="bg-[#0c1f19] text-white">🐾 Petshop Ürünleri (150 ₺)</option>
-                  <option value="market" className="bg-[#0c1f19] text-white">🛒 Market / Bakkal Siparişi (150 ₺)</option>
-                  <option value="flower" className="bg-[#0c1f19] text-white">💐 Çiçek & Hediye (150 ₺)</option>
-                  <option value="other" className="bg-[#0c1f19] text-white">📦 Diğer (Evrak, Koli, Eşya) (150 ₺)</option>
+                  <option value="food" className="bg-[#0c1f19] text-white">🍔 Yemek & Restoran Siparişi (Taban 100 ₺)</option>
+                  <option value="petshop" className="bg-[#0c1f19] text-white">🐾 Petshop Ürünleri (Taban 150 ₺)</option>
+                  <option value="market" className="bg-[#0c1f19] text-white">🛒 Market / Bakkal Siparişi (Taban 150 ₺)</option>
+                  <option value="flower" className="bg-[#0c1f19] text-white">💐 Çiçek & Hediye (Taban 150 ₺)</option>
+                  <option value="other" className="bg-[#0c1f19] text-white">📦 Diğer (Evrak, Koli, Eşya) (Taban 150 ₺)</option>
                 </select>
               </div>
 
@@ -582,7 +582,14 @@ export const CustomerRequestForm: React.FC = () => {
               </div>
               <div className="text-right">
                 <span className="text-[11px] text-emerald-400/80 block font-medium">Tahmini Mesafe & Süre</span>
-                <span className="text-xs font-bold text-emerald-200">{estimate.distanceKm} km • ~{estimate.durationMins} dk</span>
+                <span className="text-xs font-bold text-emerald-200">
+                  {estimate.distanceKm} km • ~{estimate.durationMins} dk
+                </span>
+                {estimate.distanceKm > 7 && (
+                  <span className="text-[11px] text-amber-300 block font-semibold">
+                    7 km üzeri: +{estimate.distanceExtra} ₺ (10 ₺/km)
+                  </span>
+                )}
               </div>
             </div>
 
@@ -591,7 +598,14 @@ export const CustomerRequestForm: React.FC = () => {
                 <span className="text-xs text-emerald-300/80 block font-medium">
                   Kurye Hizmet Bedeli ({packageType === 'food' ? 'Yemek Menüsü' : 'Standart Paket'})
                 </span>
-                <span className="text-3xl font-black text-emerald-400">{estimate.price} ₺</span>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-3xl font-black text-emerald-400">{estimate.price} ₺</span>
+                  {estimate.distanceExtra > 0 && (
+                    <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-lg font-medium">
+                      Taban {estimate.basePrice} ₺ + {estimate.extraKm} km mesafe farkı (+{estimate.distanceExtra} ₺)
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Protected Submit Button (Disabled while submitting to avoid multiple duplicate requests) */}

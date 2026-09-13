@@ -193,9 +193,10 @@ export const DISTRICT_DISTANCE_MATRIX: Record<DistrictName, Record<DistrictName,
 /**
  * Antalya şehir içi ve ilçeler arası teslimat mesafesi, kurye sürüş süresi ve fiyat hesaplaması.
  * Kural:
- * - Yemek / Restoran: 100 TL
- * - Diğer Tüm Gönderiler: 150 TL
- * - Kurye Hakedişi: Tam Ücret (100 TL veya 150 TL)
+ * - Yemek / Restoran: 100 TL (Taban)
+ * - Diğer Tüm Gönderiler: 150 TL (Taban)
+ * - Mesafe Kuralı: Alış ve teslim adresi arasındaki mesafe 7 km'den çok ise 7 km üzerindeki her km için paket ücretine 10 TL eklenir.
+ * - Kurye Hakedişi: Tam Ücret (Taban + Mesafe Farkı)
  */
 export function calculateDeliveryEstimate(
   fromDistrict: DistrictName,
@@ -206,7 +207,12 @@ export function calculateDeliveryEstimate(
   const km = DISTRICT_DISTANCE_MATRIX[fromDistrict]?.[toDistrict] || 12;
   
   const isFood = packageType === 'food';
-  const totalPrice = isFood ? 100 : 150;
+  const basePrice = isFood ? 100 : 150;
+
+  // Alış ve teslim adresi arasındaki mesafe 7 km'den çok ise km başına 10 TL ekle:
+  const extraKm = km > 7 ? km - 7 : 0;
+  const distanceExtra = extraKm * 10;
+  const totalPrice = basePrice + distanceExtra;
   const courierEarnings = totalPrice; // Kuryeye tam ücret yansıtılır
 
   // Gerçekçi Moto Kurye Ulaşım Süresi Hesabı:
@@ -230,6 +236,9 @@ export function calculateDeliveryEstimate(
   return {
     distanceKm: km,
     durationMins,
+    basePrice,
+    extraKm,
+    distanceExtra,
     price: totalPrice,
     courierEarnings,
   };
