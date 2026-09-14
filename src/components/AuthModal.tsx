@@ -15,11 +15,14 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
-  Zap
+  Zap,
+  FileText
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, UserRole } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
+import { TermsOfUseModal } from './TermsOfUseModal';
+import { KvkkModal } from './KvkkModal';
 
 export const AuthModal: React.FC = () => {
   const {
@@ -51,6 +54,8 @@ export const AuthModal: React.FC = () => {
   const [customerCompany, setCustomerCompany] = useState('');
   const [customerPassword, setCustomerPassword] = useState('');
   const [customerPasswordConfirm, setCustomerPasswordConfirm] = useState('');
+  const [customerTermsAccepted, setCustomerTermsAccepted] = useState(false);
+  const [customerKvkkAccepted, setCustomerKvkkAccepted] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [customerSuccess, setCustomerSuccess] = useState<string | null>(null);
 
@@ -61,8 +66,18 @@ export const AuthModal: React.FC = () => {
   const [courierVehicle, setCourierVehicle] = useState('Motosiklet');
   const [courierPassword, setCourierPassword] = useState('');
   const [courierPasswordConfirm, setCourierPasswordConfirm] = useState('');
+  const [courierTermsAccepted, setCourierTermsAccepted] = useState(false);
+  const [courierKvkkAccepted, setCourierKvkkAccepted] = useState(false);
   const [courierError, setCourierError] = useState<string | null>(null);
   const [courierSuccess, setCourierSuccess] = useState<string | null>(null);
+
+  // Terms of Use Modal State
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [termsAcceptTarget, setTermsAcceptTarget] = useState<'customer' | 'courier'>('customer');
+
+  // KVKK Modal State
+  const [isKvkkModalOpen, setIsKvkkModalOpen] = useState(false);
+  const [kvkkAcceptTarget, setKvkkAcceptTarget] = useState<'customer' | 'courier'>('customer');
 
   if (!isAuthModalOpen) return null;
 
@@ -125,6 +140,16 @@ export const AuthModal: React.FC = () => {
       return;
     }
 
+    if (!customerTermsAccepted) {
+      setCustomerError("Lütfen devam etmek için Kullanım Koşulları'nı okuyup onaylayınız.");
+      return;
+    }
+
+    if (!customerKvkkAccepted) {
+      setCustomerError("Lütfen devam etmek için KVKK Aydınlatma Metni'ni okuyup onaylayınız.");
+      return;
+    }
+
     try {
       registerUser({
         name: customerName.trim(),
@@ -165,6 +190,16 @@ export const AuthModal: React.FC = () => {
 
     if (courierPassword !== courierPasswordConfirm) {
       setCourierError('Belirlediğiniz şifreler birbiriyle uyuşmuyor.');
+      return;
+    }
+
+    if (!courierTermsAccepted) {
+      setCourierError("Lütfen devam etmek için Kullanım Koşulları'nı okuyup onaylayınız.");
+      return;
+    }
+
+    if (!courierKvkkAccepted) {
+      setCourierError("Lütfen devam etmek için KVKK Aydınlatma Metni'ni okuyup onaylayınız.");
       return;
     }
 
@@ -492,6 +527,66 @@ export const AuthModal: React.FC = () => {
               </div>
             </div>
 
+            {/* KULLANIM KOŞULLARI ONAYI */}
+            <div className="p-3 bg-[#031812] rounded-xl border border-emerald-800/80 space-y-1.5">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={customerTermsAccepted}
+                  onChange={(e) => setCustomerTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded-md border-emerald-600 text-emerald-500 focus:ring-emerald-400 focus:ring-offset-0 bg-[#06120d] cursor-pointer"
+                />
+                <span className="text-xs text-slate-200 leading-snug">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsAcceptTarget('customer');
+                      setIsTermsModalOpen(true);
+                    }}
+                    className="font-bold text-emerald-400 hover:text-emerald-300 underline inline cursor-pointer mr-1"
+                  >
+                    Kullanım Koşulları'nı
+                  </button>
+                  okudum ve kabul ediyorum.
+                </span>
+              </label>
+              <p className="text-[10px] text-emerald-400/80 pl-6.5 leading-relaxed">
+                Antalya Teslimat'ın aracı ve ücretsiz bir platform olduğunu, taşıma ve ücret anlaşmasının bağımsız kurye ile doğrudan yapıldığını kabul etmektesiniz.
+              </p>
+            </div>
+
+            {/* KVKK AYDINLATMA METNİ ONAYI */}
+            <div className="p-3 bg-[#031812] rounded-xl border border-emerald-800/80 space-y-1.5">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={customerKvkkAccepted}
+                  onChange={(e) => setCustomerKvkkAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded-md border-emerald-600 text-emerald-500 focus:ring-emerald-400 focus:ring-offset-0 bg-[#06120d] cursor-pointer"
+                />
+                <span className="text-xs text-slate-200 leading-snug">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setKvkkAcceptTarget('customer');
+                      setIsKvkkModalOpen(true);
+                    }}
+                    className="font-bold text-emerald-400 hover:text-emerald-300 underline inline cursor-pointer mr-1"
+                  >
+                    KVKK Aydınlatma Metni'ni
+                  </button>
+                  okudum ve kabul ediyorum.
+                </span>
+              </label>
+              <p className="text-[10px] text-emerald-400/80 pl-6.5 leading-relaxed">
+                Kişisel verilerinizin 6698 sayılı KVKK kapsamında teslimat süreçlerinin yürütülmesi amacıyla işlenmesine ve aktarılmasına onay vermektesiniz.
+              </p>
+            </div>
+
             <button
               type="submit"
               className="w-full py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-emerald-500/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
@@ -711,6 +806,66 @@ export const AuthModal: React.FC = () => {
               </div>
             </div>
 
+            {/* KULLANIM KOŞULLARI ONAYI */}
+            <div className="p-3 bg-[#031812] rounded-xl border border-amber-800/80 space-y-1.5">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={courierTermsAccepted}
+                  onChange={(e) => setCourierTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded-md border-amber-600 text-amber-500 focus:ring-amber-400 focus:ring-offset-0 bg-[#06120d] cursor-pointer"
+                />
+                <span className="text-xs text-slate-200 leading-snug">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsAcceptTarget('courier');
+                      setIsTermsModalOpen(true);
+                    }}
+                    className="font-bold text-amber-400 hover:text-amber-300 underline inline cursor-pointer mr-1"
+                  >
+                    Kullanım Koşulları'nı
+                  </button>
+                  okudum ve kabul ediyorum.
+                </span>
+              </label>
+              <p className="text-[10px] text-amber-400/80 pl-6.5 leading-relaxed">
+                Antalya Teslimat'ın işveren veya istihdam eden olmadığını, bağımsız kurye/hizmet sağlayıcı olarak kendi adınıza hizmet sunduğunuzu kabul etmektesiniz.
+              </p>
+            </div>
+
+            {/* KVKK AYDINLATMA METNİ ONAYI */}
+            <div className="p-3 bg-[#031812] rounded-xl border border-amber-800/80 space-y-1.5">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  checked={courierKvkkAccepted}
+                  onChange={(e) => setCourierKvkkAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded-md border-amber-600 text-amber-500 focus:ring-amber-400 focus:ring-offset-0 bg-[#06120d] cursor-pointer"
+                />
+                <span className="text-xs text-slate-200 leading-snug">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setKvkkAcceptTarget('courier');
+                      setIsKvkkModalOpen(true);
+                    }}
+                    className="font-bold text-amber-400 hover:text-amber-300 underline inline cursor-pointer mr-1"
+                  >
+                    KVKK Aydınlatma Metni'ni
+                  </button>
+                  okudum ve kabul ediyorum.
+                </span>
+              </label>
+              <p className="text-[10px] text-amber-400/80 pl-6.5 leading-relaxed">
+                Kurye hizmeti ve teslimat organizasyonu kapsamında kişisel verilerinizin 6698 sayılı KVKK'ya uygun şekilde işlenmesini kabul etmektesiniz.
+              </p>
+            </div>
+
             <button
               type="submit"
               className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-lg shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 mt-1 active:scale-95"
@@ -733,6 +888,32 @@ export const AuthModal: React.FC = () => {
         )}
 
       </div>
+
+      {/* Terms of Use Modal */}
+      <TermsOfUseModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+        onAccept={() => {
+          if (termsAcceptTarget === 'customer') {
+            setCustomerTermsAccepted(true);
+          } else {
+            setCourierTermsAccepted(true);
+          }
+        }}
+      />
+
+      {/* KVKK Modal */}
+      <KvkkModal
+        isOpen={isKvkkModalOpen}
+        onClose={() => setIsKvkkModalOpen(false)}
+        onAccept={() => {
+          if (kvkkAcceptTarget === 'customer') {
+            setCustomerKvkkAccepted(true);
+          } else {
+            setCourierKvkkAccepted(true);
+          }
+        }}
+      />
     </div>
   );
 };

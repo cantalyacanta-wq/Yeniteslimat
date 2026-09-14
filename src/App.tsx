@@ -10,7 +10,9 @@ import { AdminManagement } from './components/AdminManagement';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
-import { Bike, ShieldCheck, Zap } from 'lucide-react';
+import { TermsOfUseModal } from './components/TermsOfUseModal';
+import { KvkkModal } from './components/KvkkModal';
+import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -102,7 +104,10 @@ const checkIsPaketTalebiRoute = (): boolean => {
   return keywords.some((k) => p.includes(k) || s.includes(k) || h.includes(k));
 };
 
-const AppFooter: React.FC = () => {
+const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> = ({
+  onOpenTerms,
+  onOpenKvkk,
+}) => {
   const { setCurrentView } = useDelivery();
 
   return (
@@ -117,6 +122,24 @@ const AppFooter: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
+          <button
+            type="button"
+            onClick={onOpenTerms}
+            className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Kullanım Koşulları</span>
+          </button>
+          <span className="text-emerald-800">•</span>
+          <button
+            type="button"
+            onClick={onOpenKvkk}
+            className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>KVKK Aydınlatma Metni</span>
+          </button>
+          <span className="text-emerald-800">•</span>
           <span className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>30-45 Dk Moto Kurye</span>
@@ -129,6 +152,8 @@ const AppFooter: React.FC = () => {
 
 const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
   const { setCurrentView } = useDelivery();
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
+  const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const handleUrlChange = () => {
@@ -167,9 +192,24 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
           </div>
 
           {/* Minimal Responsive Footer */}
-          <AppFooter />
+          <AppFooter
+            onOpenTerms={() => setIsTermsModalOpen(true)}
+            onOpenKvkk={() => setIsKvkkModalOpen(true)}
+          />
         </>
       )}
+
+      {/* Global Terms of Use Modal */}
+      <TermsOfUseModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+      />
+
+      {/* Global KVKK Modal */}
+      <KvkkModal
+        isOpen={isKvkkModalOpen}
+        onClose={() => setIsKvkkModalOpen(false)}
+      />
     </>
   );
 };

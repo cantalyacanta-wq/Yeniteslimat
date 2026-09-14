@@ -18,10 +18,14 @@ import {
   UserPlus,
   Lock,
   X,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
+import { TermsOfUseModal } from './TermsOfUseModal';
+import { KvkkModal } from './KvkkModal';
 import confetti from 'canvas-confetti';
 
 export const PaketTalebiPoolPage: React.FC = () => {
@@ -35,12 +39,15 @@ export const PaketTalebiPoolPage: React.FC = () => {
     updateStatus,
     syncWithServer,
     openAuthModal,
+    logout,
   } = useDelivery();
 
   const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
   const [acceptedOrder, setAcceptedOrder] = useState<DeliveryRequest | null>(null);
   const [courierAuthPromptOrder, setCourierAuthPromptOrder] = useState<DeliveryRequest | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
+  const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
   // Auto-sync real-time every 2.5 seconds
   useEffect(() => {
@@ -59,8 +66,15 @@ export const PaketTalebiPoolPage: React.FC = () => {
   // Pool requests waiting for courier
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
 
-  // Check if current user is an authenticated courier or admin
-  const isCourier = currentUser.role === 'courier' || currentUser.role === 'admin';
+  // Check if current user is an authenticated courier or admin (excluding any fake mock accounts)
+  const isCourier =
+    (currentUser.role === 'courier' || currentUser.role === 'admin') &&
+    !!currentUser.email &&
+    currentUser.id !== 'user-guest-01' &&
+    currentUser.id !== 'user-courier-01' &&
+    currentUser.id !== 'user-courier-02' &&
+    !currentUser.name?.includes('Ahmet Yılmaz') &&
+    !currentUser.name?.includes('Mustafa Demir');
 
   // If user accepted an order, check if it's currently in their active list
   const activeUserDeliveries = requests.filter(
@@ -187,7 +201,7 @@ export const PaketTalebiPoolPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-white text-sm">{currentUser.name}</span>
                   <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-200 font-black text-[10px]">
-                    KAYITLI KURYE
+                    AKTİF KURYE OTURUMU
                   </span>
                 </div>
                 <span className="text-[11px] text-emerald-300/90 font-mono">
@@ -195,13 +209,23 @@ export const PaketTalebiPoolPage: React.FC = () => {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => openAuthModal('courier_login', 'Farklı bir kurye hesabına geçmek için lütfen giriş yapınız.')}
-              className="px-3 py-1.5 rounded-xl bg-[#021813] hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold transition cursor-pointer shrink-0"
-            >
-              Kurye Değiştir
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openAuthModal('courier_login', 'Farklı bir kurye hesabına geçmek için lütfen giriş yapınız.')}
+                className="px-3 py-1.5 rounded-xl bg-[#021813] hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold transition cursor-pointer shrink-0"
+              >
+                Kurye Değiştir
+              </button>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-700/50 text-rose-300 text-[11px] font-semibold transition cursor-pointer shrink-0"
+                title="Oturumu Kapat"
+              >
+                Çıkış
+              </button>
+            </div>
           </div>
         ) : (
           <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-amber-500/90 text-white space-y-3 shadow-xl">
@@ -515,6 +539,34 @@ export const PaketTalebiPoolPage: React.FC = () => {
           )}
         </div>
 
+        {/* Footer with Terms and KVKK links */}
+        <div className="pt-8 pb-4 text-center text-xs text-emerald-400/70 border-t border-emerald-900/40 mt-8 space-y-2">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap text-[11px] sm:text-xs">
+            <button
+              type="button"
+              onClick={() => setIsTermsModalOpen(true)}
+              className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Kullanım Koşulları</span>
+            </button>
+            <span className="text-emerald-800">•</span>
+            <button
+              type="button"
+              onClick={() => setIsKvkkModalOpen(true)}
+              className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>KVKK Aydınlatma Metni</span>
+            </button>
+            <span className="text-emerald-800">•</span>
+            <span className="text-emerald-500/80">Antalya 7/24 Moto Kurye Talep Havuzu</span>
+          </div>
+          <p className="text-[10px] text-emerald-600">
+            © 2026 Antalya Teslimat — Bağımsız kuryeler ile göndericileri buluşturan dijital platform.
+          </p>
+        </div>
+
       </div>
 
       {/* COURIER AUTHENTICATION REQUIRED MODAL */}
@@ -605,6 +657,18 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Terms of Use Modal */}
+      <TermsOfUseModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+      />
+
+      {/* KVKK Modal */}
+      <KvkkModal
+        isOpen={isKvkkModalOpen}
+        onClose={() => setIsKvkkModalOpen(false)}
+      />
     </div>
   );
 };

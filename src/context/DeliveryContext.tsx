@@ -176,17 +176,28 @@ const loadPersistentUsers = (): UserAccount[] => {
     if (u.email) userMap.set(u.email.toLowerCase(), u);
   });
 
-  // 2. Merge saved users (preserve any passwords and new registered accounts)
-  savedUsers.forEach((u) => {
-    if (u && u.id) {
-      const existing = userMap.get(u.id);
-      if (existing) {
-        userMap.set(u.id, { ...existing, ...u });
-      } else {
-        userMap.set(u.id, u);
+  // 2. Merge saved users (filter out fake/mock couriers)
+  savedUsers
+    .filter(
+      (u) =>
+        u &&
+        u.id !== 'user-courier-01' &&
+        u.id !== 'user-courier-02' &&
+        u.id !== 'user-customer-sample-1' &&
+        !u.name?.includes('Ahmet Yılmaz') &&
+        !u.name?.includes('Mustafa Demir') &&
+        !u.name?.includes('Deniz Akdeniz')
+    )
+    .forEach((u) => {
+      if (u && u.id) {
+        const existing = userMap.get(u.id);
+        if (existing) {
+          userMap.set(u.id, { ...existing, ...u });
+        } else {
+          userMap.set(u.id, u);
+        }
       }
-    }
-  });
+    });
 
   // Return unique user objects
   const uniqueUsers = Array.from(new Set(Array.from(userMap.values())));
@@ -227,7 +238,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY) || sessionStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY);
-      if (saved) return saved;
+      if (saved && saved !== 'user-courier-01' && saved !== 'user-courier-02' && saved !== 'user-customer-sample-1') {
+        return saved;
+      }
     } catch (e) {
       console.warn('Active user id read error:', e);
     }
@@ -240,7 +253,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [requests, setRequests] = useState<DeliveryRequest[]>(loadPersistentOrders);
 
   const [couriers, setCouriers] = useState<CourierInfo[]>(INITIAL_COURIERS);
-  const [activeCourierId, setActiveCourierId] = useState<string>('user-courier-01');
+  const [activeCourierId, setActiveCourierId] = useState<string>(INITIAL_COURIERS[0]?.id || '');
   const [isCourierOnline, setIsCourierOnline] = useState<boolean>(true);
   
   // 4. Persistent Current View (Preserved across page refreshes!)
@@ -608,12 +621,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!found) {
       if (clean === 'admin' || clean === 'yonetici' || clean === 'yonetim' || clean === 'kuryeantalyam') {
         found = users.find((u) => u.role === 'admin') || INITIAL_USERS[1];
-      } else if (clean === 'kurye' || clean === 'courier' || clean === 'motokurye' || clean === 'ahmet') {
-        found = users.find((u) => u.id === 'user-courier-01') || users.find((u) => u.role === 'courier') || INITIAL_USERS[2];
-      } else if (clean === 'mustafa' || clean === 'kurye2') {
-        found = users.find((u) => u.id === 'user-courier-02') || INITIAL_USERS[3];
-      } else if (clean === 'musteri' || clean === 'customer' || clean === 'deniz') {
-        found = users.find((u) => u.role === 'customer' && u.email) || INITIAL_USERS[4] || INITIAL_USERS[0];
+      } else if (clean === 'kurye' || clean === 'courier' || clean === 'motokurye' || clean === 'umit') {
+        found = users.find((u) => u.role === 'courier') || INITIAL_USERS[2];
+      } else if (clean === 'musteri' || clean === 'customer') {
+        found = users.find((u) => u.role === 'customer' && u.email) || INITIAL_USERS[0];
       }
     }
 
@@ -1491,7 +1502,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (r) =>
       (r.assignedCourier?.id === currentUser.id || 
        currentUser.role === 'admin' || 
-       (currentUser.role === 'courier' && (!r.assignedCourier || r.assignedCourier.id === currentUser.id || r.assignedCourier.id === 'user-courier-01'))) &&
+       (currentUser.role === 'courier' && (!r.assignedCourier || r.assignedCourier.id === currentUser.id))) &&
       (r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination')
   );
 
