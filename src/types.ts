@@ -147,3 +147,22 @@ export interface EmailLogItem {
   error?: string;
   summary: string;
 }
+
+export interface VisitorRecord {
+  id: string;
+  timestamp: string;
+  path: string;
+  deviceType: 'mobile' | 'desktop' | 'tablet';
+  referrer?: string;
+  isUnique: boolean;
+}
+
+export interface VisitorStats {
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisits: number;
+  todayDate: string;
+  lastVisitAt: string;
+  activeNow?: number;
+  recentVisitors: VisitorRecord[];
+}

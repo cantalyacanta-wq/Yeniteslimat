@@ -45,6 +45,7 @@ import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
 import { ReceiptModal } from './ReceiptModal';
+import { SiteVisitorCounter } from './SiteVisitorCounter';
 
 export const AdminManagement: React.FC = () => {
   const {
@@ -702,6 +703,12 @@ export const AdminManagement: React.FC = () => {
             <span className="text-[10px] text-emerald-400/80 block">Havuzda</span>
             <strong className="text-sm font-black text-amber-400">{poolRequests.length} Sipariş</strong>
           </div>
+
+          {/* Compact Live Site Counter */}
+          <SiteVisitorCounter
+            variant="compact"
+            onNavigateToDetailed={() => setActiveTab('system')}
+          />
           
           <button
             type="button"
@@ -2104,6 +2111,9 @@ export const AdminManagement: React.FC = () => {
               <span className="text-[10px] text-amber-300/80">Tamamlanan sipariş tutarı</span>
             </div>
           </div>
+
+          {/* Real-Time Site Visitor Counter & Traffic Analytics */}
+          <SiteVisitorCounter variant="detailed" />
 
           {/* Database Backup & Reset Operations */}
           <div className="bg-[#021d17] p-6 rounded-3xl border border-emerald-800/60 text-white space-y-4">

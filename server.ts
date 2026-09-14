@@ -125,6 +125,39 @@ export interface SmtpConfig {
   lastTestMessage?: string;
 }
 
+export interface VisitorRecord {
+  id: string;
+  timestamp: string;
+  path: string;
+  deviceType: 'mobile' | 'desktop' | 'tablet';
+  referrer?: string;
+  isUnique: boolean;
+}
+
+export interface VisitorStats {
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisits: number;
+  todayDate: string; // YYYY-MM-DD
+  uniqueVisitorIds: string[];
+  todayVisitorIds: string[];
+  lastVisitAt: string;
+  recentVisitors: VisitorRecord[];
+}
+
+const getTodayDateStr = () => new Date().toISOString().split('T')[0];
+
+const DEFAULT_VISITOR_STATS: VisitorStats = {
+  totalVisits: 0,
+  uniqueVisitors: 0,
+  todayVisits: 0,
+  todayDate: getTodayDateStr(),
+  uniqueVisitorIds: [],
+  todayVisitorIds: [],
+  lastVisitAt: new Date().toISOString(),
+  recentVisitors: [],
+};
+
 interface ServerDatabase {
   users: any[];
   couriers: any[];
@@ -132,6 +165,7 @@ interface ServerDatabase {
   emailLogs?: EmailLogItem[];
   extraCourierEmails?: string[];
   smtpConfig?: SmtpConfig;
+  visitorStats?: VisitorStats;
   updatedAt: string;
 }
 
@@ -141,6 +175,7 @@ let dbState: ServerDatabase = {
   requests: [],
   emailLogs: [],
   extraCourierEmails: [],
+  visitorStats: { ...DEFAULT_VISITOR_STATS },
   smtpConfig: {
     service: 'gmail',
     host: 'smtp.gmail.com',
@@ -214,6 +249,20 @@ function loadDatabase() {
           lastTestMessage: existingSmtp.lastTestMessage || 'Gmail SMTP bağlantısı hazır.',
         };
 
+        const savedStats = parsed.visitorStats || {};
+        const todayStr = getTodayDateStr();
+        const isNewDay = savedStats.todayDate !== todayStr;
+        const currentVisitorStats: VisitorStats = {
+          totalVisits: typeof savedStats.totalVisits === 'number' ? savedStats.totalVisits : 0,
+          uniqueVisitors: typeof savedStats.uniqueVisitors === 'number' ? savedStats.uniqueVisitors : 0,
+          todayVisits: isNewDay ? 0 : (typeof savedStats.todayVisits === 'number' ? savedStats.todayVisits : 0),
+          todayDate: todayStr,
+          uniqueVisitorIds: Array.isArray(savedStats.uniqueVisitorIds) ? savedStats.uniqueVisitorIds : [],
+          todayVisitorIds: isNewDay ? [] : (Array.isArray(savedStats.todayVisitorIds) ? savedStats.todayVisitorIds : []),
+          lastVisitAt: savedStats.lastVisitAt || new Date().toISOString(),
+          recentVisitors: Array.isArray(savedStats.recentVisitors) ? savedStats.recentVisitors : [],
+        };
+
         dbState = {
           users: Array.from(userMap.values()),
           couriers: Array.from(courierMap.values()),
@@ -221,9 +270,10 @@ function loadDatabase() {
           emailLogs: Array.isArray(parsed.emailLogs) ? parsed.emailLogs : [],
           extraCourierEmails: Array.isArray(parsed.extraCourierEmails) ? parsed.extraCourierEmails : [],
           smtpConfig: smtpCfg,
+          visitorStats: currentVisitorStats,
           updatedAt: parsed.updatedAt || new Date().toISOString(),
         };
-        console.log(`[DB] Database loaded successfully: ${dbState.requests.length} requests, ${dbState.users.length} users, ${dbState.emailLogs?.length || 0} email logs`);
+        console.log(`[DB] Database loaded successfully: ${dbState.requests.length} requests, ${dbState.users.length} users, ${dbState.visitorStats.totalVisits} visits logged`);
         return;
       }
     }
@@ -900,11 +950,24 @@ app.get('/api/health', (req, res) => {
 
 // Full Sync (Used by all clients for real-time polling across any device)
 app.get('/api/sync', (req, res) => {
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  const recentList = dbState.visitorStats?.recentVisitors || [];
+  const activeNow = recentList.filter((v) => new Date(v.timestamp).getTime() >= tenMinutesAgo).length;
+
   res.json({
     success: true,
     requests: dbState.requests,
     users: dbState.users,
     couriers: dbState.couriers,
+    visitorStats: dbState.visitorStats ? {
+      totalVisits: dbState.visitorStats.totalVisits || 0,
+      uniqueVisitors: dbState.visitorStats.uniqueVisitors || 0,
+      todayVisits: dbState.visitorStats.todayVisits || 0,
+      todayDate: dbState.visitorStats.todayDate,
+      lastVisitAt: dbState.visitorStats.lastVisitAt,
+      activeNow: Math.max(1, activeNow),
+      recentVisitors: recentList.slice(0, 30),
+    } : undefined,
     updatedAt: dbState.updatedAt,
   });
 });
@@ -1752,6 +1815,191 @@ app.post('/api/database/backup', (req, res) => {
     } else {
       res.status(400).json({ error: 'Geçersiz yedek verisi' });
     }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// SITE SAYACI & ZİYARETÇİ ANALİTİĞİ (ANALYTICS)
+// ==========================================
+
+// Log a site visit
+app.post('/api/analytics/visit', (req, res) => {
+  try {
+    const { visitorId, path: pagePath, referrer, device } = req.body || {};
+    if (!dbState.visitorStats) {
+      dbState.visitorStats = { ...DEFAULT_VISITOR_STATS };
+    }
+
+    const todayStr = getTodayDateStr();
+    if (dbState.visitorStats.todayDate !== todayStr) {
+      dbState.visitorStats.todayDate = todayStr;
+      dbState.visitorStats.todayVisits = 0;
+      dbState.visitorStats.todayVisitorIds = [];
+    }
+
+    const vId = typeof visitorId === 'string' && visitorId.trim() ? visitorId.trim() : `anon_${Date.now()}`;
+    const isUniqueEver = !dbState.visitorStats.uniqueVisitorIds.includes(vId);
+    const isUniqueToday = !dbState.visitorStats.todayVisitorIds.includes(vId);
+
+    dbState.visitorStats.totalVisits = (dbState.visitorStats.totalVisits || 0) + 1;
+    dbState.visitorStats.todayVisits = (dbState.visitorStats.todayVisits || 0) + 1;
+
+    if (isUniqueEver) {
+      dbState.visitorStats.uniqueVisitors = (dbState.visitorStats.uniqueVisitors || 0) + 1;
+      dbState.visitorStats.uniqueVisitorIds.push(vId);
+      if (dbState.visitorStats.uniqueVisitorIds.length > 5000) {
+        dbState.visitorStats.uniqueVisitorIds = dbState.visitorStats.uniqueVisitorIds.slice(-5000);
+      }
+    }
+
+    if (isUniqueToday) {
+      dbState.visitorStats.todayVisitorIds.push(vId);
+      if (dbState.visitorStats.todayVisitorIds.length > 2000) {
+        dbState.visitorStats.todayVisitorIds = dbState.visitorStats.todayVisitorIds.slice(-2000);
+      }
+    }
+
+    // Determine device type
+    let detectedDevice: 'mobile' | 'desktop' | 'tablet' = 'desktop';
+    const userAgent = (req.headers['user-agent'] as string) || '';
+    if (device === 'mobile' || /Android|iPhone|iPod|Mobile/i.test(userAgent)) {
+      detectedDevice = 'mobile';
+    } else if (device === 'tablet' || /iPad|Tablet/i.test(userAgent)) {
+      detectedDevice = 'tablet';
+    }
+
+    const nowIso = new Date().toISOString();
+    dbState.visitorStats.lastVisitAt = nowIso;
+
+    const newRecord: VisitorRecord = {
+      id: `vis_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: nowIso,
+      path: typeof pagePath === 'string' && pagePath ? pagePath.slice(0, 100) : '/',
+      deviceType: detectedDevice,
+      referrer: typeof referrer === 'string' && referrer ? referrer.slice(0, 150) : undefined,
+      isUnique: isUniqueEver,
+    };
+
+    if (!Array.isArray(dbState.visitorStats.recentVisitors)) {
+      dbState.visitorStats.recentVisitors = [];
+    }
+    dbState.visitorStats.recentVisitors.unshift(newRecord);
+    if (dbState.visitorStats.recentVisitors.length > 50) {
+      dbState.visitorStats.recentVisitors = dbState.visitorStats.recentVisitors.slice(0, 50);
+    }
+
+    saveDatabase();
+
+    // Firestore background sync if connected
+    if (serverFirestoreDb) {
+      setDoc(
+        doc(serverFirestoreDb, 'settings', 'site_counter'),
+        {
+          totalVisits: dbState.visitorStats.totalVisits,
+          uniqueVisitors: dbState.visitorStats.uniqueVisitors,
+          todayVisits: dbState.visitorStats.todayVisits,
+          todayDate: dbState.visitorStats.todayDate,
+          lastVisitAt: dbState.visitorStats.lastVisitAt,
+          updatedAt: nowIso,
+        },
+        { merge: true }
+      ).catch(() => {});
+    }
+
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const activeNow = dbState.visitorStats.recentVisitors.filter(
+      (v) => new Date(v.timestamp).getTime() >= tenMinutesAgo
+    ).length;
+
+    res.json({
+      success: true,
+      stats: {
+        totalVisits: dbState.visitorStats.totalVisits,
+        uniqueVisitors: dbState.visitorStats.uniqueVisitors,
+        todayVisits: dbState.visitorStats.todayVisits,
+        todayDate: dbState.visitorStats.todayDate,
+        lastVisitAt: dbState.visitorStats.lastVisitAt,
+        activeNow: Math.max(1, activeNow),
+        recentVisitors: dbState.visitorStats.recentVisitors.slice(0, 20),
+      },
+    });
+  } catch (err: any) {
+    console.error('[ANALYTICS] Error logging visit:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get site counter & visitor stats
+app.get('/api/analytics/stats', (req, res) => {
+  try {
+    if (!dbState.visitorStats) {
+      dbState.visitorStats = { ...DEFAULT_VISITOR_STATS };
+    }
+    const todayStr = getTodayDateStr();
+    if (dbState.visitorStats.todayDate !== todayStr) {
+      dbState.visitorStats.todayDate = todayStr;
+      dbState.visitorStats.todayVisits = 0;
+      dbState.visitorStats.todayVisitorIds = [];
+      saveDatabase();
+    }
+
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const recentList = dbState.visitorStats.recentVisitors || [];
+    const activeNow = recentList.filter(
+      (v) => new Date(v.timestamp).getTime() >= tenMinutesAgo
+    ).length;
+
+    res.json({
+      success: true,
+      stats: {
+        totalVisits: dbState.visitorStats.totalVisits || 0,
+        uniqueVisitors: dbState.visitorStats.uniqueVisitors || 0,
+        todayVisits: dbState.visitorStats.todayVisits || 0,
+        todayDate: dbState.visitorStats.todayDate,
+        lastVisitAt: dbState.visitorStats.lastVisitAt,
+        activeNow: Math.max(1, activeNow),
+        recentVisitors: recentList.slice(0, 30),
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset or calibrate site counter (Admin only feature)
+app.post('/api/analytics/reset', (req, res) => {
+  try {
+    const { initialVisits } = req.body || {};
+    const count = typeof initialVisits === 'number' && initialVisits >= 0 ? initialVisits : 0;
+
+    const todayStr = getTodayDateStr();
+    dbState.visitorStats = {
+      totalVisits: count,
+      uniqueVisitors: count > 0 ? Math.round(count * 0.75) : 0,
+      todayVisits: count > 0 ? Math.min(count, 5) : 0,
+      todayDate: todayStr,
+      uniqueVisitorIds: [],
+      todayVisitorIds: [],
+      lastVisitAt: new Date().toISOString(),
+      recentVisitors: [],
+    };
+    saveDatabase();
+
+    res.json({
+      success: true,
+      message: 'Site sayacı başarıyla sıfırlandı.',
+      stats: {
+        totalVisits: dbState.visitorStats.totalVisits,
+        uniqueVisitors: dbState.visitorStats.uniqueVisitors,
+        todayVisits: dbState.visitorStats.todayVisits,
+        todayDate: dbState.visitorStats.todayDate,
+        lastVisitAt: dbState.visitorStats.lastVisitAt,
+        activeNow: 1,
+        recentVisitors: [],
+      },
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

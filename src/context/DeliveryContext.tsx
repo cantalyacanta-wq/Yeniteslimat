@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import confetti from 'canvas-confetti';
-import { CourierInfo, DeliveryRequest, DeliveryStatus, DistrictName, UserAccount, UserRole } from '../types';
+import { CourierInfo, DeliveryRequest, DeliveryStatus, DistrictName, UserAccount, UserRole, VisitorStats } from '../types';
 import { INITIAL_COURIERS, INITIAL_REQUESTS, INITIAL_USERS } from '../data/mockData';
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { playAcceptSound, playNewOrderSound, playSuccessSound } from '../utils/audio';
@@ -83,6 +83,11 @@ interface DeliveryContextType {
   syncWithServer: () => Promise<void>;
   resendOrderEmail: (orderIdOrCode: string) => Promise<{ success: boolean; message?: string }>;
   
+  // Analytics & Site Visitor Counter
+  visitorStats: VisitorStats | null;
+  recordSiteVisit: (pagePath?: string) => Promise<void>;
+  resetSiteCounter: (initialVisits?: number) => Promise<boolean>;
+
   // Filtered lists
   poolRequests: DeliveryRequest[];
   activeCourierDeliveries: DeliveryRequest[];
@@ -317,6 +322,68 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return granted;
   }, []);
 
+  // 6.5 Analytics & Site Visitor Counter
+  const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
+
+  const recordSiteVisit = useCallback(async (pagePath?: string) => {
+    try {
+      let visitorId = '';
+      try {
+        visitorId = localStorage.getItem('antalya_visitor_uuid') || '';
+        if (!visitorId) {
+          visitorId = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          localStorage.setItem('antalya_visitor_uuid', visitorId);
+        }
+      } catch {}
+
+      const currentPath = pagePath || (typeof window !== 'undefined' ? (window.location.pathname + window.location.hash) || '/' : '/');
+      const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
+      const isTablet = typeof navigator !== 'undefined' && /iPad|Tablet/i.test(navigator.userAgent);
+      const device = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
+      const referrer = typeof document !== 'undefined' ? document.referrer : '';
+
+      const res = await fetch('/api/analytics/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitorId,
+          path: currentPath,
+          device,
+          referrer,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.stats) {
+          setVisitorStats(data.stats);
+        }
+      }
+    } catch (e) {
+      console.debug('Visitor tracking info:', e);
+    }
+  }, []);
+
+  const resetSiteCounter = useCallback(async (initialVisits = 0) => {
+    try {
+      const res = await fetch('/api/analytics/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initialVisits }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && data.stats) {
+          setVisitorStats(data.stats);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Counter reset failed:', e);
+    }
+    return false;
+  }, []);
+
   // 7. Full Server Sync Callback (Cross-Device API Polling & Sync)
   const syncWithServer = useCallback(async () => {
     try {
@@ -324,6 +391,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.success) {
+        if (data.visitorStats) {
+          setVisitorStats(data.visitorStats);
+        }
         if (Array.isArray(data.requests)) {
           processIncomingRequests(data.requests);
           setRequests((prev) => {
@@ -423,12 +493,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     syncWithServer();
     const interval = setInterval(syncWithServer, 2000);
 
+    // 3. Record initial site visit for analytics
+    recordSiteVisit();
+
     return () => {
       unsubscribeRequests();
       unsubscribeUsers();
       clearInterval(interval);
     };
-  }, [processIncomingRequests, syncWithServer]);
+  }, [processIncomingRequests, syncWithServer, recordSiteVisit]);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'courier_register' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
@@ -1577,6 +1650,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         requestNotifications,
         syncWithServer,
         resendOrderEmail,
+        visitorStats,
+        recordSiteVisit,
+        resetSiteCounter,
         poolRequests,
         activeCourierDeliveries,
         myCustomerOrders,

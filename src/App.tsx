@@ -151,7 +151,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
 };
 
 const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
-  const { setCurrentView } = useDelivery();
+  const { setCurrentView, recordSiteVisit } = useDelivery();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
   const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
@@ -159,6 +159,9 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
     const handleUrlChange = () => {
       if (checkIsAdminRoute()) {
         setCurrentView('admin');
+      }
+      if (recordSiteVisit) {
+        recordSiteVisit(window.location.pathname + window.location.hash);
       }
     };
 
@@ -169,7 +172,7 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [setCurrentView]);
+  }, [setCurrentView, recordSiteVisit]);
 
   return (
     <>

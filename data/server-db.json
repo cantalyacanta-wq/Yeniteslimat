@@ -22,6 +22,19 @@
       "createdAt": "2026-01-01T00:00:00.000Z"
     },
     {
+      "id": "user-courier-1787999333451",
+      "name": "Kurye umit",
+      "phone": "0123456789",
+      "email": "cantalyacanta@gmail.com",
+      "password": "666666",
+      "role": "courier",
+      "district": "Muratpaşa",
+      "createdAt": "2026-08-29T10:28:53.451Z",
+      "totalOrders": 13,
+      "totalEarnings": 1400,
+      "isOnline": true
+    },
+    {
       "id": "user-courier-01",
       "name": "Ahmet Yılmaz (Kurye)",
       "phone": "0544 111 22 33",
@@ -32,19 +45,6 @@
       "createdAt": "2026-01-02T00:00:00.000Z",
       "totalOrders": 14,
       "totalEarnings": 3200,
-      "isOnline": true
-    },
-    {
-      "id": "user-courier-1787999333451",
-      "name": "Kurye umit",
-      "phone": "0123456789",
-      "email": "cantalyacanta@gmail.com",
-      "password": "666666",
-      "role": "courier",
-      "district": "Muratpaşa",
-      "createdAt": "2026-08-29T10:28:53.451Z",
-      "totalOrders": 11,
-      "totalEarnings": 1130,
       "isOnline": true
     },
     {
@@ -161,6 +161,75 @@
       "email": "deneme@gg.com",
       "createdAt": "2026-09-05T17:26:35.085Z",
       "password": "123455"
+    },
+    {
+      "password": "258025",
+      "role": "courier",
+      "phone": "05389251491",
+      "createdAt": "2026-09-14T10:28:59.779Z",
+      "district": "Muratpaşa",
+      "isOnline": true,
+      "email": "nurankar63@gmail.com",
+      "name": "Nuran Çıracı",
+      "totalEarnings": 0,
+      "vehicleType": "Motosiklet",
+      "totalOrders": 0,
+      "id": "user-courier-1789381739779"
+    },
+    {
+      "id": "user-courier-1789382673519",
+      "isOnline": true,
+      "phone": "5064438737",
+      "totalEarnings": 0,
+      "createdAt": "2026-09-14T10:44:33.519Z",
+      "name": "Ünsal kişi",
+      "totalOrders": 0,
+      "role": "courier",
+      "password": "qixjoc-8tuqja-zoxhAw",
+      "vehicleType": "Motosiklet",
+      "district": "Muratpaşa",
+      "email": "unsal.kisi@gmail.com"
+    },
+    {
+      "isOnline": true,
+      "totalEarnings": 0,
+      "role": "courier",
+      "phone": "05525891721",
+      "createdAt": "2026-09-14T13:15:13.841Z",
+      "email": "canbyrkcnr@icloud.com",
+      "password": "mEttec-paqsus-gyxho7",
+      "name": "Celal can büyükçınar",
+      "vehicleType": "Motosiklet",
+      "district": "Muratpaşa",
+      "totalOrders": 0,
+      "id": "user-courier-1789391713841"
+    },
+    {
+      "role": "courier",
+      "password": "Hf.3455",
+      "email": "fettahliogluhalil07@gmail.com",
+      "district": "Muratpaşa",
+      "createdAt": "2026-09-14T15:08:20.193Z",
+      "totalEarnings": 0,
+      "id": "user-courier-1789398500193",
+      "isOnline": true,
+      "vehicleType": "Motosiklet",
+      "name": "Halil Fettahlıoğlu",
+      "totalOrders": 0,
+      "phone": "05511221321"
+    },
+    {
+      "role": "customer",
+      "totalOrders": 0,
+      "email": "fadime@gh.com",
+      "totalEarnings": 0,
+      "password": "123456",
+      "createdAt": "2026-09-14T13:52:56.528Z",
+      "id": "user-customer-1789393976528",
+      "district": "Muratpaşa",
+      "name": "Fadime torun",
+      "companyName": "",
+      "phone": "055533366696"
     }
   ],
   "couriers": [
@@ -171,7 +240,7 @@
       "email": "cantalyacanta@gmail.com",
       "district": "Muratpaşa",
       "rating": 5,
-      "totalDeliveries": 11,
+      "totalDeliveries": 13,
       "currentLat": 36.886,
       "currentLng": 30.7065,
       "isOnline": true
@@ -223,47 +292,221 @@
       "currentLat": 36.886,
       "currentLng": 30.7065,
       "isOnline": true
+    },
+    {
+      "id": "user-courier-1789381739779",
+      "name": "Nuran Çıracı",
+      "phone": "05389251491",
+      "email": "nurankar63@gmail.com",
+      "district": "Muratpaşa",
+      "rating": 5,
+      "totalDeliveries": 0,
+      "currentLat": 36.886,
+      "currentLng": 30.7065,
+      "isOnline": true
+    },
+    {
+      "id": "user-courier-1789382673519",
+      "name": "Ünsal kişi",
+      "phone": "5064438737",
+      "email": "unsal.kisi@gmail.com",
+      "district": "Muratpaşa",
+      "rating": 5,
+      "totalDeliveries": 0,
+      "currentLat": 36.886,
+      "currentLng": 30.7065,
+      "isOnline": true
+    },
+    {
+      "id": "user-courier-1789391713841",
+      "name": "Celal can büyükçınar",
+      "phone": "05525891721",
+      "email": "canbyrkcnr@icloud.com",
+      "district": "Muratpaşa",
+      "rating": 5,
+      "totalDeliveries": 0,
+      "currentLat": 36.886,
+      "currentLng": 30.7065,
+      "isOnline": true
+    },
+    {
+      "id": "user-courier-1789398500193",
+      "name": "Halil Fettahlıoğlu",
+      "phone": "05511221321",
+      "email": "fettahliogluhalil07@gmail.com",
+      "district": "Muratpaşa",
+      "rating": 5,
+      "totalDeliveries": 0,
+      "currentLat": 36.886,
+      "currentLng": 30.7065,
+      "isOnline": true
     }
   ],
   "requests": [
     {
-      "createdAt": "2026-09-01T11:33:08.812Z",
-      "updatedAt": "2026-09-01T11:48:49.419Z",
-      "status": "cancelled",
-      "packageWeightKg": 1,
-      "isPaid": false,
+      "packageName": "Sıcak Yemek Siparişi",
+      "urgency": "standard",
       "receiver": {
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "lat": 36.8732,
         "lng": 30.6384,
+        "lat": 36.8732,
         "contactPhone": "0123456789",
+        "district": "Konyaaltı",
         "addressDetail": "Altinkum mah 417 sokak",
-        "district": "Konyaaltı"
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun"
       },
       "estimatedDistanceKm": 8,
-      "courierEarnings": 100,
-      "trackingCode": "ANT-5892",
-      "price": 100,
-      "noteForCourier": "",
-      "packageType": "food",
-      "sender": {
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "district": "Konyaaltı",
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
-        "contactName": "Umit torun",
-        "contactPhone": "05077547484",
-        "lng": 30.6384
-      },
-      "emailDispatchedAt": "2026-09-01T11:44:45.710Z",
+      "createdAt": "2026-09-01T11:33:08.812Z",
       "emailDispatched": true,
       "estimatedDurationMins": 21,
-      "id": "req-1788262388812-94",
+      "price": 100,
+      "paymentMethod": "gonderici_odemeli",
       "senderUserId": "user-customer-1787999079959",
+      "sender": {
+        "neighborhood": "Merkez",
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "district": "Konyaaltı",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484"
+      },
+      "packageType": "food",
+      "noteForCourier": "",
+      "id": "req-1788262388812-94",
+      "emailDispatchedAt": "2026-09-01T11:44:45.710Z",
+      "status": "cancelled",
+      "packageWeightKg": 1,
+      "updatedAt": "2026-09-01T11:48:49.419Z",
+      "isPaid": false,
+      "trackingCode": "ANT-5892",
+      "courierEarnings": 100
+    },
+    {
+      "pickupTime": "2026-09-14T14:00:21.576Z",
+      "courier": {
+        "currentLng": 30.7065,
+        "district": "Muratpaşa",
+        "rating": 4.95,
+        "currentLat": 36.886,
+        "totalDeliveries": 13,
+        "phone": "0123456789",
+        "email": "cantalyacanta@gmail.com",
+        "id": "user-courier-1787999333451",
+        "name": "Kurye umit"
+      },
       "urgency": "standard",
+      "assignedCourier": {
+        "district": "Muratpaşa",
+        "name": "Kurye umit",
+        "currentLng": 30.7065,
+        "id": "user-courier-1787999333451",
+        "phone": "0123456789",
+        "totalDeliveries": 13,
+        "rating": 4.95,
+        "email": "cantalyacanta@gmail.com",
+        "currentLat": 36.886
+      },
+      "receiver": {
+        "district": "Konyaaltı",
+        "contactPhone": "05423235625",
+        "neighborhood": "Merkez",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "addressDetail": "5m migros",
+        "contactName": "Yurdagül mazi"
+      },
+      "noteForCourier": "",
+      "updatedAt": "2026-09-14T14:00:34.566Z",
+      "estimatedDurationMins": 21,
+      "id": "req-1789394386076-931",
+      "packageType": "other",
+      "paymentMethod": "gonderici_odemeli",
+      "trackingCode": "ANT-3508",
+      "courierEarnings": 160,
+      "sender": {
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "05553758421",
+        "contactName": "Fadime taskin",
+        "neighborhood": "Merkez",
+        "district": "Konyaaltı",
+        "addressDetail": "Kuskavagi mah 563 sokak no 2"
+      },
+      "createdAt": "2026-09-14T13:59:46.076Z",
+      "isPaid": false,
+      "price": 160,
+      "packageWeightKg": 1,
+      "packageName": "Standart Paket",
+      "emailDispatchedAt": "2026-09-14T13:59:50.527Z",
+      "emailDispatched": true,
+      "estimatedDistanceKm": 8,
+      "senderUserId": "user-customer-1789393976528",
+      "deliveryTime": "2026-09-14T14:00:34.566Z",
+      "status": "delivered"
+    },
+    {
+      "trackingCode": "ANT-1286",
+      "emailDispatched": true,
+      "packageWeightKg": 1,
+      "courier": {
+        "currentLat": 36.886,
+        "currentLng": 30.7065,
+        "district": "Muratpaşa",
+        "phone": "0123456789",
+        "email": "cantalyacanta@gmail.com",
+        "name": "Kurye Ümit",
+        "rating": 5,
+        "totalDeliveries": 10,
+        "id": "user-courier-1787999333451"
+      },
+      "urgency": "standard",
+      "createdAt": "2026-09-14T13:49:52.825Z",
       "packageName": "Sıcak Yemek Siparişi",
-      "paymentMethod": "gonderici_odemeli"
+      "receiver": {
+        "addressDetail": "Liman Tahtakale",
+        "district": "Konyaaltı",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
+        "contactPhone": "0123456789"
+      },
+      "paymentMethod": "gonderici_odemeli",
+      "deliveryTime": "2026-09-14T13:53:40.207Z",
+      "senderUserId": "user-customer-1787999079959",
+      "estimatedDurationMins": 21,
+      "packageType": "food",
+      "id": "req-1789393792825-232",
+      "courierEarnings": 110,
+      "pickupTime": "2026-09-14T13:53:32.632Z",
+      "status": "delivered",
+      "emailDispatchedAt": "2026-09-14T13:49:57.895Z",
+      "updatedAt": "2026-09-14T13:53:40.207Z",
+      "sender": {
+        "district": "Konyaaltı",
+        "contactPhone": "05077547484",
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "lat": 36.8732
+      },
+      "assignedCourier": {
+        "currentLng": 30.7065,
+        "phone": "0123456789",
+        "email": "cantalyacanta@gmail.com",
+        "district": "Muratpaşa",
+        "totalDeliveries": 10,
+        "currentLat": 36.886,
+        "rating": 5,
+        "name": "Kurye Ümit",
+        "id": "user-courier-1787999333451"
+      },
+      "estimatedDistanceKm": 8,
+      "noteForCourier": "",
+      "price": 110,
+      "isPaid": false
     },
     {
       "noteForCourier": "",
@@ -281,33 +524,33 @@
       "status": "delivered",
       "receiver": {
         "neighborhood": "Merkez",
-        "contactName": "Çigdem özgüner",
-        "district": "Kepez",
+        "lat": 36.925,
         "lng": 30.687,
         "addressDetail": "Esentepe Mahallesi, 5396 Sokak, No: 12, İç Kapı No: 1, Kepez / Antalya",
-        "contactPhone": "5335226089",
-        "lat": 36.925
+        "contactName": "Çigdem özgüner",
+        "district": "Kepez",
+        "contactPhone": "5335226089"
       },
       "assignedCourier": {
-        "totalDeliveries": 1,
         "currentLng": 30.7065,
-        "email": "ahmet@antalyakurye.com",
-        "id": "user-courier-01",
         "phone": "0544 111 22 33",
-        "rating": 4.95,
+        "email": "ahmet@antalyakurye.com",
         "district": "Muratpaşa",
+        "totalDeliveries": 1,
         "currentLat": 36.886,
+        "rating": 4.95,
+        "id": "user-courier-01",
         "name": "Ahmet Yılmaz (Kurye)"
       },
       "estimatedDistanceKm": 13,
       "sender": {
-        "neighborhood": "Merkez",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
-        "addressDetail": "Kuskavagi mahallesi belediye caddesi no 65 bitkiciftligi cicekci konyaalti",
         "contactName": "Önder özgen",
         "contactPhone": "5322087213",
-        "lng": 30.6384
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "addressDetail": "Kuskavagi mahallesi belediye caddesi no 65 bitkiciftligi cicekci konyaalti",
+        "neighborhood": "Merkez",
+        "district": "Konyaaltı"
       },
       "senderUserId": "user-customer-1789370154894",
       "courierEarnings": 210,
@@ -324,23 +567,23 @@
       "emailDispatched": true,
       "packageName": "Standart Paket",
       "receiver": {
+        "addressDetail": "Liman Tahtakale",
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
+        "lng": 30.6384,
         "lat": 36.8732,
         "contactPhone": "0123456789",
-        "addressDetail": "Liman Tahtakale",
-        "district": "Konyaaltı",
-        "lng": 30.6384,
-        "contactName": "Umit torun",
-        "neighborhood": "Merkez"
+        "district": "Konyaaltı"
       },
       "packageWeightKg": 1,
       "sender": {
-        "lng": 30.6384,
-        "contactName": "Umit torun",
-        "lat": 36.8732,
         "neighborhood": "Merkez",
+        "contactName": "Umit torun",
         "district": "Konyaaltı",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactPhone": "05077547484"
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "contactPhone": "05077547484",
+        "addressDetail": "Pinarbasi mah 714 sokak"
       },
       "updatedAt": "2026-09-13T17:17:07.368Z",
       "emailDispatchedAt": "2026-09-13T17:14:29.641Z",
@@ -355,13 +598,13 @@
     },
     {
       "sender": {
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "district": "Muratpaşa",
         "lat": 36.886,
+        "lng": 30.7065,
+        "district": "Muratpaşa",
         "contactPhone": "05077547484",
+        "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "lng": 30.7065
+        "contactName": "Umit torun"
       },
       "trackingCode": "ANT-6939",
       "noteForCourier": "",
@@ -380,13 +623,13 @@
       "status": "cancelled",
       "estimatedDistanceKm": 14,
       "receiver": {
+        "lat": 36.852,
+        "lng": 30.765,
+        "addressDetail": "Altinkum mah 417 sokak",
+        "contactPhone": "0123456789",
         "neighborhood": "Merkez",
         "contactName": "Umit torun",
-        "addressDetail": "Altinkum mah 417 sokak",
-        "district": "Lara (Muratpaşa)",
-        "contactPhone": "0123456789",
-        "lat": 36.852,
-        "lng": 30.765
+        "district": "Lara (Muratpaşa)"
       },
       "senderUserId": "user-customer-1787999079959",
       "paymentMethod": "gonderici_odemeli",
@@ -409,23 +652,23 @@
       "trackingCode": "ANT-7098",
       "price": 100,
       "sender": {
-        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "addressDetail": "Pinarbasi mah 714 sokak",
         "lng": 30.7065,
         "lat": 36.886,
-        "contactPhone": "05077547484",
         "district": "Muratpaşa",
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak"
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484"
       },
       "emailDispatchedAt": "2026-09-13T14:40:40.782Z",
       "receiver": {
-        "contactPhone": "0123456789",
-        "lng": 30.6384,
-        "lat": 36.8732,
-        "addressDetail": "Altinkum mah 417 sokak",
         "neighborhood": "Merkez",
+        "contactName": "Umit torun",
         "district": "Konyaaltı",
-        "contactName": "Umit torun"
+        "contactPhone": "0123456789",
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "packageName": "Sıcak Yemek Siparişi",
       "courierEarnings": 100,
@@ -435,12 +678,12 @@
       "estimatedDurationMins": 27,
       "status": "cancelled",
       "receiver": {
-        "lat": 36.8732,
-        "contactPhone": "0123456789",
-        "addressDetail": "Altinkum mah 417 sokak",
         "lng": 30.6384,
-        "neighborhood": "Merkez",
+        "lat": 36.8732,
+        "addressDetail": "Altinkum mah 417 sokak",
         "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
         "district": "Konyaaltı"
       },
       "packageName": "Sıcak Yemek Siparişi",
@@ -456,13 +699,13 @@
       "updatedAt": "2026-09-13T14:40:30.061Z",
       "trackingCode": "ANT-8685",
       "sender": {
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "lat": 36.886,
         "addressDetail": "Pinarbasi mah 714 sokak",
+        "neighborhood": "Merkez",
         "lng": 30.7065,
+        "lat": 36.886,
+        "district": "Muratpaşa",
         "contactPhone": "05077547484",
-        "district": "Muratpaşa"
+        "contactName": "Umit torun"
       },
       "id": "req-1789310111365-120",
       "emailDispatchedAt": "2026-09-13T14:35:13.004Z",
@@ -479,18 +722,18 @@
       "paymentMethod": "alici_odemeli",
       "urgency": "standard",
       "sender": {
+        "district": "Muratpaşa",
+        "neighborhood": "Şirinyalı",
         "phone": "05321112233",
         "contactName": "Ümit Torun",
-        "neighborhood": "Şirinyalı",
-        "district": "Muratpaşa",
         "address": "İsmet Gökşen Cad. No:82"
       },
       "receiver": {
-        "contactName": "Müşteri Alıcı",
-        "phone": "05445556677",
         "neighborhood": "Liman",
         "district": "Konyaaltı",
-        "address": "Boğaçayı Cad. No:14"
+        "phone": "05445556677",
+        "address": "Boğaçayı Cad. No:14",
+        "contactName": "Müşteri Alıcı"
       },
       "status": "delivered",
       "createdAt": "2026-09-13T14:32:34.816Z",
@@ -500,26 +743,26 @@
       "deliveryTime": "2026-09-13T15:19:31.728Z",
       "pickupTime": "2026-09-13T15:19:10.776Z",
       "assignedCourier": {
-        "email": "cantalyacanta@gmail.com",
-        "phone": "0123456789",
-        "currentLng": 30.7065,
+        "id": "user-courier-1787999333451",
         "district": "Muratpaşa",
-        "currentLat": 36.886,
-        "totalDeliveries": 11,
         "name": "Kurye umit",
+        "totalDeliveries": 11,
         "rating": 4.95,
-        "id": "user-courier-1787999333451"
+        "currentLat": 36.886,
+        "currentLng": 30.7065,
+        "email": "cantalyacanta@gmail.com",
+        "phone": "0123456789"
       }
     },
     {
       "sender": {
-        "district": "Muratpaşa",
-        "lng": 30.7065,
         "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
         "lat": 36.886,
-        "contactPhone": "05077547484",
-        "contactName": "Umit torun"
+        "lng": 30.7065,
+        "contactName": "Umit torun",
+        "district": "Muratpaşa",
+        "contactPhone": "05077547484"
       },
       "estimatedDistanceKm": 12,
       "packageWeightKg": 1,
@@ -539,13 +782,13 @@
       "trackingCode": "ANT-3897",
       "price": 100,
       "receiver": {
-        "district": "Konyaaltı",
-        "neighborhood": "Merkez",
-        "contactPhone": "0123456789",
-        "lng": 30.6384,
-        "lat": 36.8732,
         "addressDetail": "Altinkum mah 417 sokak",
-        "contactName": "Umit torun"
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "contactPhone": "0123456789",
+        "lat": 36.8732,
+        "lng": 30.6384
       }
     },
     {
@@ -556,13 +799,13 @@
       "packageName": "Sıcak Yemek Siparişi",
       "packageType": "food",
       "receiver": {
-        "district": "Konyaaltı",
-        "addressDetail": "Altinkum mah 417 sokak",
-        "contactPhone": "0123456789",
         "contactName": "Umit torun",
         "lat": 36.8732,
+        "lng": 30.6384,
         "neighborhood": "Merkez",
-        "lng": 30.6384
+        "contactPhone": "0123456789",
+        "addressDetail": "Altinkum mah 417 sokak",
+        "district": "Konyaaltı"
       },
       "estimatedDurationMins": 27,
       "createdAt": "2026-09-05T15:35:17.118Z",
@@ -574,13 +817,13 @@
       "price": 100,
       "status": "cancelled",
       "sender": {
-        "lat": 36.886,
-        "district": "Muratpaşa",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactPhone": "05077547484",
-        "lng": 30.7065,
         "contactName": "Umit torun",
-        "neighborhood": "Merkez"
+        "lat": 36.886,
+        "lng": 30.7065,
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
+        "district": "Muratpaşa"
       },
       "updatedAt": "2026-09-05T15:36:08.135Z",
       "isPaid": false,
@@ -590,13 +833,13 @@
     {
       "status": "delivered",
       "sender": {
+        "district": "Muratpaşa",
+        "contactPhone": "05077547484",
         "contactName": "Umit torun",
-        "neighborhood": "Merkez",
-        "lng": 30.7065,
         "addressDetail": "Addd",
         "lat": 36.886,
-        "contactPhone": "05077547484",
-        "district": "Muratpaşa"
+        "lng": 30.7065,
+        "neighborhood": "Merkez"
       },
       "estimatedDurationMins": 27,
       "pickupTime": "2026-09-02T16:09:26.233Z",
@@ -617,26 +860,26 @@
       "trackingCode": "ANT-6575",
       "createdAt": "2026-09-02T16:08:47.852Z",
       "assignedCourier": {
+        "email": "cantalyacanta@gmail.com",
+        "id": "user-courier-1787999333451",
         "rating": 4.95,
-        "currentLat": 36.886,
+        "phone": "0123456789",
         "district": "Muratpaşa",
         "totalDeliveries": 10,
         "name": "Kurye umit",
-        "id": "user-courier-1787999333451",
-        "email": "cantalyacanta@gmail.com",
-        "phone": "0123456789",
-        "currentLng": 30.7065
+        "currentLng": 30.7065,
+        "currentLat": 36.886
       },
       "senderUserId": "user-customer-1788193034111",
       "deliveryTime": "2026-09-02T16:09:34.763Z",
       "receiver": {
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
-        "addressDetail": "Jjj",
-        "contactPhone": "222",
         "district": "Konyaaltı",
-        "contactName": "Frf"
+        "addressDetail": "Jjj",
+        "neighborhood": "Merkez",
+        "contactName": "Frf",
+        "contactPhone": "222",
+        "lng": 30.6384,
+        "lat": 36.8732
       }
     },
     {
@@ -645,36 +888,36 @@
       "packageWeightKg": 1,
       "price": 100,
       "sender": {
-        "lat": 36.8732,
-        "contactName": "Umit torun",
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
         "district": "Konyaaltı",
+        "contactPhone": "05077547484",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactPhone": "05077547484"
+        "neighborhood": "Merkez",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "contactName": "Umit torun"
       },
       "status": "delivered",
       "courierEarnings": 100,
       "estimatedDurationMins": 21,
       "isPaid": false,
       "assignedCourier": {
-        "totalDeliveries": 9,
-        "rating": 4.95,
         "name": "Kurye umit",
-        "currentLat": 36.886,
-        "district": "Muratpaşa",
         "email": "cantalyacanta@gmail.com",
-        "currentLng": 30.7065,
         "id": "user-courier-1787999333451",
-        "phone": "0123456789"
+        "phone": "0123456789",
+        "currentLat": 36.886,
+        "rating": 4.95,
+        "currentLng": 30.7065,
+        "district": "Muratpaşa",
+        "totalDeliveries": 9
       },
       "urgency": "standard",
       "receiver": {
-        "lng": 30.6384,
-        "addressDetail": "Altinkum mah 417 sokak",
+        "district": "Konyaaltı",
         "neighborhood": "Merkez",
         "lat": 36.8732,
-        "district": "Konyaaltı",
+        "lng": 30.6384,
+        "addressDetail": "Altinkum mah 417 sokak",
         "contactPhone": "0123456789",
         "contactName": "Umit torun"
       },
@@ -698,12 +941,12 @@
       "estimatedDurationMins": 21,
       "sender": {
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
         "district": "Konyaaltı",
+        "contactName": "Umit torun",
         "contactPhone": "05077547484",
-        "contactName": "Umit torun"
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "packageName": "Sıcak Yemek Siparişi",
@@ -719,13 +962,13 @@
       "estimatedDistanceKm": 8,
       "noteForCourier": "",
       "receiver": {
+        "district": "Konyaaltı",
         "contactPhone": "0123456789",
         "contactName": "Umit torun",
-        "addressDetail": "Altinkum mah 417 sokak",
         "neighborhood": "Merkez",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
-        "lng": 30.6384
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "createdAt": "2026-09-02T15:37:15.358Z",
       "price": 100
@@ -740,25 +983,25 @@
       "packageName": "Sıcak Yemek Siparişi",
       "estimatedDurationMins": 21,
       "sender": {
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
         "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "addressDetail": "Pinarbasi mah 714 sokak",
         "contactPhone": "05077547484",
-        "district": "Konyaaltı"
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "packageType": "food",
       "price": 100,
       "receiver": {
         "contactName": "Umit torun",
-        "lat": 36.8732,
         "neighborhood": "Merkez",
-        "district": "Konyaaltı",
+        "lat": 36.8732,
         "lng": 30.6384,
-        "contactPhone": "0123456789",
-        "addressDetail": "Altinkum mah 417 sokak"
+        "district": "Konyaaltı",
+        "addressDetail": "Altinkum mah 417 sokak",
+        "contactPhone": "0123456789"
       },
       "emailDispatchedAt": "2026-09-02T15:16:40.887Z",
       "paymentMethod": "gonderici_odemeli",
@@ -781,12 +1024,12 @@
       "estimatedDurationMins": 21,
       "sender": {
         "contactPhone": "05077547484",
-        "district": "Konyaaltı",
         "contactName": "Umit torun",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "lng": 30.6384
+        "district": "Konyaaltı",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "estimatedDistanceKm": 8,
@@ -794,13 +1037,13 @@
       "updatedAt": "2026-09-01T18:03:00.540Z",
       "id": "req-1788285764454-603",
       "receiver": {
-        "addressDetail": "Altinkum mah 417 sokak",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "lng": 30.6384,
         "contactPhone": "0123456789",
-        "district": "Konyaaltı"
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı",
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "addressDetail": "Altinkum mah 417 sokak"
       },
       "urgency": "standard",
       "paymentMethod": "gonderici_odemeli",
@@ -818,24 +1061,24 @@
       "packageWeightKg": 1,
       "noteForCourier": "",
       "receiver": {
-        "lat": 36.8732,
         "district": "Konyaaltı",
-        "lng": 30.6384,
+        "contactPhone": "0123456789",
         "neighborhood": "Merkez",
         "addressDetail": "Altinkum mah 417 sokak",
         "contactName": "Umit torun",
-        "contactPhone": "0123456789"
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "estimatedDurationMins": 21,
       "courierEarnings": 100,
       "sender": {
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactName": "Umit torun",
         "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "05077547484",
+        "addressDetail": "Pinarbasi mah 714 sokak",
         "district": "Konyaaltı",
-        "contactPhone": "05077547484"
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "emailDispatchedAt": "2026-09-01T17:19:55.025Z",
@@ -855,23 +1098,23 @@
       "packageWeightKg": 1,
       "courierEarnings": 100,
       "sender": {
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "lat": 36.8732,
         "district": "Konyaaltı",
+        "contactName": "Umit torun",
         "contactPhone": "05077547484",
-        "lng": 30.6384
+        "neighborhood": "Merkez",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "addressDetail": "Pinarbasi mah 714 sokak"
       },
       "status": "cancelled",
       "receiver": {
-        "lat": 36.8732,
-        "district": "Konyaaltı",
-        "contactPhone": "0123456789",
-        "lng": 30.6384,
-        "contactName": "Umit torun",
+        "addressDetail": "Altinkum mah 417 sokak",
         "neighborhood": "Merkez",
-        "addressDetail": "Altinkum mah 417 sokak"
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "0123456789",
+        "contactName": "Umit torun",
+        "district": "Konyaaltı"
       },
       "noteForCourier": "",
       "urgency": "standard",
@@ -901,25 +1144,25 @@
       "createdAt": "2026-09-01T17:18:08.231Z",
       "price": 100,
       "sender": {
-        "addressDetail": "Pinarbasi mah 714 sokak",
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484",
         "lat": 36.8732,
         "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
+        "addressDetail": "Pinarbasi mah 714 sokak",
         "district": "Konyaaltı",
-        "contactPhone": "05077547484"
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "estimatedDistanceKm": 8,
       "emailDispatched": true,
       "receiver": {
+        "district": "Konyaaltı",
+        "contactPhone": "0123456789",
         "addressDetail": "Altinkum mah 417 sokak",
         "neighborhood": "Merkez",
         "lng": 30.6384,
-        "district": "Konyaaltı",
-        "contactName": "Umit torun",
-        "contactPhone": "0123456789",
-        "lat": 36.8732
+        "lat": 36.8732,
+        "contactName": "Umit torun"
       },
       "isPaid": false,
       "estimatedDurationMins": 21,
@@ -937,24 +1180,24 @@
       "price": 100,
       "urgency": "standard",
       "sender": {
-        "lat": 36.8732,
-        "contactPhone": "05077547484",
-        "contactName": "Umit torun",
-        "district": "Konyaaltı",
-        "lng": 30.6384,
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "neighborhood": "Merkez"
+        "contactPhone": "05077547484",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun"
       },
       "status": "cancelled",
       "paymentMethod": "gonderici_odemeli",
       "receiver": {
-        "contactPhone": "0123456789",
-        "lat": 36.8732,
-        "contactName": "Umit torun",
-        "lng": 30.6384,
-        "district": "Konyaaltı",
+        "addressDetail": "Altinkum mah 417 sokak",
         "neighborhood": "Merkez",
-        "addressDetail": "Altinkum mah 417 sokak"
+        "contactName": "Umit torun",
+        "contactPhone": "0123456789",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı"
       },
       "emailDispatchedAt": "2026-09-01T16:56:38.847Z",
       "estimatedDistanceKm": 8,
@@ -968,25 +1211,25 @@
       "pickupTime": "2026-09-01T14:14:01.040Z",
       "status": "delivered",
       "sender": {
+        "lat": 36.8732,
+        "contactName": "Umit torun",
         "lng": 30.6384,
         "district": "Konyaaltı",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
         "contactPhone": "05077547484"
       },
       "estimatedDistanceKm": 8,
       "emailDispatched": true,
       "paymentMethod": "gonderici_odemeli",
       "receiver": {
-        "district": "Konyaaltı",
-        "addressDetail": "Altinkum mah 417 sokak",
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
         "contactName": "Umit torun",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
         "contactPhone": "0123456789",
-        "lng": 30.6384
+        "addressDetail": "Altinkum mah 417 sokak"
       },
       "updatedAt": "2026-09-01T14:14:34.145Z",
       "price": 150,
@@ -999,15 +1242,15 @@
       "senderUserId": "user-customer-1787999079959",
       "deliveryTime": "2026-09-01T14:14:34.145Z",
       "assignedCourier": {
-        "currentLat": 36.886,
-        "email": "cantalyacanta@gmail.com",
-        "rating": 4.95,
-        "phone": "0123456789",
-        "name": "Kurye umit",
-        "id": "user-courier-1787999333451",
-        "district": "Muratpaşa",
         "currentLng": 30.7065,
-        "totalDeliveries": 8
+        "rating": 4.95,
+        "district": "Muratpaşa",
+        "totalDeliveries": 8,
+        "currentLat": 36.886,
+        "name": "Kurye umit",
+        "phone": "0123456789",
+        "email": "cantalyacanta@gmail.com",
+        "id": "user-courier-1787999333451"
       },
       "emailDispatchedAt": "2026-09-01T14:13:01.917Z",
       "id": "req-1788271980346-582",
@@ -1032,25 +1275,25 @@
       "senderUserId": "user-cust-1788267164751",
       "packageWeightKg": 1,
       "receiver": {
+        "lng": 30.6384,
+        "addressDetail": "Altinkum mah 417 sokak",
         "lat": 36.8732,
         "neighborhood": "Merkez",
-        "addressDetail": "Altinkum mah 417 sokak",
+        "district": "Konyaaltı",
         "contactName": "Umit torun",
-        "lng": 30.6384,
-        "contactPhone": "0123456789",
-        "district": "Konyaaltı"
+        "contactPhone": "0123456789"
       },
       "trackingCode": "ANT-7549",
       "isPaid": false,
       "courierEarnings": 100,
       "sender": {
+        "lat": 36.8732,
         "lng": 30.6384,
         "contactPhone": "05077547484",
-        "lat": 36.8732,
         "contactName": "Umit torun",
+        "addressDetail": "Pinarbasi mah 714 sokak",
         "district": "Konyaaltı",
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak"
+        "neighborhood": "Merkez"
       },
       "status": "cancelled",
       "updatedAt": "2026-09-01T13:07:02.157Z"
@@ -1075,8 +1318,8 @@
         "contactName": "Umit torun",
         "lat": 36.8732,
         "district": "Konyaaltı",
-        "contactPhone": "0123456789",
-        "lng": 30.6384
+        "lng": 30.6384,
+        "contactPhone": "0123456789"
       },
       "packageType": "food",
       "noteForCourier": "",
@@ -1085,25 +1328,25 @@
       "courierEarnings": 100,
       "status": "cancelled",
       "sender": {
-        "lng": 30.6384,
         "contactPhone": "05077547484",
         "contactName": "Umit torun",
         "district": "Konyaaltı",
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
         "lat": 36.8732,
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak"
+        "neighborhood": "Merkez"
       }
     },
     {
       "emailDispatchedAt": "2026-09-01T11:49:46.468Z",
       "receiver": {
-        "lng": 30.6384,
         "contactPhone": "0123456789",
         "district": "Konyaaltı",
-        "lat": 36.8732,
         "contactName": "Umit torun",
+        "neighborhood": "Merkez",
         "addressDetail": "Altinkum mah 417 sokak",
-        "neighborhood": "Merkez"
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "updatedAt": "2026-09-01T11:57:19.848Z",
       "emailDispatched": true,
@@ -1118,13 +1361,13 @@
       "createdAt": "2026-09-01T11:49:45.446Z",
       "courierEarnings": 100,
       "sender": {
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
-        "contactName": "Umit torun",
         "district": "Konyaaltı",
+        "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactPhone": "05077547484"
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484",
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "status": "cancelled",
       "estimatedDurationMins": 21,
@@ -1139,23 +1382,23 @@
       "isPaid": false,
       "trackingCode": "ANT-2217",
       "receiver": {
-        "neighborhood": "Merkez",
         "addressDetail": "Altinkum mah 417 sokak",
-        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
         "district": "Konyaaltı",
-        "lng": 30.6384,
+        "contactName": "Umit torun",
         "contactPhone": "0123456789",
-        "lat": 36.8732
+        "lat": 36.8732,
+        "lng": 30.6384
       },
       "price": 100,
       "sender": {
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "district": "Konyaaltı",
-        "contactName": "Umit torun",
-        "lng": 30.6384,
         "contactPhone": "05077547484",
-        "lat": 36.8732
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun"
       },
       "status": "cancelled",
       "emailDispatched": true,
@@ -1198,26 +1441,26 @@
     },
     {
       "sender": {
-        "contactPhone": "05077547484",
         "contactName": "Umit torun",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "neighborhood": "Merkez",
+        "contactPhone": "05077547484",
         "district": "Konyaaltı",
+        "lat": 36.8732,
         "lng": 30.6384,
-        "lat": 36.8732
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "neighborhood": "Merkez"
       },
       "paymentMethod": "gonderici_odemeli",
       "urgency": "standard",
       "senderUserId": "user-customer-1787999079959",
       "noteForCourier": "",
       "receiver": {
-        "contactName": "Umit torun",
+        "addressDetail": "Altinkum mah 417 sokak",
         "contactPhone": "0123456789",
         "district": "Konyaaltı",
         "neighborhood": "Merkez",
         "lng": 30.6384,
-        "addressDetail": "Altinkum mah 417 sokak",
-        "lat": 36.8732
+        "lat": 36.8732,
+        "contactName": "Umit torun"
       },
       "id": "req-1788262260807-587",
       "packageWeightKg": 1,
@@ -1241,13 +1484,13 @@
       "senderUserId": "user-customer-1787999079959",
       "updatedAt": "2026-09-01T11:23:40.854Z",
       "sender": {
-        "contactPhone": "05077547484",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
         "contactName": "Umit torun",
-        "lng": 30.6384,
+        "addressDetail": "Pinarbasi mah 714 sokak",
+        "district": "Konyaaltı",
         "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak"
+        "contactPhone": "05077547484",
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "id": "req-1788261535773-877",
       "price": 100,
@@ -1262,13 +1505,13 @@
       "urgency": "standard",
       "packageType": "food",
       "receiver": {
-        "contactName": "Umit torun",
-        "contactPhone": "0123456789",
-        "district": "Konyaaltı",
         "neighborhood": "Merkez",
-        "lng": 30.6384,
         "lat": 36.8732,
-        "addressDetail": "Altinkum mah 417 sokak"
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "addressDetail": "Altinkum mah 417 sokak",
+        "contactPhone": "0123456789",
+        "district": "Konyaaltı"
       },
       "estimatedDurationMins": 21
     },
@@ -1290,22 +1533,22 @@
       "estimatedDistanceKm": 8,
       "packageType": "food",
       "sender": {
+        "contactPhone": "05077547484",
+        "contactName": "Umit torun",
         "district": "Konyaaltı",
         "neighborhood": "Merkez",
-        "contactName": "Umit torun",
+        "lat": 36.8732,
         "lng": 30.6384,
-        "contactPhone": "05077547484",
-        "addressDetail": "Pinarbasi mah 714 sokak",
-        "lat": 36.8732
+        "addressDetail": "Pinarbasi mah 714 sokak"
       },
       "id": "req-1788261511892-384",
       "receiver": {
+        "district": "Konyaaltı",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "0123456789",
         "neighborhood": "Merkez",
         "contactName": "Umit torun",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
-        "lng": 30.6384,
-        "contactPhone": "0123456789",
         "addressDetail": "Altinkum mah 417 sokak"
       }
     },
@@ -1350,25 +1593,25 @@
       "createdAt": "2026-09-01T11:05:32.496Z",
       "status": "cancelled",
       "receiver": {
-        "addressDetail": "Altinkum mah 417 sokak",
-        "neighborhood": "Merkez",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
         "contactName": "Umit torun",
+        "contactPhone": "0123456789",
+        "district": "Konyaaltı",
+        "addressDetail": "Altinkum mah 417 sokak",
+        "lat": 36.8732,
         "lng": 30.6384,
-        "contactPhone": "0123456789"
+        "neighborhood": "Merkez"
       },
       "estimatedDistanceKm": 8,
       "noteForCourier": "",
       "price": 100,
       "sender": {
-        "district": "Konyaaltı",
-        "contactName": "Umit torun",
-        "neighborhood": "Merkez",
         "addressDetail": "Pinarbasi mah 714 sokak",
-        "contactPhone": "05077547484",
+        "contactName": "Umit torun",
+        "lng": 30.6384,
         "lat": 36.8732,
-        "lng": 30.6384
+        "contactPhone": "05077547484",
+        "neighborhood": "Merkez",
+        "district": "Konyaaltı"
       },
       "packageWeightKg": 1,
       "isPaid": false,
@@ -1387,13 +1630,13 @@
       "courierEarnings": 150,
       "estimatedDistanceKm": 8,
       "sender": {
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "lat": 36.8732,
         "contactPhone": "05077547484",
+        "contactName": "Umit torun",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı",
         "addressDetail": "Altinkum mah 425 sokak",
-        "district": "Konyaaltı"
+        "neighborhood": "Merkez"
       },
       "packageName": "Standart Paket",
       "id": "req-1788257199469-912",
@@ -1401,13 +1644,13 @@
       "isPaid": false,
       "senderUserId": "user-customer-1787999079959",
       "receiver": {
-        "district": "Konyaaltı",
-        "neighborhood": "Merkez",
-        "addressDetail": "Pinarbasi mah 714 sokak",
         "contactName": "Umit torun",
+        "district": "Konyaaltı",
+        "lng": 30.6384,
         "lat": 36.8732,
+        "neighborhood": "Merkez",
         "contactPhone": "0123456789",
-        "lng": 30.6384
+        "addressDetail": "Pinarbasi mah 714 sokak"
       },
       "paymentMethod": "gonderici_odemeli",
       "estimatedDurationMins": 21
@@ -1424,22 +1667,22 @@
       "urgency": "standard",
       "id": "req-1788257321028-659",
       "sender": {
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
-        "district": "Konyaaltı",
         "contactPhone": "05077547484",
-        "addressDetail": "Pinarbasi mah 714 sokak",
         "lng": 30.6384,
-        "lat": 36.8732
+        "lat": 36.8732,
+        "district": "Konyaaltı",
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "addressDetail": "Pinarbasi mah 714 sokak"
       },
       "receiver": {
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
         "addressDetail": "Altinkum mah 417 sokak",
         "lat": 36.8732,
+        "lng": 30.6384,
+        "neighborhood": "Merkez",
         "contactName": "Umit torun",
-        "district": "Konyaaltı",
-        "contactPhone": "0123456789"
+        "contactPhone": "0123456789",
+        "district": "Konyaaltı"
       },
       "packageType": "food",
       "packageName": "Sıcak Yemek Siparişi",
@@ -1462,26 +1705,26 @@
       "isPaid": false,
       "urgency": "standard",
       "sender": {
-        "contactName": "Umit torun",
-        "neighborhood": "Merkez",
         "lng": 30.7065,
-        "addressDetail": "Sehir hastanesi",
         "lat": 36.886,
+        "addressDetail": "Sehir hastanesi",
         "contactPhone": "05077547484",
-        "district": "Muratpaşa"
+        "neighborhood": "Merkez",
+        "district": "Muratpaşa",
+        "contactName": "Umit torun"
       },
       "id": "req-1788257063654-190",
       "trackingCode": "ANT-9663",
       "price": 100,
       "createdAt": "2026-09-01T10:04:23.654Z",
       "receiver": {
-        "lng": 30.6384,
-        "lat": 36.8732,
-        "contactPhone": "0123456789",
         "addressDetail": "Liman tahtakale",
         "district": "Konyaaltı",
+        "lat": 36.8732,
+        "lng": 30.6384,
         "neighborhood": "Merkez",
-        "contactName": "Umit torun"
+        "contactName": "Umit torun",
+        "contactPhone": "0123456789"
       },
       "estimatedDistanceKm": 12,
       "updatedAt": "2026-09-01T10:04:52.068Z"
@@ -1518,13 +1761,13 @@
     {
       "courierEarnings": 80,
       "sender": {
-        "contactPhone": "0533 123 45 67",
-        "addressDetail": "Denme",
-        "lng": 30.7065,
-        "district": "Muratpaşa",
         "lat": 36.886,
-        "neighborhood": "Merkez",
-        "contactName": "Deniz Akdeniz (Müşteri)"
+        "lng": 30.7065,
+        "contactPhone": "0533 123 45 67",
+        "district": "Muratpaşa",
+        "contactName": "Deniz Akdeniz (Müşteri)",
+        "addressDetail": "Denme",
+        "neighborhood": "Merkez"
       },
       "trackingCode": "ANT-9126",
       "estimatedDurationMins": 28,
@@ -1540,40 +1783,40 @@
       "packageWeightKg": 1,
       "updatedAt": "2026-08-29T11:15:09.292Z",
       "assignedCourier": {
+        "name": "Ahmet Yılmaz (Kurye)",
+        "rating": 4.95,
         "district": "Muratpaşa",
+        "id": "user-courier-01",
         "currentLng": 30.7065,
+        "currentLat": 36.886,
         "email": "ahmet@antalyakurye.com",
         "phone": "0544 111 22 33",
-        "totalDeliveries": 15,
-        "rating": 4.95,
-        "currentLat": 36.886,
-        "name": "Ahmet Yılmaz (Kurye)",
-        "id": "user-courier-01"
+        "totalDeliveries": 15
       },
       "packageName": "Sıcak Yemek Siparişi",
       "isPaid": false,
       "status": "delivered",
       "createdAt": "2026-08-29T11:14:19.181Z",
       "receiver": {
+        "district": "Konyaaltı",
+        "addressDetail": "Denme",
         "contactPhone": "7646",
         "lat": 36.8732,
-        "contactName": "Djsje sks",
-        "district": "Konyaaltı",
         "lng": 30.6384,
-        "addressDetail": "Denme",
-        "neighborhood": "Merkez"
+        "neighborhood": "Merkez",
+        "contactName": "Djsje sks"
       },
       "noteForCourier": ""
     },
     {
       "receiver": {
         "neighborhood": "Merkez",
-        "district": "Konyaaltı",
-        "contactPhone": "5555",
-        "contactName": "Uu jj",
-        "lng": 30.6384,
         "lat": 36.8732,
-        "addressDetail": "Yuuuu"
+        "lng": 30.6384,
+        "addressDetail": "Yuuuu",
+        "contactName": "Uu jj",
+        "district": "Konyaaltı",
+        "contactPhone": "5555"
       },
       "updatedAt": "2026-08-29T11:16:17.462Z",
       "senderUserId": "user-customer-sample-1",
@@ -1587,23 +1830,23 @@
       "trackingCode": "ANT-8565",
       "id": "req-1788002151160-953",
       "assignedCourier": {
-        "currentLat": 36.886,
-        "name": "Ahmet Yılmaz (Kurye)",
-        "id": "user-courier-01",
-        "rating": 4.95,
+        "currentLng": 30.7065,
         "totalDeliveries": 16,
+        "rating": 4.95,
+        "currentLat": 36.886,
+        "district": "Muratpaşa",
         "phone": "0544 111 22 33",
         "email": "ahmet@antalyakurye.com",
-        "district": "Muratpaşa",
-        "currentLng": 30.7065
+        "id": "user-courier-01",
+        "name": "Ahmet Yılmaz (Kurye)"
       },
       "sender": {
-        "district": "Muratpaşa",
-        "lng": 30.7065,
+        "addressDetail": "Hhh",
         "neighborhood": "Merkez",
         "lat": 36.886,
+        "lng": 30.7065,
+        "district": "Muratpaşa",
         "contactName": "Deniz Akdeniz (Müşteri)",
-        "addressDetail": "Hhh",
         "contactPhone": "0533 123 45 67"
       },
       "packageName": "Sıcak Yemek Siparişi",
@@ -1618,15 +1861,15 @@
     {
       "id": "req-1788002196021-770",
       "assignedCourier": {
-        "totalDeliveries": 17,
-        "rating": 4.95,
-        "name": "Ahmet Yılmaz (Kurye)",
-        "currentLng": 30.7065,
-        "id": "user-courier-01",
-        "currentLat": 36.886,
         "district": "Muratpaşa",
+        "name": "Ahmet Yılmaz (Kurye)",
+        "rating": 4.95,
         "email": "ahmet@antalyakurye.com",
-        "phone": "0544 111 22 33"
+        "totalDeliveries": 17,
+        "id": "user-courier-01",
+        "phone": "0544 111 22 33",
+        "currentLng": 30.7065,
+        "currentLat": 36.886
       },
       "status": "delivered",
       "updatedAt": "2026-08-29T11:16:54.155Z",
@@ -1643,22 +1886,22 @@
       "noteForCourier": "",
       "senderUserId": "user-customer-sample-1",
       "receiver": {
-        "contactPhone": "0123456789",
-        "district": "Konyaaltı",
-        "lng": 30.6384,
-        "addressDetail": "Altinkum",
-        "lat": 36.8732,
         "neighborhood": "Merkez",
-        "contactName": "Umit torun"
+        "addressDetail": "Altinkum",
+        "district": "Konyaaltı",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "contactPhone": "0123456789"
       },
       "sender": {
-        "district": "Muratpaşa",
-        "contactPhone": "05077547484",
-        "contactName": "Umit torun",
-        "lat": 36.886,
         "neighborhood": "Merkez",
         "lng": 30.7065,
-        "addressDetail": "Uncali"
+        "lat": 36.886,
+        "district": "Muratpaşa",
+        "addressDetail": "Uncali",
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484"
       },
       "estimatedDistanceKm": 7,
       "packageType": "food",
@@ -1676,11 +1919,11 @@
       "packageName": "Sıcak Yemek Siparişi",
       "receiver": {
         "contactName": "Umit torun",
-        "addressDetail": "Altinkum",
+        "neighborhood": "Merkez",
         "lng": 30.6384,
         "lat": 36.8732,
-        "neighborhood": "Merkez",
         "district": "Konyaaltı",
+        "addressDetail": "Altinkum",
         "contactPhone": "0123456789"
       },
       "id": "req-1788002229792-278",
@@ -1690,13 +1933,13 @@
       "courierEarnings": 80,
       "packageType": "food",
       "sender": {
-        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
         "addressDetail": "Uncali",
+        "neighborhood": "Merkez",
         "district": "Muratpaşa",
-        "lng": 30.7065,
         "contactPhone": "05077547484",
-        "lat": 36.886,
-        "contactName": "Umit torun"
+        "lng": 30.7065,
+        "lat": 36.886
       },
       "updatedAt": "2026-08-29T11:17:20.344Z",
       "price": 100,
@@ -1713,15 +1956,15 @@
       "trackingCode": "ANT-1853",
       "pickupTime": "2026-08-29T11:20:09.913Z",
       "assignedCourier": {
-        "totalDeliveries": 3,
-        "rating": 4.95,
-        "name": "Kurye umit",
-        "currentLng": 30.7065,
-        "id": "user-courier-1787999333451",
-        "currentLat": 36.886,
         "district": "Muratpaşa",
+        "name": "Kurye umit",
+        "rating": 4.95,
+        "id": "user-courier-1787999333451",
         "email": "cantalyacanta@gmail.com",
-        "phone": "0123456789"
+        "totalDeliveries": 3,
+        "phone": "0123456789",
+        "currentLng": 30.7065,
+        "currentLat": 36.886
       },
       "createdAt": "2026-08-29T11:17:40.838Z",
       "status": "delivered",
@@ -1729,25 +1972,25 @@
       "paymentMethod": "gonderici_odemeli",
       "price": 100,
       "sender": {
-        "neighborhood": "Merkez",
         "district": "Muratpaşa",
-        "addressDetail": "Uncali",
         "contactPhone": "05077547484",
         "lng": 30.7065,
         "lat": 36.886,
-        "contactName": "Umit torun"
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
+        "addressDetail": "Uncali"
       },
       "courierEarnings": 80,
       "packageName": "Sıcak Yemek Siparişi",
       "estimatedDistanceKm": 7,
       "receiver": {
-        "contactName": "Umit torun",
-        "contactPhone": "0123456789",
-        "district": "Konyaaltı",
         "addressDetail": "Altinkum",
+        "neighborhood": "Merkez",
+        "district": "Konyaaltı",
+        "contactName": "Umit torun",
         "lat": 36.8732,
-        "lng": 30.6384,
-        "neighborhood": "Merkez"
+        "contactPhone": "0123456789",
+        "lng": 30.6384
       },
       "deliveryTime": "2026-08-29T11:20:23.680Z",
       "noteForCourier": ""
@@ -1760,13 +2003,13 @@
       "status": "delivered",
       "courierEarnings": 80,
       "receiver": {
-        "lat": 36.8732,
-        "district": "Konyaaltı",
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "addressDetail": "Altinkum",
         "contactPhone": "0123456789",
-        "contactName": "Umit torun"
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "contactName": "Umit torun",
+        "addressDetail": "Altinkum",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez"
       },
       "senderUserId": "user-customer-1787999079959",
       "noteForCourier": "",
@@ -1782,49 +2025,49 @@
       "id": "req-1788002438347-365",
       "estimatedDurationMins": 28,
       "sender": {
-        "contactPhone": "05077547484",
+        "contactName": "Umit torun",
         "addressDetail": "Uncali",
         "lat": 36.886,
         "lng": 30.7065,
-        "district": "Muratpaşa",
         "neighborhood": "Merkez",
-        "contactName": "Umit torun"
+        "district": "Muratpaşa",
+        "contactPhone": "05077547484"
       },
       "assignedCourier": {
+        "id": "user-courier-1787999333451",
+        "district": "Muratpaşa",
+        "name": "Kurye umit",
         "email": "cantalyacanta@gmail.com",
         "phone": "0123456789",
         "totalDeliveries": 4,
         "currentLng": 30.7065,
-        "district": "Muratpaşa",
         "rating": 4.95,
-        "currentLat": 36.886,
-        "name": "Kurye umit",
-        "id": "user-courier-1787999333451"
+        "currentLat": 36.886
       }
     },
     {
       "packageWeightKg": 1,
       "sender": {
         "addressDetail": "Uncali",
-        "lng": 30.7065,
-        "lat": 36.886,
         "neighborhood": "Merkez",
         "contactName": "Umit torun",
         "contactPhone": "05077547484",
+        "lng": 30.7065,
+        "lat": 36.886,
         "district": "Muratpaşa"
       },
       "paymentMethod": "gonderici_odemeli",
       "urgency": "standard",
       "assignedCourier": {
-        "totalDeliveries": 5,
-        "currentLng": 30.7065,
-        "district": "Muratpaşa",
-        "name": "Kurye umit",
         "rating": 4.95,
-        "email": "cantalyacanta@gmail.com",
         "phone": "0123456789",
-        "id": "user-courier-1787999333451",
-        "currentLat": 36.886
+        "email": "cantalyacanta@gmail.com",
+        "name": "Kurye umit",
+        "currentLat": 36.886,
+        "district": "Muratpaşa",
+        "currentLng": 30.7065,
+        "totalDeliveries": 5,
+        "id": "user-courier-1787999333451"
       },
       "noteForCourier": "",
       "price": 100,
@@ -1838,13 +2081,13 @@
       "senderUserId": "user-customer-1787999079959",
       "createdAt": "2026-08-29T11:30:23.057Z",
       "receiver": {
-        "contactName": "Umit torun",
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
-        "lat": 36.8732,
+        "district": "Konyaaltı",
         "contactPhone": "0123456789",
         "addressDetail": "Altinkum",
-        "district": "Konyaaltı"
+        "contactName": "Umit torun",
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "neighborhood": "Merkez"
       },
       "trackingCode": "ANT-8294",
       "estimatedDistanceKm": 7,
@@ -1854,13 +2097,13 @@
     },
     {
       "sender": {
-        "neighborhood": "Merkez",
-        "district": "Muratpaşa",
-        "contactName": "Umit torun",
-        "contactPhone": "05077547484",
         "addressDetail": "Altimkum 425 sokak no 17",
+        "contactPhone": "05077547484",
         "lng": 30.7065,
-        "lat": 36.886
+        "lat": 36.886,
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun",
+        "district": "Muratpaşa"
       },
       "paymentMethod": "gonderici_odemeli",
       "packageType": "other",
@@ -1870,13 +2113,13 @@
       "courierEarnings": 120,
       "estimatedDistanceKm": 7,
       "receiver": {
-        "contactPhone": "0123456789",
         "district": "Konyaaltı",
-        "lat": 36.8732,
-        "lng": 30.6384,
-        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
         "addressDetail": "5m migros",
-        "neighborhood": "Merkez"
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "0123456789",
+        "contactName": "Umit torun"
       },
       "updatedAt": "2026-08-29T11:37:23.415Z",
       "customerRating": 3,
@@ -1890,15 +2133,15 @@
       "createdAt": "2026-08-29T11:35:17.242Z",
       "status": "delivered",
       "assignedCourier": {
-        "currentLng": 30.7065,
-        "email": "cantalyacanta@gmail.com",
-        "phone": "0123456789",
-        "id": "user-courier-1787999333451",
-        "district": "Muratpaşa",
         "name": "Kurye umit",
+        "id": "user-courier-1787999333451",
         "currentLat": 36.886,
-        "rating": 4.95,
-        "totalDeliveries": 6
+        "district": "Muratpaşa",
+        "email": "cantalyacanta@gmail.com",
+        "totalDeliveries": 6,
+        "phone": "0123456789",
+        "currentLng": 30.7065,
+        "rating": 4.95
       },
       "senderUserId": "user-customer-1787999079959",
       "id": "req-1788003317242-180",
@@ -1906,15 +2149,15 @@
     },
     {
       "assignedCourier": {
-        "district": "Muratpaşa",
-        "rating": 4.95,
-        "phone": "05552222222",
-        "name": "Kurye umit",
         "currentLat": 36.886,
-        "email": "cantalyacanta@gmail.com",
+        "district": "Muratpaşa",
         "id": "user-courier-1788000649895",
         "totalDeliveries": 1,
-        "currentLng": 30.7065
+        "phone": "05552222222",
+        "email": "cantalyacanta@gmail.com",
+        "rating": 4.95,
+        "currentLng": 30.7065,
+        "name": "Kurye umit"
       },
       "price": 100,
       "senderUserId": "user-customer-1787999079959",
@@ -1923,22 +2166,22 @@
       "trackingCode": "ANT-4231",
       "packageType": "food",
       "receiver": {
-        "neighborhood": "Merkez",
-        "district": "Konyaaltı",
-        "contactName": "Umit torun",
-        "contactPhone": "0123456789",
-        "lng": 30.6384,
         "addressDetail": "5m migros",
-        "lat": 36.8732
+        "contactPhone": "0123456789",
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "district": "Konyaaltı"
       },
       "sender": {
-        "district": "Muratpaşa",
-        "neighborhood": "Merkez",
-        "lat": 36.886,
+        "contactPhone": "05077547484",
+        "addressDetail": "Altimkum 425 sokak no 17",
         "contactName": "Umit torun",
         "lng": 30.7065,
-        "contactPhone": "05077547484",
-        "addressDetail": "Altimkum 425 sokak no 17"
+        "lat": 36.886,
+        "neighborhood": "Merkez",
+        "district": "Muratpaşa"
       },
       "paymentMethod": "gonderici_odemeli",
       "estimatedDurationMins": 28,
@@ -1964,15 +2207,15 @@
       "isPaid": false,
       "estimatedDurationMins": 28,
       "assignedCourier": {
-        "totalDeliveries": 8,
-        "district": "Muratpaşa",
-        "name": "Kurye umit",
+        "currentLng": 30.7065,
         "rating": 4.95,
         "currentLat": 36.886,
-        "email": "cantalyacanta@gmail.com",
         "phone": "0123456789",
-        "currentLng": 30.7065,
-        "id": "user-courier-1787999333451"
+        "totalDeliveries": 8,
+        "email": "cantalyacanta@gmail.com",
+        "id": "user-courier-1787999333451",
+        "district": "Muratpaşa",
+        "name": "Kurye umit"
       },
       "packageType": "food",
       "noteForCourier": "",
@@ -1981,13 +2224,13 @@
       "updatedAt": "2026-08-30T15:30:43.922Z",
       "trackingCode": "ANT-3633",
       "receiver": {
+        "district": "Konyaaltı",
         "contactName": "Umit torun",
+        "addressDetail": "5m migros",
         "neighborhood": "Merkez",
-        "lat": 36.8732,
         "lng": 30.6384,
         "contactPhone": "0123456789",
-        "district": "Konyaaltı",
-        "addressDetail": "5m migros"
+        "lat": 36.8732
       },
       "courierEarnings": 80,
       "packageName": "Sıcak Yemek Siparişi",
@@ -1995,13 +2238,13 @@
       "createdAt": "2026-08-30T15:26:06.010Z",
       "paymentMethod": "gonderici_odemeli",
       "sender": {
-        "neighborhood": "Merkez",
         "addressDetail": "Altimkum 425 sokak no 17",
-        "lat": 36.886,
-        "lng": 30.7065,
+        "neighborhood": "Merkez",
         "contactName": "Umit torun",
+        "district": "Muratpaşa",
         "contactPhone": "05077547484",
-        "district": "Muratpaşa"
+        "lng": 30.7065,
+        "lat": 36.886
       }
     },
     {
@@ -2012,25 +2255,25 @@
       "paymentMethod": "gonderici_odemeli",
       "trackingCode": "ANT-2287",
       "assignedCourier": {
-        "currentLat": 36.886,
-        "district": "Muratpaşa",
         "name": "Kurye umit",
-        "rating": 4.95,
-        "email": "cantalyacanta@gmail.com",
-        "totalDeliveries": 7,
-        "phone": "0123456789",
+        "currentLat": 36.886,
         "currentLng": 30.7065,
-        "id": "user-courier-1787999333451"
+        "district": "Muratpaşa",
+        "id": "user-courier-1787999333451",
+        "email": "cantalyacanta@gmail.com",
+        "phone": "0123456789",
+        "rating": 4.95,
+        "totalDeliveries": 7
       },
       "estimatedDurationMins": 28,
       "sender": {
-        "lng": 30.7065,
-        "addressDetail": "Altimkum 425 sokak no 17",
-        "district": "Muratpaşa",
         "lat": 36.886,
+        "lng": 30.7065,
         "contactPhone": "05077547484",
+        "district": "Muratpaşa",
+        "contactName": "Umit torun",
         "neighborhood": "Merkez",
-        "contactName": "Umit torun"
+        "addressDetail": "Altimkum 425 sokak no 17"
       },
       "packageWeightKg": 1,
       "createdAt": "2026-08-30T15:26:27.372Z",
@@ -2045,26 +2288,26 @@
       "isPaid": false,
       "courierEarnings": 80,
       "receiver": {
-        "neighborhood": "Merkez",
-        "addressDetail": "5m migros",
-        "lat": 36.8732,
         "district": "Konyaaltı",
-        "lng": 30.6384,
         "contactPhone": "0123456789",
-        "contactName": "Umit torun"
+        "addressDetail": "5m migros",
+        "contactName": "Umit torun",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "neighborhood": "Merkez"
       }
     },
     {
       "assignedCourier": {
-        "currentLng": 30.7065,
-        "id": "user-courier-1787999333451",
-        "name": "Kurye umit",
-        "phone": "0123456789",
-        "email": "cantalyacanta@gmail.com",
-        "totalDeliveries": 9,
-        "district": "Muratpaşa",
+        "rating": 4.95,
         "currentLat": 36.886,
-        "rating": 4.95
+        "email": "cantalyacanta@gmail.com",
+        "phone": "0123456789",
+        "id": "user-courier-1787999333451",
+        "currentLng": 30.7065,
+        "district": "Muratpaşa",
+        "totalDeliveries": 9,
+        "name": "Kurye umit"
       },
       "urgency": "standard",
       "deliveryTime": "2026-08-30T15:44:23.669Z",
@@ -2072,13 +2315,13 @@
       "packageWeightKg": 1,
       "packageName": "Sıcak Yemek Siparişi",
       "sender": {
-        "addressDetail": "Sehir hastanesi",
-        "district": "Kepez",
         "neighborhood": "Merkez",
+        "district": "Kepez",
+        "lng": 30.687,
         "lat": 36.925,
+        "addressDetail": "Sehir hastanesi",
         "contactName": "Umit torun",
-        "contactPhone": "05077547484",
-        "lng": 30.687
+        "contactPhone": "05077547484"
       },
       "estimatedDistanceKm": 8,
       "id": "req-1788104583526-261",
@@ -2091,13 +2334,13 @@
       "senderUserId": "user-customer-1787999079959",
       "pickupTime": "2026-08-30T15:43:50.170Z",
       "receiver": {
-        "lat": 36.8732,
-        "district": "Konyaaltı",
         "neighborhood": "Merkez",
-        "lng": 30.6384,
         "addressDetail": "5m migros",
+        "district": "Konyaaltı",
+        "contactPhone": "0123456789",
         "contactName": "Umit torun",
-        "contactPhone": "0123456789"
+        "lng": 30.6384,
+        "lat": 36.8732
       },
       "noteForCourier": "",
       "price": 100,
@@ -2119,38 +2362,38 @@
       "isPaid": false,
       "urgency": "standard",
       "receiver": {
-        "contactPhone": "0123456789",
         "contactName": "Umit torun",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
+        "contactPhone": "0123456789",
         "lng": 30.6384,
+        "lat": 36.8732,
         "addressDetail": "5m migros",
-        "district": "Konyaaltı"
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez"
       },
       "packageWeightKg": 1,
       "id": "req-1788105096139-547",
       "assignedCourier": {
+        "name": "Kurye umit",
+        "rating": 4.95,
+        "district": "Muratpaşa",
+        "id": "user-courier-1787999333451",
+        "currentLng": 30.7065,
         "currentLat": 36.886,
-        "phone": "0123456789",
         "email": "cantalyacanta@gmail.com",
         "totalDeliveries": 10,
-        "id": "user-courier-1787999333451",
-        "name": "Kurye umit",
-        "district": "Muratpaşa",
-        "currentLng": 30.7065,
-        "rating": 4.95
+        "phone": "0123456789"
       },
       "pickupTime": "2026-08-30T15:52:22.046Z",
       "deliveryTime": "2026-08-30T15:52:49.610Z",
       "estimatedDurationMins": 29,
       "sender": {
-        "contactPhone": "05077547484",
-        "neighborhood": "Merkez",
-        "lng": 30.687,
-        "contactName": "Umit torun",
-        "lat": 36.925,
         "addressDetail": "Sehir hastanesi",
-        "district": "Kepez"
+        "contactPhone": "05077547484",
+        "contactName": "Umit torun",
+        "district": "Kepez",
+        "neighborhood": "Merkez",
+        "lat": 36.925,
+        "lng": 30.687
       },
       "packageType": "food"
     },
@@ -2160,24 +2403,24 @@
       "senderUserId": "user-customer-1787999079959",
       "createdAt": "2026-08-30T15:53:17.869Z",
       "sender": {
-        "contactName": "Umit torun",
-        "addressDetail": "Sehir hastanesi",
-        "district": "Kepez",
         "neighborhood": "Merkez",
+        "lng": 30.687,
         "lat": 36.925,
-        "contactPhone": "05077547484",
-        "lng": 30.687
+        "addressDetail": "Sehir hastanesi",
+        "contactName": "Umit torun",
+        "district": "Kepez",
+        "contactPhone": "05077547484"
       },
       "id": "req-1788105197869-685",
       "packageType": "food",
       "receiver": {
+        "lat": 36.8732,
         "lng": 30.6384,
         "neighborhood": "Merkez",
-        "lat": 36.8732,
         "addressDetail": "5m migros",
+        "district": "Konyaaltı",
         "contactName": "Umit torun",
-        "contactPhone": "0123456789",
-        "district": "Konyaaltı"
+        "contactPhone": "0123456789"
       },
       "trackingCode": "ANT-7129",
       "updatedAt": "2026-08-30T15:55:30.363Z",
@@ -2198,35 +2441,35 @@
       "sender": {
         "contactPhone": "05077547484",
         "contactName": "Umit torun",
-        "district": "Kepez",
+        "lat": 36.925,
         "lng": 30.687,
-        "neighborhood": "Merkez",
+        "district": "Kepez",
         "addressDetail": "Sehir hastanesi",
-        "lat": 36.925
+        "neighborhood": "Merkez"
       },
       "senderUserId": "user-cust-1788105983670",
       "updatedAt": "2026-08-30T16:09:53.893Z",
       "assignedCourier": {
-        "currentLat": 36.886,
-        "phone": "0123456789",
-        "email": "cantalyacanta@gmail.com",
-        "id": "user-courier-1787999333451",
-        "totalDeliveries": 11,
         "name": "Kurye umit",
+        "rating": 4.95,
         "district": "Muratpaşa",
+        "id": "user-courier-1787999333451",
         "currentLng": 30.7065,
-        "rating": 4.95
+        "currentLat": 36.886,
+        "email": "cantalyacanta@gmail.com",
+        "phone": "0123456789",
+        "totalDeliveries": 11
       },
       "paymentMethod": "gonderici_odemeli",
       "estimatedDistanceKm": 13,
       "receiver": {
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
-        "lat": 36.8732,
+        "contactName": "Umit torun",
         "district": "Konyaaltı",
         "contactPhone": "0123456789",
+        "neighborhood": "Merkez",
         "addressDetail": "5m migros",
-        "contactName": "Umit torun"
+        "lat": 36.8732,
+        "lng": 30.6384
       },
       "urgency": "standard",
       "estimatedDurationMins": 29,
@@ -2250,10 +2493,10 @@
         "contactPhone": "0123456789",
         "addressDetail": "Liman tahtakale",
         "contactName": "Umit torun",
-        "lat": 36.8732,
-        "neighborhood": "Merkez",
         "district": "Konyaaltı",
-        "lng": 30.6384
+        "lat": 36.8732,
+        "lng": 30.6384,
+        "neighborhood": "Merkez"
       },
       "price": 150,
       "packageType": "flower",
@@ -2265,25 +2508,25 @@
       "packageWeightKg": 1,
       "deliveryTime": "2026-08-30T16:15:32.676Z",
       "sender": {
-        "lat": 36.925,
-        "lng": 30.687,
+        "contactName": "Umit torun",
         "neighborhood": "Merkez",
-        "district": "Kepez",
-        "addressDetail": "Sehir hastanesi",
+        "lng": 30.687,
+        "lat": 36.925,
         "contactPhone": "05077547484",
-        "contactName": "Umit torun"
+        "addressDetail": "Sehir hastanesi",
+        "district": "Kepez"
       },
       "packageName": "İyi tasinmali",
       "assignedCourier": {
         "currentLat": 36.886,
-        "district": "Muratpaşa",
-        "rating": 4.95,
-        "id": "user-courier-1787999333451",
-        "totalDeliveries": 12,
-        "name": "Kurye umit",
-        "phone": "0123456789",
         "email": "cantalyacanta@gmail.com",
-        "currentLng": 30.7065
+        "district": "Muratpaşa",
+        "phone": "0123456789",
+        "totalDeliveries": 12,
+        "id": "user-courier-1787999333451",
+        "currentLng": 30.7065,
+        "name": "Kurye umit",
+        "rating": 4.95
       },
       "estimatedDistanceKm": 13,
       "urgency": "standard",
@@ -2309,36 +2552,36 @@
       "updatedAt": "2026-08-30T16:24:32.025Z",
       "packageName": "Standart Paket",
       "assignedCourier": {
-        "currentLng": 30.7065,
-        "rating": 4.95,
-        "district": "Muratpaşa",
-        "email": "cantalyacanta@gmail.com",
-        "phone": "0123456789",
         "totalDeliveries": 13,
         "id": "user-courier-1787999333451",
-        "name": "Kurye umit",
-        "currentLat": 36.886
+        "phone": "0123456789",
+        "currentLat": 36.886,
+        "email": "cantalyacanta@gmail.com",
+        "rating": 4.95,
+        "district": "Muratpaşa",
+        "currentLng": 30.7065,
+        "name": "Kurye umit"
       },
       "packageWeightKg": 1,
       "senderUserId": "user-customer-1787999079959",
       "paymentMethod": "gonderici_odemeli",
       "receiver": {
         "addressDetail": "Liman tahtakale",
-        "neighborhood": "Merkez",
-        "district": "Konyaaltı",
         "lat": 36.8732,
         "lng": 30.6384,
         "contactName": "Umit torun",
-        "contactPhone": "0123456789"
+        "district": "Konyaaltı",
+        "contactPhone": "0123456789",
+        "neighborhood": "Merkez"
       },
       "sender": {
-        "contactPhone": "05077547484",
-        "lat": 36.886,
-        "district": "Muratpaşa",
-        "addressDetail": "Sehir hastanesi",
-        "lng": 30.7065,
         "contactName": "Umit torun",
-        "neighborhood": "Merkez"
+        "district": "Muratpaşa",
+        "neighborhood": "Merkez",
+        "addressDetail": "Sehir hastanesi",
+        "contactPhone": "05077547484",
+        "lng": 30.7065,
+        "lat": 36.886
       }
     },
     {
@@ -2349,13 +2592,13 @@
       "trackingCode": "ANT-8867",
       "courierEarnings": 100,
       "sender": {
-        "lng": 30.7065,
-        "contactName": "Umit torun",
-        "contactPhone": "05077547484",
         "lat": 36.886,
-        "neighborhood": "Merkez",
+        "lng": 30.7065,
+        "addressDetail": "Sehir hastanesi",
+        "contactPhone": "05077547484",
         "district": "Muratpaşa",
-        "addressDetail": "Sehir hastanesi"
+        "neighborhood": "Merkez",
+        "contactName": "Umit torun"
       },
       "paymentMethod": "gonderici_odemeli",
       "packageType": "food",
@@ -2369,11 +2612,11 @@
       "isPaid": false,
       "packageName": "Sıcak Yemek Siparişi",
       "receiver": {
-        "lat": 36.8732,
         "contactPhone": "0123456789",
-        "district": "Konyaaltı",
         "contactName": "Umit torun",
+        "lat": 36.8732,
         "lng": 30.6384,
+        "district": "Konyaaltı",
         "addressDetail": "Liman tahtakale",
         "neighborhood": "Merkez"
       }
@@ -2382,12 +2625,12 @@
       "createdAt": "2026-08-31T13:27:52.901Z",
       "trackingCode": "ANT-6748",
       "receiver": {
-        "contactPhone": "0123456789",
-        "addressDetail": "Liman tahtakale",
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
         "district": "Konyaaltı",
+        "neighborhood": "Merkez",
         "contactName": "Umit torun",
+        "addressDetail": "Liman tahtakale",
+        "contactPhone": "0123456789",
+        "lng": 30.6384,
         "lat": 36.8732
       },
       "isPaid": false,
@@ -2401,11 +2644,11 @@
       "price": 100,
       "estimatedDistanceKm": 12,
       "sender": {
-        "lng": 30.7065,
-        "lat": 36.886,
         "neighborhood": "Merkez",
-        "district": "Muratpaşa",
         "addressDetail": "Sehir hastanesi",
+        "lat": 36.886,
+        "lng": 30.7065,
+        "district": "Muratpaşa",
         "contactName": "Umit torun",
         "contactPhone": "05077547484"
       },
@@ -2422,22 +2665,22 @@
       "paymentMethod": "gonderici_odemeli",
       "courierEarnings": 100,
       "receiver": {
-        "neighborhood": "Merkez",
-        "lng": 30.6384,
         "addressDetail": "Liman tahtakale",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "neighborhood": "Merkez",
         "contactName": "Umit torun",
-        "contactPhone": "0123456789",
         "district": "Konyaaltı",
-        "lat": 36.8732
+        "contactPhone": "0123456789"
       },
       "packageName": "Sıcak Yemek Siparişi",
       "trackingCode": "ANT-7436",
       "sender": {
+        "district": "Muratpaşa",
+        "neighborhood": "Merkez",
+        "addressDetail": "Sehir hastanesi",
         "contactPhone": "05077547484",
         "contactName": "Umit torun",
-        "district": "Muratpaşa",
-        "addressDetail": "Sehir hastanesi",
-        "neighborhood": "Merkez",
         "lng": 30.7065,
         "lat": 36.886
       },
@@ -2455,21 +2698,21 @@
     {
       "receiver": {
         "neighborhood": "Merkez",
+        "lat": 36.8732,
+        "lng": 30.6384,
         "contactName": "Umit torun",
         "contactPhone": "0123456789",
-        "district": "Konyaaltı",
-        "lat": 36.8732,
         "addressDetail": "Liman tahtakale",
-        "lng": 30.6384
+        "district": "Konyaaltı"
       },
       "sender": {
-        "addressDetail": "Sehir hastanesi",
         "lng": 30.7065,
-        "neighborhood": "Merkez",
         "lat": 36.886,
-        "contactName": "Umit torun",
         "district": "Muratpaşa",
-        "contactPhone": "05077547484"
+        "contactPhone": "05077547484",
+        "neighborhood": "Merkez",
+        "addressDetail": "Sehir hastanesi",
+        "contactName": "Umit torun"
       },
       "urgency": "standard",
       "estimatedDurationMins": 27,
@@ -2499,13 +2742,13 @@
       "estimatedDistanceKm": 12,
       "packageType": "food",
       "receiver": {
-        "lng": 30.6384,
-        "contactName": "Umit torun",
-        "district": "Konyaaltı",
         "neighborhood": "Merkez",
+        "addressDetail": "Liman tahtakale",
+        "contactName": "Umit torun",
         "lat": 36.8732,
-        "contactPhone": "0123456789",
-        "addressDetail": "Liman tahtakale"
+        "lng": 30.6384,
+        "district": "Konyaaltı",
+        "contactPhone": "0123456789"
       },
       "id": "req-1788189104272-382",
       "isPaid": false,
@@ -2517,12 +2760,12 @@
       "packageName": "Sıcak Yemek Siparişi",
       "price": 100,
       "sender": {
-        "lng": 30.7065,
         "addressDetail": "Sehir hastanesi",
         "contactPhone": "05077547484",
-        "contactName": "Umit torun",
-        "lat": 36.886,
         "district": "Muratpaşa",
+        "lng": 30.7065,
+        "lat": 36.886,
+        "contactName": "Umit torun",
         "neighborhood": "Merkez"
       }
     },
@@ -2534,13 +2777,13 @@
       "createdAt": "2026-08-31T15:30:01.455Z",
       "packageType": "food",
       "sender": {
-        "lat": 36.886,
-        "contactPhone": "05077547484",
-        "lng": 30.7065,
-        "contactName": "Umit torun",
         "neighborhood": "Merkez",
         "addressDetail": "Sehir hastanesi",
-        "district": "Muratpaşa"
+        "district": "Muratpaşa",
+        "lat": 36.886,
+        "lng": 30.7065,
+        "contactName": "Umit torun",
+        "contactPhone": "05077547484"
       },
       "noteForCourier": "",
       "trackingCode": "ANT-1343",
@@ -2551,13 +2794,13 @@
       "status": "cancelled",
       "courierEarnings": 100,
       "receiver": {
-        "neighborhood": "Merkez",
-        "contactName": "Umit torun",
+        "lng": 30.6384,
         "lat": 36.8732,
         "contactPhone": "0123456789",
+        "contactName": "Umit torun",
         "addressDetail": "Liman tahtakale",
         "district": "Konyaaltı",
-        "lng": 30.6384
+        "neighborhood": "Merkez"
       },
       "packageName": "Sıcak Yemek Siparişi",
       "price": 100,
@@ -2572,19 +2815,19 @@
       "sender": {
         "district": "Muratpaşa",
         "contactPhone": "05077547484",
-        "contactName": "Umit torun",
-        "addressDetail": "Sehir hastanesi",
         "neighborhood": "Merkez",
+        "addressDetail": "Sehir hastanesi",
+        "lat": 36.886,
         "lng": 30.7065,
-        "lat": 36.886
+        "contactName": "Umit torun"
       },
       "estimatedDurationMins": 27,
       "receiver": {
+        "lat": 36.8732,
         "lng": 30.6384,
         "contactPhone": "0123456789",
-        "addressDetail": "Liman tahtakale",
         "contactName": "Umit torun",
-        "lat": 36.8732,
+        "addressDetail": "Liman tahtakale",
         "district": "Konyaaltı",
         "neighborhood": "Merkez"
       },
@@ -2613,23 +2856,23 @@
       "noteForCourier": "",
       "senderUserId": "user-customer-1787999079959",
       "receiver": {
+        "lng": 30.6384,
         "lat": 36.8732,
+        "contactPhone": "0123456789",
         "contactName": "Umit torun",
         "neighborhood": "Merkez",
-        "district": "Konyaaltı",
         "addressDetail": "Liman tahtakale",
-        "lng": 30.6384,
-        "contactPhone": "0123456789"
+        "district": "Konyaaltı"
       },
       "packageWeightKg": 1,
       "sender": {
-        "neighborhood": "Merkez",
-        "lng": 30.7065,
-        "lat": 36.886,
-        "contactName": "Umit torun",
         "addressDetail": "Sehir hastanesi",
-        "contactPhone": "05077547484",
-        "district": "Muratpaşa"
+        "contactName": "Umit torun",
+        "neighborhood": "Merkez",
+        "district": "Muratpaşa",
+        "lat": 36.886,
+        "lng": 30.7065,
+        "contactPhone": "05077547484"
       },
       "estimatedDurationMins": 27,
       "packageName": "Sıcak Yemek Siparişi",
@@ -2644,13 +2887,13 @@
       "createdAt": "2026-08-31T15:57:22.771Z",
       "paymentMethod": "gonderici_odemeli",
       "sender": {
-        "lat": 36.886,
-        "contactPhone": "05077547484",
-        "lng": 30.7065,
-        "addressDetail": "Sehir hastanesi",
-        "district": "Muratpaşa",
         "contactName": "Umit torun",
-        "neighborhood": "Merkez"
+        "lat": 36.886,
+        "neighborhood": "Merkez",
+        "lng": 30.7065,
+        "district": "Muratpaşa",
+        "contactPhone": "05077547484",
+        "addressDetail": "Sehir hastanesi"
       },
       "courierEarnings": 100,
       "estimatedDurationMins": 27,
@@ -2660,13 +2903,13 @@
       "price": 100,
       "trackingCode": "ANT-1681",
       "receiver": {
-        "lat": 36.8732,
-        "contactPhone": "0123456789",
-        "lng": 30.6384,
+        "neighborhood": "Merkez",
         "addressDetail": "Liman tahtakale",
         "contactName": "Umit torun",
         "district": "Konyaaltı",
-        "neighborhood": "Merkez"
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "0123456789"
       },
       "packageName": "Sıcak Yemek Siparişi",
       "status": "delivered",
@@ -2674,15 +2917,15 @@
       "packageWeightKg": 1,
       "packageType": "food",
       "assignedCourier": {
-        "name": "Kurye umit",
-        "currentLng": 30.7065,
-        "rating": 4.95,
         "phone": "0123456789",
-        "id": "user-courier-1787999333451",
         "email": "cantalyacanta@gmail.com",
+        "rating": 4.95,
+        "currentLng": 30.7065,
+        "totalDeliveries": 7,
         "currentLat": 36.886,
-        "district": "Muratpaşa",
-        "totalDeliveries": 7
+        "name": "Kurye umit",
+        "id": "user-courier-1787999333451",
+        "district": "Muratpaşa"
       },
       "deliveryTime": "2026-08-31T15:58:58.569Z",
       "isPaid": false
@@ -2701,13 +2944,13 @@
       "estimatedDurationMins": 27,
       "price": 100,
       "receiver": {
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "lat": 36.8732,
         "district": "Konyaaltı",
         "contactName": "Umit torun",
-        "addressDetail": "Liman tahtakale",
-        "contactPhone": "0123456789"
+        "neighborhood": "Merkez",
+        "lng": 30.6384,
+        "lat": 36.8732,
+        "contactPhone": "0123456789",
+        "addressDetail": "Liman tahtakale"
       },
       "trackingCode": "ANT-1888",
       "estimatedDistanceKm": 12,
@@ -2716,34 +2959,34 @@
       "paymentMethod": "gonderici_odemeli",
       "sender": {
         "neighborhood": "Merkez",
+        "lat": 36.886,
         "lng": 30.7065,
         "addressDetail": "Sehir hastanesi",
-        "lat": 36.886,
-        "district": "Muratpaşa",
         "contactName": "Umit torun",
-        "contactPhone": "05077547484"
+        "contactPhone": "05077547484",
+        "district": "Muratpaşa"
       }
     },
     {
       "id": "req-1788256305103-80",
       "trackingCode": "ANT-6950",
       "sender": {
-        "lat": 36.886,
-        "lng": 30.7065,
-        "district": "Muratpaşa",
-        "neighborhood": "Merkez",
-        "addressDetail": "Sehir hastanesi",
         "contactName": "Umit torun",
-        "contactPhone": "05077547484"
+        "lng": 30.7065,
+        "addressDetail": "Sehir hastanesi",
+        "lat": 36.886,
+        "contactPhone": "05077547484",
+        "district": "Muratpaşa",
+        "neighborhood": "Merkez"
       },
       "receiver": {
-        "contactName": "Umit torun",
-        "lng": 30.6384,
-        "neighborhood": "Merkez",
-        "addressDetail": "Liman tahtakale",
         "lat": 36.8732,
+        "lng": 30.6384,
         "contactPhone": "0123456789",
-        "district": "Konyaaltı"
+        "contactName": "Umit torun",
+        "addressDetail": "Liman tahtakale",
+        "district": "Konyaaltı",
+        "neighborhood": "Merkez"
       },
       "packageType": "food",
       "packageName": "Sıcak Yemek Siparişi",
@@ -3965,5 +4208,27 @@
     "lastTestStatus": "success",
     "lastTestMessage": "Gmail SMTP bağlantısı onaylandı."
   },
-  "updatedAt": "2026-09-14T10:11:48.942Z"
+  "visitorStats": {
+    "totalVisits": 1,
+    "uniqueVisitors": 1,
+    "todayVisits": 1,
+    "todayDate": "2026-09-14",
+    "uniqueVisitorIds": [
+      "test_user_1"
+    ],
+    "todayVisitorIds": [
+      "test_user_1"
+    ],
+    "lastVisitAt": "2026-09-14T16:40:54.960Z",
+    "recentVisitors": [
+      {
+        "id": "vis_1789404054960_4fbea",
+        "timestamp": "2026-09-14T16:40:54.960Z",
+        "path": "/",
+        "deviceType": "mobile",
+        "isUnique": true
+      }
+    ]
+  },
+  "updatedAt": "2026-09-14T16:40:54.960Z"
 }
