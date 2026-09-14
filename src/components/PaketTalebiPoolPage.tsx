@@ -14,6 +14,10 @@ import {
   ExternalLink,
   PhoneCall,
   RefreshCw,
+  LogIn,
+  UserPlus,
+  Lock,
+  X,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
@@ -30,10 +34,12 @@ export const PaketTalebiPoolPage: React.FC = () => {
     acceptRequest,
     updateStatus,
     syncWithServer,
+    openAuthModal,
   } = useDelivery();
 
   const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
   const [acceptedOrder, setAcceptedOrder] = useState<DeliveryRequest | null>(null);
+  const [courierAuthPromptOrder, setCourierAuthPromptOrder] = useState<DeliveryRequest | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Auto-sync real-time every 2.5 seconds
@@ -53,12 +59,16 @@ export const PaketTalebiPoolPage: React.FC = () => {
   // Pool requests waiting for courier
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
 
-  // If user accepted an order, also check if it's currently in their active list
+  // Check if current user is an authenticated courier or admin
+  const isCourier = currentUser.role === 'courier' || currentUser.role === 'admin';
+
+  // If user accepted an order, check if it's currently in their active list
   const activeUserDeliveries = requests.filter(
     (r) =>
       (r.status === 'courier_assigned' || r.status === 'picked_up') &&
-      r.courier &&
-      (r.courier.id === currentUser.id || currentUser.role === 'admin' || currentUser.role === 'courier')
+      ((r.assignedCourier && r.assignedCourier.id === currentUser.id) ||
+        (r.courier && r.courier.id === currentUser.id) ||
+        currentUser.role === 'admin')
   );
 
   const handleManualRefresh = async () => {
@@ -74,6 +84,12 @@ export const PaketTalebiPoolPage: React.FC = () => {
   };
 
   const handleAcceptJob = async (order: DeliveryRequest) => {
+    // ENFORCE COURIER LOGIN: Kurye olmayan havuzdan talep seçemesin!
+    if (!isCourier) {
+      setCourierAuthPromptOrder(order);
+      return;
+    }
+
     setAcceptingOrderId(order.id);
     try {
       playAcceptSound();
@@ -83,24 +99,14 @@ export const PaketTalebiPoolPage: React.FC = () => {
     }
 
     try {
-      // Ensure courier identity is ready
-      let courierUser = currentUser;
-      if (courierUser.role !== 'courier' && courierUser.role !== 'admin') {
-        // Auto-assign to default active courier
-        const firstCourier = users.find((u) => u.role === 'courier');
-        if (firstCourier) {
-          switchUser(firstCourier.id);
-          courierUser = firstCourier;
-        }
-      }
-
-      const courierObj: CourierInfo = couriers.find((c) => c.id === courierUser.id) || {
-        id: courierUser.id || 'user-courier-01',
-        name: courierUser.name || 'Ahmet Yılmaz',
-        phone: courierUser.phone || '0507 754 74 84',
-        email: courierUser.email || 'kuryeantalyam@gmail.com',
+      const courierObj: CourierInfo = couriers.find((c) => c.id === currentUser.id) || {
+        id: currentUser.id,
+        name: currentUser.name || 'Aktif Kurye',
+        phone: currentUser.phone || '0500 000 00 00',
+        email: currentUser.email || 'kurye@antalyakurye.com',
+        district: currentUser.district || 'Muratpaşa',
         rating: 5.0,
-        totalDeliveries: courierUser.totalOrders || 14,
+        totalDeliveries: (currentUser.totalOrders || 0) + 1,
       };
 
       acceptRequest(order.id, courierObj);
@@ -109,6 +115,7 @@ export const PaketTalebiPoolPage: React.FC = () => {
         ...order,
         status: 'courier_assigned',
         courier: courierObj,
+        assignedCourier: courierObj,
       });
 
       try {
@@ -168,6 +175,69 @@ export const PaketTalebiPoolPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* COURIER AUTHENTICATION STATUS & MANDATORY LOGIN BANNER */}
+        {isCourier ? (
+          <div className="p-3.5 bg-gradient-to-r from-[#03241d] to-[#021a15] border border-emerald-600/70 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0">
+                <Bike className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-white text-sm">{currentUser.name}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-200 font-black text-[10px]">
+                    KAYITLI KURYE
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-300/90 font-mono">
+                  {currentUser.phone} • {currentUser.vehicleType || 'Motosiklet'}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openAuthModal('courier_login', 'Farklı bir kurye hesabına geçmek için lütfen giriş yapınız.')}
+              className="px-3 py-1.5 rounded-xl bg-[#021813] hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold transition cursor-pointer shrink-0"
+            >
+              Kurye Değiştir
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/95 via-amber-900/90 to-amber-950/95 border-2 border-amber-500/90 text-white space-y-3 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 animate-pulse text-amber-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-amber-300">
+                  Talep Havuzundan Sipariş Seçmek İçin Kurye Girişi Zorunludur
+                </h4>
+                <p className="text-xs text-amber-100/90 leading-relaxed">
+                  Havuzdaki siparişleri yalnızca kayıtlı Antalya Teslimat kuryeleri kabul edebilir. Kurye olmayanlar talep seçemez. Kuryemiz iseniz giriş yapınız; değilseniz hemen Kurye Başvuru Formu'nu doldurunuz.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+              <button
+                type="button"
+                onClick={() => openAuthModal('courier_login', 'Talep havuzundaki siparişleri kabul edebilmek için kurye girişi yapmalısınız.')}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Kurye Girişi Yap</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal('courier_register', 'Kurye ekibimize katılmak için lütfen aşağıdaki başvuru formunu doldurunuz.')}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs rounded-xl transition border border-emerald-400/50 flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Kurye Ol / Başvuru Formu Doldur</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* RECENTLY ACCEPTED ORDER VIEW (FULL UNMASKED CONTACT DETAILS) */}
         {acceptedOrder && (
@@ -415,16 +485,29 @@ export const PaketTalebiPoolPage: React.FC = () => {
 
                   {/* TALEBİ KABUL ET BUTONU (MAIN CTA) */}
                   <div className="pt-2">
-                    <button
-                      type="button"
-                      disabled={acceptingOrderId === req.id}
-                      onClick={() => handleAcceptJob(req)}
-                      className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
-                    >
-                      <Bike className="w-5 h-5" />
-                      <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
+                    {isCourier ? (
+                      <button
+                        type="button"
+                        disabled={acceptingOrderId === req.id}
+                        onClick={() => handleAcceptJob(req)}
+                        className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
+                      >
+                        <Bike className="w-5 h-5" />
+                        <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={acceptingOrderId === req.id}
+                        onClick={() => handleAcceptJob(req)}
+                        className="w-full py-3.5 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 active:scale-98 disabled:opacity-50 text-slate-950 font-black text-xs sm:text-sm rounded-2xl transition shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Lock className="w-4 h-4 text-slate-950" />
+                        <span>Kurye Girişi Yap & Talebi Seç</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -433,6 +516,95 @@ export const PaketTalebiPoolPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* COURIER AUTHENTICATION REQUIRED MODAL */}
+      {courierAuthPromptOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-gradient-to-br from-[#0c221a] via-[#081813] to-[#040e0b] rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-amber-500/80 space-y-4 text-white text-center relative">
+            <button
+              type="button"
+              onClick={() => setCourierAuthPromptOrder(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
+              <Bike className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[11px] border border-amber-500/30">
+                Kurye Girişi Zorunludur
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                Bu Talebi Seçmek İçin Kurye Girişi Yapmalısınız
+              </h3>
+              <p className="text-xs text-amber-100/90 leading-relaxed px-2">
+                Talep havuzundaki paketler yalnızca kayıtlı kuryelerimiz tarafından kabul edilebilir. Kuryemiz iseniz lütfen giriş yapınız. Henüz kuryemiz değilseniz hemen başvuru formunu doldurarak ekibimize katılabilirsiniz.
+              </p>
+            </div>
+
+            {/* Target Order Summary */}
+            <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/80 text-left text-xs space-y-1.5">
+              <div className="flex items-center justify-between border-b border-emerald-900/60 pb-1.5">
+                <span className="font-mono font-bold text-amber-400">
+                  #{courierAuthPromptOrder.trackingCode}
+                </span>
+                <span className="text-emerald-300 font-extrabold text-sm">
+                  +{courierAuthPromptOrder.courierEarnings || Math.round(courierAuthPromptOrder.price * 0.85)} ₺ Kazanç
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-300">
+                <span>📍 Alış: <strong className="text-white">{courierAuthPromptOrder.sender.district}</strong></span>
+                <span>🏁 Teslimat: <strong className="text-white">{courierAuthPromptOrder.receiver.district}</strong></span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const orderCode = courierAuthPromptOrder.trackingCode;
+                  setCourierAuthPromptOrder(null);
+                  openAuthModal(
+                    'courier_login',
+                    `#${orderCode} nolu siparişi kabul edebilmek için lütfen kurye girişi yapınız.`
+                  );
+                }}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-98 text-slate-950 font-black text-xs sm:text-sm rounded-xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Kurye Girişi Yap</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCourierAuthPromptOrder(null);
+                  openAuthModal(
+                    'courier_register',
+                    'Antalya Kurye Ekibimize katılmak için lütfen aşağıdaki formu eksiksiz doldurunuz.'
+                  );
+                }}
+                className="w-full py-3 bg-[#032a21] hover:bg-[#04372c] active:scale-98 text-emerald-200 font-bold text-xs sm:text-sm rounded-xl transition border border-emerald-600/60 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-emerald-400" />
+                <span>Kurye Başvuru & Kayıt Formu Doldur</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCourierAuthPromptOrder(null)}
+                className="w-full py-2 bg-transparent hover:bg-emerald-950/40 text-slate-400 hover:text-slate-200 font-semibold text-xs rounded-xl transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

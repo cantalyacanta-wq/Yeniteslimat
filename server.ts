@@ -988,6 +988,11 @@ app.get('/api/email-queue', (req, res) => {
   });
 });
 
+// List all requests
+app.get('/api/requests', (req, res) => {
+  res.json(dbState.requests || []);
+});
+
 // Create new customer delivery request - Non-blocking asynchronous queue push
 app.post('/api/requests', (req, res) => {
   try {
@@ -1483,6 +1488,9 @@ app.patch('/api/requests/:id', (req, res) => {
 
     dbState.requests[reqIndex] = updated;
     saveDatabase();
+    if (serverFirestoreDb && updated.id) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
+    }
     res.json({ success: true, request: updated });
   } catch (err: any) {
     console.error('Error updating request:', err);
@@ -1502,16 +1510,44 @@ app.post('/api/requests/:id/accept', (req, res) => {
       return;
     }
 
-    const courier = dbState.couriers.find((c) => c.id === courierId) || dbState.couriers[0];
+    // Verify courier exists and is courier or admin
+    let courier = dbState.couriers.find((c) => c.id === courierId);
+    if (!courier && courierId) {
+      const userCourier = dbState.users.find((u) => u.id === courierId && (u.role === 'courier' || u.role === 'admin'));
+      if (userCourier) {
+        courier = {
+          id: userCourier.id,
+          name: userCourier.name,
+          phone: userCourier.phone,
+          email: userCourier.email,
+          district: userCourier.district || 'Muratpaşa',
+          rating: 5.0,
+          totalDeliveries: userCourier.totalOrders || 0,
+          currentLat: 36.8860,
+          currentLng: 30.7065,
+        };
+        dbState.couriers.push(courier);
+      }
+    }
+
+    if (!courier) {
+      res.status(403).json({ error: 'Siparişi kabul etmek için geçerli bir kurye girişi gereklidir. Kurye olmayanlar havuzdan talep seçemez.' });
+      return;
+    }
+
     const updated = {
       ...dbState.requests[reqIndex],
       status: 'courier_assigned',
       assignedCourier: courier,
+      courier: courier,
       updatedAt: new Date().toISOString(),
     };
 
     dbState.requests[reqIndex] = updated;
     saveDatabase();
+    if (serverFirestoreDb && updated.id) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
+    }
     res.json({ success: true, request: updated });
   } catch (err: any) {
     console.error('Error accepting request:', err);

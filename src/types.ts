@@ -115,6 +115,7 @@ export interface DeliveryRequest {
   // Status & Courier
   status: DeliveryStatus;
   assignedCourier?: CourierInfo;
+  courier?: CourierInfo;
   pickupTime?: string;
   deliveryTime?: string;
   deliveryCode?: string; // Optional confirmation code

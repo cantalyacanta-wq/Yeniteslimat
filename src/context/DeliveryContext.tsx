@@ -711,6 +711,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentUserId(newUser.id);
     if (newUser.role === 'courier') {
       setActiveCourierId(newUser.id);
+      const newCourierObj: CourierInfo = {
+        id: newUser.id,
+        name: newUser.name,
+        phone: newUser.phone,
+        email: newUser.email,
+        district: newUser.district || 'Muratpaşa',
+        rating: 5.0,
+        totalDeliveries: 0,
+        currentLat: 36.8860,
+        currentLng: 30.7065,
+      };
+      setCouriers((prev) => {
+        if (prev.some((c) => c.id === newUser.id)) return prev;
+        return [newCourierObj, ...prev];
+      });
     }
     playSuccessSound();
 
@@ -1092,19 +1107,37 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Courier accepts order
   const acceptRequest = useCallback(
-    (requestId: string, courierId?: string) => {
-      const isActualCourier = currentUser.role === 'courier';
-      const courierObj: CourierInfo = {
-        id: isActualCourier ? currentUser.id : 'user-courier-01',
-        name: isActualCourier ? currentUser.name : 'Ahmet Yılmaz (Kurye)',
-        phone: isActualCourier ? currentUser.phone : '0544 111 22 33',
-        email: isActualCourier ? currentUser.email : 'ahmet@antalyakurye.com',
-        district: currentUser.district || 'Muratpaşa',
-        rating: 4.95,
-        totalDeliveries: (currentUser.totalOrders || 0) + 1,
-        currentLat: 36.8860,
-        currentLng: 30.7065,
-      };
+    (requestId: string, courierOverride?: CourierInfo | string) => {
+      const isActualCourier = currentUser.role === 'courier' || currentUser.role === 'admin';
+
+      let courierObj: CourierInfo | null = null;
+      if (typeof courierOverride === 'object' && courierOverride !== null) {
+        courierObj = courierOverride;
+      } else if (typeof courierOverride === 'string') {
+        const foundC = couriers.find((c) => c.id === courierOverride);
+        if (foundC) courierObj = foundC;
+      } else if (isActualCourier) {
+        courierObj = {
+          id: currentUser.id,
+          name: currentUser.name,
+          phone: currentUser.phone,
+          email: currentUser.email,
+          district: currentUser.district || 'Muratpaşa',
+          rating: 4.95,
+          totalDeliveries: (currentUser.totalOrders || 0) + 1,
+          currentLat: 36.8860,
+          currentLng: 30.7065,
+        };
+      }
+
+      // STRICT CHECK: Non-couriers CANNOT accept pool orders!
+      if (!courierObj) {
+        openAuthModal(
+          'courier_login',
+          'Talep havuzundan sipariş kabul edebilmek için kurye girişi yapmalısınız. Kuryemiz değilseniz lütfen kurye başvuru formunu doldurunuz.'
+        );
+        return;
+      }
 
       const now = new Date().toISOString();
 
@@ -1115,6 +1148,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               ...req,
               status: 'courier_assigned' as const,
               assignedCourier: courierObj,
+              courier: courierObj,
               updatedAt: now,
             };
           }
@@ -1135,6 +1169,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...targetReq,
             status: 'courier_assigned',
             assignedCourier: courierObj,
+            courier: courierObj,
             updatedAt: now,
           },
           previousStatus: targetReq.status,
@@ -1148,6 +1183,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       updateRequestInFirestore(requestId, {
         status: 'courier_assigned',
         assignedCourier: courierObj,
+        courier: courierObj,
         updatedAt: now,
       }).catch(() => {});
 
@@ -1158,7 +1194,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         body: JSON.stringify({ courierId: courierObj.id }),
       }).catch((e) => console.warn('Failed to sync accept order:', e));
     },
-    [currentUser]
+    [currentUser, couriers, openAuthModal, requests]
   );
 
   // Update status without needing verification code

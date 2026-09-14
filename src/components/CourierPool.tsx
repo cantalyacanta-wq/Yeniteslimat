@@ -38,6 +38,7 @@ export const CourierPool: React.FC = () => {
     updateStatus,
     releaseRequestBackToPool,
     activeStats,
+    openAuthModal,
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'pool' | 'active' | 'completed'>('pool');
@@ -56,6 +57,11 @@ export const CourierPool: React.FC = () => {
 
   const handleConfirmAccept = () => {
     if (confirmAcceptOrder) {
+      if (currentUser.role !== 'courier' && currentUser.role !== 'admin') {
+        openAuthModal('courier_login', 'Talep havuzundan sipariş kabul edebilmek için kurye girişi yapmanız gerekmektedir. Kuryemiz değilseniz lütfen kurye kayıt formunu doldurunuz.');
+        setConfirmAcceptOrder(null);
+        return;
+      }
       const order = confirmAcceptOrder;
       // 1. Instantly assign request so it leaves the pool for all couriers
       acceptRequest(order.id);
