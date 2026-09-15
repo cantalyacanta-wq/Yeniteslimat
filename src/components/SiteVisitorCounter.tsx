@@ -17,7 +17,7 @@ import {
 import { useDelivery } from '../context/DeliveryContext';
 
 interface SiteVisitorCounterProps {
-  variant?: 'compact' | 'detailed';
+  variant?: 'compact' | 'detailed' | 'public';
   onNavigateToDetailed?: () => void;
 }
 
@@ -27,6 +27,7 @@ export const SiteVisitorCounter: React.FC<SiteVisitorCounterProps> = ({
 }) => {
   const { visitorStats, resetSiteCounter, syncWithServer } = useDelivery();
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [initialValue, setInitialValue] = useState('0');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
@@ -81,6 +82,198 @@ export const SiteVisitorCounter: React.FC<SiteVisitorCounterProps> = ({
       return 'Yakın zamanda';
     }
   };
+
+  // --------------------------------------------------------------------------
+  // PUBLIC VARIANT (For Site Footer / Public Visitors)
+  // --------------------------------------------------------------------------
+  if (variant === 'public') {
+    return (
+      <div className="w-full max-w-5xl mx-auto my-3 px-3.5 py-3 sm:py-2.5 rounded-2xl bg-[#021a14]/95 border border-emerald-800/70 shadow-lg text-white">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Title & Live Status */}
+          <button
+            type="button"
+            onClick={() => setIsStatsModalOpen(true)}
+            className="flex items-center gap-3 text-left hover:opacity-90 transition cursor-pointer group"
+            title="Ayrıntılı ziyaretçi istatistiklerini görüntüle"
+          >
+            <div className="relative flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600/90 group-hover:bg-emerald-500 border border-emerald-500/50 flex items-center justify-center text-white shadow-xs transition">
+                <Eye className="w-4 h-4" />
+              </div>
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-white tracking-tight group-hover:text-emerald-300 transition">
+                  Canlı Site Ziyaretçi Sayacı
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-700/60 rounded-full font-bold">
+                  Canlı
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-400/80">
+                Antalya İçi Kurye Ağı • Gerçek Zamanlı Takip
+              </p>
+            </div>
+          </button>
+
+          {/* Metric Badges */}
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap justify-center">
+            {/* Toplam Ziyaret */}
+            <div
+              onClick={() => setIsStatsModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#011410] hover:bg-[#022119] border border-emerald-800/80 rounded-xl transition cursor-pointer"
+              title="Toplam Sayfa Görüntüleme"
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[9px] uppercase font-bold text-emerald-400/90 tracking-wider">
+                  Toplam
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white font-mono">
+                  {totalVisits.toLocaleString('tr-TR')}
+                </span>
+              </div>
+            </div>
+
+            {/* Bugün */}
+            <div
+              onClick={() => setIsStatsModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#011410] hover:bg-[#022119] border border-emerald-800/80 rounded-xl transition cursor-pointer"
+              title="Bugünkü Ziyaret Sayısı"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[9px] uppercase font-bold text-amber-400/90 tracking-wider">
+                  Bugün
+                </span>
+                <span className="text-xs sm:text-sm font-black text-amber-300 font-mono">
+                  +{todayVisits.toLocaleString('tr-TR')}
+                </span>
+              </div>
+            </div>
+
+            {/* Tekil Ziyaretçi */}
+            <div
+              onClick={() => setIsStatsModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#011410] hover:bg-[#022119] border border-emerald-800/80 rounded-xl transition cursor-pointer"
+              title="Farklı Tekil Ziyaretçiler"
+            >
+              <Users className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[9px] uppercase font-bold text-teal-400/90 tracking-wider">
+                  Tekil
+                </span>
+                <span className="text-xs sm:text-sm font-black text-teal-200 font-mono">
+                  {uniqueVisitors.toLocaleString('tr-TR')}
+                </span>
+              </div>
+            </div>
+
+            {/* Çevrimiçi */}
+            <div
+              onClick={() => setIsStatsModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#011410] hover:bg-[#022119] border border-emerald-800/80 rounded-xl transition cursor-pointer"
+              title="Anlık Çevrimiçi Ziyaretçi"
+            >
+              <div className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </div>
+              <div className="flex flex-col leading-tight">
+                <span className="text-[9px] uppercase font-bold text-emerald-400/90 tracking-wider">
+                  Çevrimiçi
+                </span>
+                <span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+                  {activeNow} aktif
+                </span>
+              </div>
+            </div>
+
+            {/* Manuel Yenileme Butonu */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              title="Sayacı Anlık Güncelle"
+              className="p-2 rounded-xl bg-[#011410] hover:bg-emerald-950 text-emerald-300 border border-emerald-800/80 transition cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Public Details Modal */}
+        {isStatsModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-[#02231c] rounded-3xl border border-emerald-600/70 p-6 max-w-md w-full text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm">
+                    <Eye className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Ziyaretçi İstatistikleri</h4>
+                    <p className="text-[11px] text-emerald-300/80">Antalya Şehir İçi Moto Kurye</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsStatsModalOpen(false)}
+                  className="w-7 h-7 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 flex items-center justify-center text-xs transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="bg-[#011410] p-3 rounded-xl border border-emerald-800/70">
+                  <span className="text-[10px] text-emerald-400/80 block font-semibold uppercase">Toplam Görüntüleme</span>
+                  <span className="text-xl font-black text-white font-mono">{totalVisits.toLocaleString('tr-TR')}</span>
+                </div>
+                <div className="bg-[#011410] p-3 rounded-xl border border-emerald-800/70">
+                  <span className="text-[10px] text-amber-400/80 block font-semibold uppercase">Bugün Ziyaret</span>
+                  <span className="text-xl font-black text-amber-300 font-mono">+{todayVisits.toLocaleString('tr-TR')}</span>
+                </div>
+                <div className="bg-[#011410] p-3 rounded-xl border border-emerald-800/70">
+                  <span className="text-[10px] text-teal-400/80 block font-semibold uppercase">Tekil Kullanıcı</span>
+                  <span className="text-xl font-black text-teal-200 font-mono">{uniqueVisitors.toLocaleString('tr-TR')}</span>
+                </div>
+                <div className="bg-[#011410] p-3 rounded-xl border border-emerald-800/70">
+                  <span className="text-[10px] text-emerald-400/80 block font-semibold uppercase">Anlık Çevrimiçi</span>
+                  <span className="text-xl font-black text-emerald-400 font-mono">{activeNow} kişi</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-950/60 p-3 rounded-xl border border-emerald-800/40 text-xs text-emerald-300/90 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-white">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Nasıl Çalışır?</span>
+                </div>
+                <p className="text-[11px] text-emerald-300/80 leading-relaxed">
+                  Web sitemize gelen her ziyaret ve sayfa değişimi otomatik olarak sayılır. Veriler Cloud Firestore ve sunucu veri tabanı ile anlık olarak senkronize edilir.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsStatsModalOpen(false)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Tamam
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // --------------------------------------------------------------------------
   // COMPACT VARIANT (For Admin Header / Top Bar)

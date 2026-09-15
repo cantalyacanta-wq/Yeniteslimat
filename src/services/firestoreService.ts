@@ -136,6 +136,64 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
 }
 
 const EMAIL_QUEUE_COLLECTION = 'email_queue';
+const SETTINGS_COLLECTION = 'settings';
+const SITE_COUNTER_DOC = 'site_counter';
+
+// Real-time listener for site visitor counter from Firestore
+export function subscribeToSiteCounter(callback: (stats: {
+  totalVisits?: number;
+  uniqueVisitors?: number;
+  todayVisits?: number;
+  todayDate?: string;
+  lastVisitAt?: string;
+}) => void) {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, SITE_COUNTER_DOC);
+    return onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && typeof data.totalVisits === 'number') {
+            callback({
+              totalVisits: Number(data.totalVisits) || 0,
+              uniqueVisitors: Number(data.uniqueVisitors) || 0,
+              todayVisits: Number(data.todayVisits) || 0,
+              todayDate: data.todayDate || new Date().toISOString().split('T')[0],
+              lastVisitAt: data.lastVisitAt || new Date().toISOString(),
+            });
+          }
+        }
+      },
+      (error) => {
+        if (error && (error.code === 'unavailable' || String(error.message).includes('unavailable'))) {
+          // offline mode
+        } else {
+          console.debug('[Firestore] Site counter stream info:', error?.message);
+        }
+      }
+    );
+  } catch (err) {
+    console.debug('[Firestore] Could not attach site counter listener:', err);
+    return () => {};
+  }
+}
+
+// Update site counter in Firestore directly (fallback or client sync)
+export async function updateSiteCounterInFirestore(updates: {
+  totalVisits?: number;
+  uniqueVisitors?: number;
+  todayVisits?: number;
+  todayDate?: string;
+  lastVisitAt?: string;
+}): Promise<void> {
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, SITE_COUNTER_DOC);
+    await setDoc(docRef, { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err: any) {
+    console.debug('[Firestore] Could not push site counter:', err?.message);
+  }
+}
 
 // Add email job to Firestore queue
 export async function enqueueEmailToFirestore(job: {

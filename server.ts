@@ -868,6 +868,44 @@ function initFirestoreSync() {
   } catch (err: any) {
     console.warn('[FIRESTORE SYNC INIT FAIL]', err.message);
   }
+
+  // 3. Synchronize Site Visitor Counter (settings/site_counter)
+  try {
+    const counterDocRef = doc(serverFirestoreDb, 'settings', 'site_counter');
+    onSnapshot(
+      counterDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const cloudData: any = docSnap.data();
+          if (cloudData && typeof cloudData.totalVisits === 'number') {
+            if (!dbState.visitorStats) {
+              dbState.visitorStats = { ...DEFAULT_VISITOR_STATS };
+            }
+            const cloudTotal = Number(cloudData.totalVisits) || 0;
+            const currentTotal = dbState.visitorStats.totalVisits || 0;
+            // Always keep the higher number so counts never decrease across reboots/instances
+            if (cloudTotal > currentTotal) {
+              dbState.visitorStats.totalVisits = cloudTotal;
+              dbState.visitorStats.uniqueVisitors = Math.max(dbState.visitorStats.uniqueVisitors || 0, Number(cloudData.uniqueVisitors) || 0);
+              if (cloudData.todayVisits && (!dbState.visitorStats.todayVisits || Number(cloudData.todayVisits) > dbState.visitorStats.todayVisits)) {
+                dbState.visitorStats.todayVisits = Number(cloudData.todayVisits);
+              }
+              if (cloudData.lastVisitAt) {
+                dbState.visitorStats.lastVisitAt = cloudData.lastVisitAt;
+              }
+              saveDatabase();
+              console.log(`[FIRESTORE COUNTER SYNC] Site counter synced with Cloud Firestore: Total=${cloudTotal}`);
+            }
+          }
+        }
+      },
+      (err) => {
+        console.warn('[FIRESTORE COUNTER SYNC ERROR]', err.message);
+      }
+    );
+  } catch (err: any) {
+    console.warn('[FIRESTORE COUNTER SYNC INIT FAIL]', err.message);
+  }
 }
 
 // Initial Firestore connection trigger

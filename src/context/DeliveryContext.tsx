@@ -12,6 +12,8 @@ import {
 import {
   subscribeToDeliveryRequests,
   subscribeToUsers,
+  subscribeToSiteCounter,
+  updateSiteCounterInFirestore,
   saveRequestToFirestore,
   updateRequestInFirestore,
   saveUserToFirestore,
@@ -322,10 +324,45 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return granted;
   }, []);
 
-  // 6.5 Analytics & Site Visitor Counter
-  const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
+  // 6.5 Analytics & Site Visitor Counter with Local Cache
+  const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(() => {
+    try {
+      const saved = localStorage.getItem('antalya_visitor_stats_cache');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+
+  const updateVisitorStatsState = useCallback((newStats: Partial<VisitorStats> | null) => {
+    if (!newStats) return;
+    setVisitorStats((prev) => {
+      const updated: VisitorStats = {
+        totalVisits: Math.max(prev?.totalVisits || 0, Number(newStats.totalVisits) || 0),
+        uniqueVisitors: Math.max(prev?.uniqueVisitors || 0, Number(newStats.uniqueVisitors) || 0),
+        todayVisits: typeof newStats.todayVisits === 'number' ? newStats.todayVisits : (prev?.todayVisits || 0),
+        todayDate: newStats.todayDate || prev?.todayDate || new Date().toISOString().split('T')[0],
+        lastVisitAt: newStats.lastVisitAt || prev?.lastVisitAt || new Date().toISOString(),
+        activeNow: typeof newStats.activeNow === 'number' ? newStats.activeNow : (prev?.activeNow || 1),
+        recentVisitors: Array.isArray(newStats.recentVisitors) ? newStats.recentVisitors : (prev?.recentVisitors || []),
+      };
+      try {
+        localStorage.setItem('antalya_visitor_stats_cache', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  }, []);
+
+  const lastRecordedRef = React.useRef<{ path: string; time: number }>({ path: '', time: 0 });
 
   const recordSiteVisit = useCallback(async (pagePath?: string) => {
+    const currentPath = pagePath || (typeof window !== 'undefined' ? (window.location.pathname + window.location.hash) || '/' : '/');
+    const now = Date.now();
+    // Debounce duplicate recordings for the exact same path within 1.5s
+    if (lastRecordedRef.current.path === currentPath && now - lastRecordedRef.current.time < 1500) {
+      return;
+    }
+    lastRecordedRef.current = { path: currentPath, time: now };
+
     try {
       let visitorId = '';
       try {
@@ -334,9 +371,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           visitorId = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           localStorage.setItem('antalya_visitor_uuid', visitorId);
         }
-      } catch {}
+      } catch {
+        visitorId = `vid_${Date.now()}`;
+      }
 
-      const currentPath = pagePath || (typeof window !== 'undefined' ? (window.location.pathname + window.location.hash) || '/' : '/');
       const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
       const isTablet = typeof navigator !== 'undefined' && /iPad|Tablet/i.test(navigator.userAgent);
       const device = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
@@ -356,13 +394,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.stats) {
-          setVisitorStats(data.stats);
+          updateVisitorStatsState(data.stats);
         }
       }
     } catch (e) {
       console.debug('Visitor tracking info:', e);
     }
-  }, []);
+  }, [updateVisitorStatsState]);
 
   const resetSiteCounter = useCallback(async (initialVisits = 0) => {
     try {
@@ -374,7 +412,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && data.stats) {
-          setVisitorStats(data.stats);
+          updateVisitorStatsState(data.stats);
+          // Also sync to Cloud Firestore
+          updateSiteCounterInFirestore({
+            totalVisits: data.stats.totalVisits,
+            uniqueVisitors: data.stats.uniqueVisitors,
+            todayVisits: data.stats.todayVisits,
+            todayDate: data.stats.todayDate,
+            lastVisitAt: data.stats.lastVisitAt,
+          }).catch(() => {});
           return true;
         }
       }
@@ -382,7 +428,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Counter reset failed:', e);
     }
     return false;
-  }, []);
+  }, [updateVisitorStatsState]);
 
   // 7. Full Server Sync Callback (Cross-Device API Polling & Sync)
   const syncWithServer = useCallback(async () => {
@@ -432,11 +478,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return merged;
           });
         }
+        if (data.visitorStats && typeof data.visitorStats.totalVisits === 'number') {
+          updateVisitorStatsState(data.visitorStats);
+        }
       }
     } catch (e) {
       console.debug('Server sync status:', e);
     }
-  }, [processIncomingRequests]);
+  }, [processIncomingRequests, updateVisitorStatsState]);
 
   // =========================================================================
   // REAL-TIME FIRESTORE & SERVER SYNC (Cross-Device Cloud Synchronization)
@@ -489,19 +538,34 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     });
 
-    // 2. Also poll Express API as additional resilient fallback every 2 seconds
+    // 2. Real-time Firestore Listener for Site Visitor Counter
+    const unsubscribeSiteCounter = subscribeToSiteCounter((cloudStats) => {
+      if (cloudStats && typeof cloudStats.totalVisits === 'number') {
+        updateVisitorStatsState(cloudStats);
+      }
+    });
+
+    // 3. Also poll Express API as additional resilient fallback every 2 seconds
     syncWithServer();
     const interval = setInterval(syncWithServer, 2000);
 
-    // 3. Record initial site visit for analytics
+    // 4. Record initial site visit for analytics
     recordSiteVisit();
 
     return () => {
       unsubscribeRequests();
       unsubscribeUsers();
+      unsubscribeSiteCounter();
       clearInterval(interval);
     };
-  }, [processIncomingRequests, syncWithServer, recordSiteVisit]);
+  }, [processIncomingRequests, syncWithServer, recordSiteVisit, updateVisitorStatsState]);
+
+  // Record site visit when navigating between views
+  useEffect(() => {
+    if (currentView) {
+      recordSiteVisit(`/${currentView}`);
+    }
+  }, [currentView, recordSiteVisit]);
 
   const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'courier_register' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
