@@ -585,9 +585,13 @@ export const CustomerRequestForm: React.FC = () => {
                 <span className="text-xs font-bold text-emerald-200">
                   {estimate.distanceKm} km • ~{estimate.durationMins} dk
                 </span>
-                {estimate.distanceKm > 7 && (
+                {estimate.isSameDistrict ? (
+                  <span className="text-[11px] text-emerald-300 block font-semibold">
+                    Aynı ilçe içi teslimat (Baz Fiyat)
+                  </span>
+                ) : (
                   <span className="text-[11px] text-amber-300 block font-semibold">
-                    7 km üzeri: +{estimate.distanceExtra} ₺ (10 ₺/km)
+                    Farklı ilçe teslimatı: +{estimate.districtDiffExtra} ₺
                   </span>
                 )}
               </div>
@@ -600,9 +604,13 @@ export const CustomerRequestForm: React.FC = () => {
                 </span>
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="text-3xl font-black text-emerald-400">{estimate.price} ₺</span>
-                  {estimate.distanceExtra > 0 && (
-                    <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2 py-0.5 rounded-lg font-medium">
-                      Taban {estimate.basePrice} ₺ + {estimate.extraKm} km mesafe farkı (+{estimate.distanceExtra} ₺)
+                  {estimate.isSameDistrict ? (
+                    <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg font-medium">
+                      Aynı ilçe ({senderDistrict}) • Baz Fiyat ({estimate.basePrice} ₺)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-amber-300 bg-amber-950/70 border border-amber-600/60 px-2.5 py-0.5 rounded-lg font-medium">
+                      Taban {estimate.basePrice} ₺ + Farklı ilçe farkı (+{estimate.districtDiffExtra} ₺)
                     </span>
                   )}
                 </div>

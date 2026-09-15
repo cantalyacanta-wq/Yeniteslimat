@@ -195,8 +195,10 @@ export const DISTRICT_DISTANCE_MATRIX: Record<DistrictName, Record<DistrictName,
  * Kural:
  * - Yemek / Restoran: 100 TL (Taban)
  * - Diğer Tüm Gönderiler: 150 TL (Taban)
- * - Mesafe Kuralı: Alış ve teslim adresi arasındaki mesafe 7 km'den çok ise 7 km üzerindeki her km için paket ücretine 10 TL eklenir.
- * - Kurye Hakedişi: Tam Ücret (Taban + Mesafe Farkı)
+ * - Aynı İlçeden Alım ve Teslimat: Baz fiyat geçerlidir (fark 0 TL).
+ * - Farklı İlçelerden Alım ve Teslimat: Baz fiyata +30 TL ilçe farkı eklenir.
+ * - KM başına mesafe farkı eklenmez.
+ * - Kurye Hakedişi: Tam Ücret
  */
 export function calculateDeliveryEstimate(
   fromDistrict: DistrictName,
@@ -209,10 +211,11 @@ export function calculateDeliveryEstimate(
   const isFood = packageType === 'food';
   const basePrice = isFood ? 100 : 150;
 
-  // Alış ve teslim adresi arasındaki mesafe 7 km'den çok ise km başına 10 TL ekle:
-  const extraKm = km > 7 ? km - 7 : 0;
-  const distanceExtra = extraKm * 10;
-  const totalPrice = basePrice + distanceExtra;
+  // Aynı ilçe vs farklı ilçe kontrolü:
+  // KM bazlı ek ücret kaldırıldı. Aynı ilçede baz fiyat, farklı ilçede +30 TL eklenir.
+  const isSameDistrict = fromDistrict === toDistrict;
+  const districtDiffExtra = isSameDistrict ? 0 : 30;
+  const totalPrice = basePrice + districtDiffExtra;
   const courierEarnings = totalPrice; // Kuryeye tam ücret yansıtılır
 
   // Gerçekçi Moto Kurye Ulaşım Süresi Hesabı:
@@ -237,8 +240,10 @@ export function calculateDeliveryEstimate(
     distanceKm: km,
     durationMins,
     basePrice,
-    extraKm,
-    distanceExtra,
+    isSameDistrict,
+    districtDiffExtra,
+    extraKm: 0,
+    distanceExtra: districtDiffExtra,
     price: totalPrice,
     courierEarnings,
   };
