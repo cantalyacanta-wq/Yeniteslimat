@@ -12,7 +12,6 @@ import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
-import { SiteVisitorCounter } from './components/SiteVisitorCounter';
 import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
@@ -113,18 +112,14 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
 
   return (
     <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 space-y-4">
-        {/* Real-time Public Site Visitor Counter */}
-        <SiteVisitorCounter variant="public" />
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-emerald-900/30">
-          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-            <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
-              <Bike className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
-            <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+          <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
+            <Bike className="w-3.5 h-3.5" />
           </div>
+          <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
+          <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
+        </div>
 
           <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
             <button
@@ -151,7 +146,6 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
             </span>
           </div>
         </div>
-      </div>
     </footer>
   );
 };
