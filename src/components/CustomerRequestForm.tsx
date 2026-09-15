@@ -577,21 +577,17 @@ export const CustomerRequestForm: React.FC = () => {
           {/* Summary & Protected Action Bar */}
           <div className="bg-[#04140f] border border-emerald-600/60 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3 flex-wrap gap-2">
-              <div className="text-xs text-emerald-300">
+              <div className="text-xs text-emerald-300 flex items-center gap-1.5">
                 <span className="font-extrabold text-white text-sm">{senderDistrict}</span> ➔ <span className="font-extrabold text-white text-sm">{receiverDistrict}</span>
               </div>
               <div className="text-right">
-                <span className="text-[11px] text-emerald-400/80 block font-medium">Tahmini Mesafe & Süre</span>
-                <span className="text-xs font-bold text-emerald-200">
-                  {estimate.distanceKm} km • ~{estimate.durationMins} dk
-                </span>
                 {estimate.isSameDistrict ? (
-                  <span className="text-[11px] text-emerald-300 block font-semibold">
-                    Aynı ilçe içi teslimat (Baz Fiyat)
+                  <span className="text-[11px] text-emerald-300 font-semibold px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-lg inline-block">
+                    Aynı İlçe İçi Teslimat (Baz Fiyat)
                   </span>
                 ) : (
-                  <span className="text-[11px] text-amber-300 block font-semibold">
-                    Farklı ilçe teslimatı: +{estimate.districtDiffExtra} ₺
+                  <span className="text-[11px] text-amber-300 font-semibold px-2.5 py-1 bg-amber-950/80 border border-amber-600/60 rounded-lg inline-block">
+                    Farklı İlçe Teslimatı (+{estimate.districtDiffExtra} ₺)
                   </span>
                 )}
               </div>
