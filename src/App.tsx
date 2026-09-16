@@ -28,17 +28,19 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="w-full max-w-full overflow-hidden">
-      {/* Home View - Always the Classic Homepage */}
+      {/* Home View - If courier, always show CourierPool */}
       {currentView === 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          <HeroIntro />
+          {currentUser.role === 'courier' ? <CourierPool /> : <HeroIntro />}
         </main>
       )}
 
       {/* Dynamic Tab Views */}
       {currentView !== 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          {currentView === 'customer' && <CustomerRequestForm />}
+          {currentView === 'customer' && (
+            currentUser.role === 'courier' ? <CourierPool /> : <CustomerRequestForm />
+          )}
           {currentView === 'courier' && (
             currentUser.role === 'courier' || currentUser.role === 'admin' ? (
               <CourierPool />

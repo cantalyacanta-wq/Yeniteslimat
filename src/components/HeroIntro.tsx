@@ -35,6 +35,7 @@ import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
 import { ReceiptModal } from './ReceiptModal';
+import { CourierPool } from './CourierPool';
 
 export const HeroIntro: React.FC = () => {
   const {
@@ -48,6 +49,11 @@ export const HeroIntro: React.FC = () => {
     rateDelivery,
     logout,
   } = useDelivery();
+
+  // If a courier is logged in, directly show CourierPool and never customer interfaces
+  if (currentUser.role === 'courier') {
+    return <CourierPool />;
+  }
 
   const [confirmCancelModal, setConfirmCancelModal] = useState<DeliveryRequest | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -129,7 +135,7 @@ export const HeroIntro: React.FC = () => {
     }
   };
 
-  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && Boolean(currentUser.email);
+  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && currentUser.role === 'customer' && Boolean(currentUser.email);
 
   // Filter history items for logged-in customer
   const filteredDeliveredOrders = deliveredOrders.filter((req) => {

@@ -280,6 +280,30 @@ export const CustomerRequestForm: React.FC = () => {
     }
   };
 
+  if (currentUser.role === 'courier') {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
+          <Bike className="w-7 h-7" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-extrabold text-white">Kurye Paneli Aktif</h3>
+          <p className="text-xs text-emerald-300/80">
+            Kuryeler yeni paket gönderim talebi oluşturamaz. Gelen siparişleri kabul etmek ve yönetmek için Kurye Havuzu'nu kullanınız.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCurrentView('courier')}
+          className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+        >
+          <Bike className="w-4 h-4" />
+          <span>Kurye Havuzuna Git</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6">
       

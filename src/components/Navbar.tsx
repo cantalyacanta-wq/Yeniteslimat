@@ -83,7 +83,13 @@ export const Navbar: React.FC = () => {
           {/* Logo and Brand Title */}
           <div
             onClick={() => {
-              setCurrentView('home');
+              if (currentUser.role === 'courier') {
+                setCurrentView('courier');
+              } else if (currentUser.role === 'admin') {
+                setCurrentView('admin');
+              } else {
+                setCurrentView('home');
+              }
             }}
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none group min-w-0 shrink"
           >
