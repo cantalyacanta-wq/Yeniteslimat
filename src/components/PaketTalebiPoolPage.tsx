@@ -20,6 +20,9 @@ import {
   X,
   FileText,
   ShieldCheck,
+  History,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
@@ -76,12 +79,27 @@ export const PaketTalebiPoolPage: React.FC = () => {
     !currentUser.name?.includes('Ahmet Yılmaz') &&
     !currentUser.name?.includes('Mustafa Demir');
 
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+
   // If user accepted an order, check if it's currently in their active list
   const activeUserDeliveries = requests.filter(
     (r) =>
       (r.status === 'courier_assigned' || r.status === 'picked_up') &&
       ((r.assignedCourier && r.assignedCourier.id === currentUser.id) ||
         (r.courier && r.courier.id === currentUser.id) ||
+        (Boolean(currentUser.phone) &&
+          (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
+        currentUser.role === 'admin')
+  );
+
+  // Past completed deliveries strictly by THIS courier (isolated)
+  const myCompletedDeliveries = requests.filter(
+    (r) =>
+      r.status === 'delivered' &&
+      ((r.assignedCourier && r.assignedCourier.id === currentUser.id) ||
+        (r.courier && r.courier.id === currentUser.id) ||
+        (Boolean(currentUser.phone) &&
+          (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
         currentUser.role === 'admin')
   );
 
@@ -538,6 +556,71 @@ export const PaketTalebiPoolPage: React.FC = () => {
             })
           )}
         </div>
+
+        {/* COURIER PAST DELIVERIES (DATA ISOLATED: ONLY THIS COURIER'S DELIVERIES) */}
+        {isCourier && (
+          <div className="bg-[#021f19] border border-emerald-800/80 rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-4">
+            <button
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              className="w-full flex items-center justify-between gap-3 text-left cursor-pointer transition group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-950 border border-emerald-700/60 text-emerald-400 flex items-center justify-center">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-extrabold text-white group-hover:text-emerald-300 transition">
+                      Tamamlanan Teslimatlarım ({myCompletedDeliveries.length})
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-900/80 text-emerald-300 text-[10px] font-bold">
+                      Özel Kurye Kayıtları
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-300/70 mt-0.5">
+                    Yalnızca sizin tarafınızdan teslim edilen siparişler listelenir. Diğer kuryelerin teslimatları gizlidir.
+                  </p>
+                </div>
+              </div>
+              <div className="p-2 rounded-xl bg-[#011410] border border-emerald-800 text-emerald-400">
+                {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </div>
+            </button>
+
+            {showHistory && (
+              <div className="pt-3 border-t border-emerald-800/60 space-y-2.5 animate-in fade-in duration-200">
+                {myCompletedDeliveries.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-emerald-300/70 bg-[#011410] rounded-2xl border border-emerald-800/50">
+                    Henüz tamamladığınız bir teslimat bulunmuyor. Havuzdan talep kabul edip teslim ettikçe burada listelenecektir.
+                  </div>
+                ) : (
+                  myCompletedDeliveries.map((req) => (
+                    <div
+                      key={req.id}
+                      className="p-3.5 rounded-2xl bg-[#011813] border border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-amber-400">#{req.trackingCode}</span>
+                          <span className="font-extrabold text-white">{req.packageName}</span>
+                          <span className="text-emerald-400 font-bold">✓ Teslim Edildi</span>
+                        </div>
+                        <p className="text-emerald-300/75">
+                          {req.sender.district} ➔ {req.receiver.district} ({req.receiver.contactName})
+                        </p>
+                      </div>
+                      <div className="text-right sm:text-right flex sm:flex-col items-center sm:items-end justify-between">
+                        <span className="text-[11px] text-emerald-400/80">Kurye Kazancı:</span>
+                        <span className="text-emerald-300 font-black text-sm">+{req.courierEarnings || Math.round(req.price * 0.85)} ₺</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer with Terms and KVKK links */}
         <div className="pt-8 pb-4 text-center text-xs text-emerald-400/70 border-t border-emerald-900/40 mt-8 space-y-2">

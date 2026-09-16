@@ -92,8 +92,16 @@ export const CourierPool: React.FC = () => {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullQuery)}`;
   };
 
-  // Completed deliveries
-  const completedDeliveries = requests.filter((r) => r.status === 'delivered');
+  // Completed deliveries - ONLY for this specific courier (or admin)
+  const completedDeliveries = requests.filter(
+    (r) =>
+      r.status === 'delivered' &&
+      (r.assignedCourier?.id === currentUser.id ||
+        r.courier?.id === currentUser.id ||
+        (Boolean(currentUser.phone) &&
+          (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
+        currentUser.role === 'admin')
+  );
 
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6 animate-in fade-in duration-300">
@@ -532,13 +540,23 @@ export const CourierPool: React.FC = () => {
       {activeTab === 'completed' && (
         <div className="space-y-4">
           <div className="bg-[#021d17] p-4 rounded-2xl border border-emerald-800/60 text-white">
-            <h3 className="font-extrabold text-sm sm:text-base">Tamamlanan Teslimatlar ({completedDeliveries.length})</h3>
-            <p className="text-xs text-emerald-300/80">Başarıyla alıcıya ulaştırılan geçmiş teslimatlar.</p>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h3 className="font-extrabold text-sm sm:text-base">Tamamlanan Teslimatlarım ({completedDeliveries.length})</h3>
+              <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg">
+                Gizlilik Korumalı: Sadece Size Ait Teslimatlar
+              </span>
+            </div>
+            <p className="text-xs text-emerald-300/80 mt-1">
+              Yalnızca sizin tarafınızdan teslim edilen siparişler listelenir. Diğer kuryelerin teslimatları gizlidir.
+            </p>
           </div>
 
           {completedDeliveries.length === 0 ? (
-            <div className="bg-[#021f19] rounded-3xl border border-emerald-800/60 p-8 text-center text-white">
-              <p className="text-xs text-emerald-300/80">Henüz tamamlanmış teslimat bulunmuyor.</p>
+            <div className="bg-[#021f19] rounded-3xl border border-emerald-800/60 p-8 text-center text-white space-y-1">
+              <p className="text-sm font-bold text-white">Henüz tamamladığınız bir teslimatınız bulunmuyor.</p>
+              <p className="text-xs text-emerald-300/70">
+                Havuzdan sipariş kabul edip teslim ettikçe geçmiş teslimatlarınız ve kazançlarınız burada listelenecektir.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">

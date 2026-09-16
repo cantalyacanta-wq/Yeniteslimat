@@ -62,18 +62,27 @@ export const HeroIntro: React.FC = () => {
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
   const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
 
-  // Active customer orders (cross-session & cross-device matching)
-  const customerOrders = requests.filter(
-    (r) =>
-      r &&
-      r.status !== 'cancelled' &&
-      (r.id === lastSavedOrderId ||
-        r.senderUserId === currentUser.id ||
-        (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone) ||
-        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone) ||
-        (currentUser.id === 'user-guest-01' && Boolean(r.senderUserId?.startsWith('user-cust-'))) ||
-        currentUser.role === 'admin')
-  );
+  // Active customer orders (strictly isolated to the current user's own orders)
+  const customerOrders = requests.filter((r) => {
+    if (!r || r.status === 'cancelled') return false;
+    if (currentUser.role === 'admin') return true;
+
+    // If logged in as customer or user
+    if (currentUser.id !== 'user-guest-01') {
+      const matchesUserId = r.senderUserId === currentUser.id;
+      const matchesPhone = Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone;
+      const matchesEmail = Boolean(currentUser.email) && r.sender?.contactName === currentUser.name;
+      const matchesSessionOrder = (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone);
+      return matchesUserId || matchesPhone || matchesEmail || matchesSessionOrder;
+    }
+
+    // Guest user (not logged in): strictly only orders created in this device / browser session
+    return (
+      (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+      (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+    );
+  });
 
   const activeOrders = customerOrders.filter((r) => r.status !== 'delivered');
   const deliveredOrders = customerOrders.filter((r) => r.status === 'delivered');

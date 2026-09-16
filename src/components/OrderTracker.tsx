@@ -25,6 +25,7 @@ import { AntalyaMap } from './AntalyaMap';
 export const OrderTracker: React.FC = () => {
   const { 
     requests, 
+    currentUser,
     selectedTrackingId, 
     setSelectedTrackingId, 
     rateDelivery,
@@ -39,10 +40,50 @@ export const OrderTracker: React.FC = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
-  // Active or selected order
-  const currentOrder = requests.find(
-    (r) => r.id === selectedTrackingId || r.trackingCode.toLowerCase() === searchQuery.trim().toLowerCase()
-  ) || requests[0];
+  // Restore last customer order ID from storage
+  const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
+
+  // Active or selected order - safely scoped to the user's own orders or searched code
+  const currentOrder = React.useMemo(() => {
+    // 1. Explicitly searched code
+    if (searchQuery.trim()) {
+      const found = requests.find(
+        (r) => r.trackingCode.toLowerCase() === searchQuery.trim().toLowerCase() || r.id === searchQuery.trim()
+      );
+      if (found) return found;
+    }
+
+    // 2. Explicitly selected tracking id
+    if (selectedTrackingId) {
+      const found = requests.find((r) => r.id === selectedTrackingId);
+      if (found) return found;
+    }
+
+    // 3. Current user's own active order
+    if (currentUser.id !== 'user-guest-01') {
+      const userActive = requests.find(
+        (r) =>
+          (r.senderUserId === currentUser.id ||
+            (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone)) &&
+          r.status !== 'delivered' &&
+          r.status !== 'cancelled'
+      );
+      if (userActive) return userActive;
+    }
+
+    // 4. Session's last created order
+    if (lastSavedOrderId) {
+      const saved = requests.find((r) => r.id === lastSavedOrderId);
+      if (saved) return saved;
+    }
+
+    // Admin fallback only
+    if (currentUser.role === 'admin' && requests.length > 0) {
+      return requests[0];
+    }
+
+    return null;
+  }, [requests, selectedTrackingId, searchQuery, currentUser, lastSavedOrderId]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

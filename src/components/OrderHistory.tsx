@@ -17,12 +17,55 @@ import { useDelivery } from '../context/DeliveryContext';
 import { ReceiptModal } from './ReceiptModal';
 
 export const OrderHistory: React.FC = () => {
-  const { requests, setSelectedTrackingId, setCurrentView } = useDelivery();
+  const { requests, currentUser, setSelectedTrackingId, setCurrentView } = useDelivery();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
 
-  const filtered = requests.filter((req) => {
+  // Restore last customer order ID & contact phone for guest sessions
+  const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
+  const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
+
+  // Strict data isolation:
+  // - Couriers only see their own deliveries (assigned or delivered)
+  // - Customers only see their own placed orders
+  // - Admin can inspect all orders
+  const userSpecificRequests = React.useMemo(() => {
+    if (currentUser.role === 'admin') {
+      return requests;
+    }
+
+    if (currentUser.role === 'courier') {
+      return requests.filter(
+        (r) =>
+          r.assignedCourier?.id === currentUser.id ||
+          r.courier?.id === currentUser.id ||
+          (Boolean(currentUser.phone) &&
+            (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone))
+      );
+    }
+
+    // Customer or Guest:
+    if (currentUser.id !== 'user-guest-01') {
+      return requests.filter((r) => {
+        const matchesUserId = r.senderUserId === currentUser.id;
+        const matchesPhone = Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone;
+        const matchesEmail = Boolean(currentUser.email) && r.sender?.contactName === currentUser.name;
+        const matchesSession = (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+          (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone);
+        return matchesUserId || matchesPhone || matchesEmail || matchesSession;
+      });
+    }
+
+    // Guest user: strictly only orders created in this browser session
+    return requests.filter(
+      (r) =>
+        (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+    );
+  }, [requests, currentUser, lastSavedOrderId, lastSavedPhone]);
+
+  const filtered = userSpecificRequests.filter((req) => {
     if (filterStatus !== 'all' && req.status !== filterStatus) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -60,12 +103,25 @@ export const OrderHistory: React.FC = () => {
       {/* Header */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <History className="w-5 h-5 text-slate-700" />
-            Tüm Siparişler ve Teslimat Geçmişi
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Oluşturulan tüm Antalya içi kurye paket talepleri ve irsaliye belgeleri.
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <History className="w-5 h-5 text-slate-700" />
+              {currentUser.role === 'courier'
+                ? `Kurye Teslimat Geçmişim (${currentUser.name})`
+                : currentUser.role === 'admin'
+                ? 'Tüm Siparişler ve Teslimat Geçmişi (Yönetici Paneli)'
+                : `Sipariş ve Teslimat Geçmişim (${currentUser.name})`}
+            </h2>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+              Kişiye Özel Kayıtlar
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            {currentUser.role === 'courier'
+              ? 'Yalnızca sizin üstlendiğiniz ve alıcıya ulaştırdığınız kurye teslimatları listelenmektedir. Diğer kuryelerin geçmiş teslimatları gizlidir.'
+              : currentUser.role === 'admin'
+              ? 'Yönetici erişimi: Sistem genelindeki tüm siparişler ve teslimat hareketleri.'
+              : 'Yalnızca tarafınızca oluşturulan ve size ait teslimat kayıtları listelenmektedir. Diğer müşterilerin siparişleri gizlidir.'}
           </p>
         </div>
 
@@ -87,7 +143,7 @@ export const OrderHistory: React.FC = () => {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-hidden font-semibold cursor-pointer"
           >
-            <option value="all">Tüm Durumlar ({requests.length})</option>
+            <option value="all">Tüm Durumlar ({userSpecificRequests.length})</option>
             <option value="pending_pool">Havuzda Bekleyen</option>
             <option value="picked_up">Dağıtımda Olan</option>
             <option value="delivered">Teslim Edilenler</option>

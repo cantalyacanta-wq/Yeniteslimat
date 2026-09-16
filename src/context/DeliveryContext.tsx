@@ -1635,17 +1635,43 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Filtered queries
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
+  
+  // Active deliveries for current courier (or admin)
   const activeCourierDeliveries = requests.filter(
     (r) =>
       (r.assignedCourier?.id === currentUser.id || 
-       currentUser.role === 'admin' || 
-       (currentUser.role === 'courier' && (!r.assignedCourier || r.assignedCourier.id === currentUser.id))) &&
+       r.courier?.id === currentUser.id ||
+       (Boolean(currentUser.phone) && (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
+       currentUser.role === 'admin') &&
       (r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination')
   );
 
-  const myCustomerOrders = requests.filter(
-    (r) => r.senderUserId === currentUser.id || currentUser.role === 'admin'
+  // Completed past deliveries for current courier (or admin)
+  const myCourierDeliveries = requests.filter(
+    (r) =>
+      r.status === 'delivered' &&
+      (r.assignedCourier?.id === currentUser.id ||
+       r.courier?.id === currentUser.id ||
+       (Boolean(currentUser.phone) && (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
+       currentUser.role === 'admin')
   );
+
+  // Orders created by THIS customer (or admin)
+  const myCustomerOrders = requests.filter((r) => {
+    if (currentUser.role === 'admin') return true;
+    if (currentUser.id !== 'user-guest-01') {
+      return (
+        r.senderUserId === currentUser.id ||
+        (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone)
+      );
+    }
+    const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
+    const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
+    return (
+      (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+      (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+    );
+  });
 
   const courierUsers = users.filter((u) => u.role === 'courier');
   const customerUsers = users.filter((u) => u.role === 'customer');
@@ -1655,9 +1681,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (r) => r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination'
   ).length;
 
-  const courierEarningsToday = requests
-    .filter((r) => r.assignedCourier?.id === currentUser.id && r.status === 'delivered')
-    .reduce((acc, curr) => acc + (curr.courierEarnings || 0), 0);
+  // Earnings computed solely from THIS courier's completed deliveries
+  const courierEarningsToday = myCourierDeliveries.reduce(
+    (acc, curr) => acc + (curr.courierEarnings || 0),
+    0
+  );
 
   return (
     <DeliveryContext.Provider
