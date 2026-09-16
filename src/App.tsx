@@ -12,8 +12,7 @@ import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
-import { CustomerSupportModal } from './components/CustomerSupportModal';
-import { Bike, ShieldCheck, Zap, FileText, Bot, Sparkles } from 'lucide-react';
+import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -154,14 +153,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
 };
 
 const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
-  const {
-    setCurrentView,
-    recordSiteVisit,
-    isAiSupportOpen,
-    closeAiSupport,
-    openAiSupport,
-    currentUser,
-  } = useDelivery();
+  const { setCurrentView, recordSiteVisit } = useDelivery();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
   const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
@@ -188,42 +180,6 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
     <>
       {/* Global Auth Modal */}
       <AuthModal />
-
-      {/* 7/24 AI Customer Service & Site Usage Modal */}
-      <CustomerSupportModal
-        isOpen={isAiSupportOpen}
-        onClose={closeAiSupport}
-      />
-
-      {/* Floating 7/24 AI Customer Service Button (for customers / visitors on all views except courier) */}
-      {currentUser.role !== 'courier' && !isPaketTalebiRoute && !isAiSupportOpen && (
-        <div className="fixed bottom-5 right-4 sm:right-6 z-40 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <button
-            type="button"
-            id="floating-ai-customer-service-btn"
-            onClick={openAiSupport}
-            className="group relative flex items-center gap-2.5 sm:gap-3 px-4 py-3 sm:px-5 sm:py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-full shadow-2xl shadow-emerald-500/40 border border-emerald-400/50 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-            title="7/24 Yapay Zeka Müşteri Hizmetleri"
-          >
-            <span className="relative flex items-center justify-center">
-              <span className="w-3.5 h-3.5 rounded-full bg-emerald-300 animate-ping absolute"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-200 relative"></span>
-            </span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0">
-              <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="text-left">
-              <div className="text-[10px] uppercase font-extrabold text-emerald-100 tracking-wider flex items-center gap-1">
-                <span>7/24 Canlı Destek</span>
-                <Sparkles className="w-3 h-3 text-amber-300 animate-spin-slow" />
-              </div>
-              <div className="text-xs sm:text-sm font-black text-white leading-tight whitespace-nowrap">
-                Müşteri Hizmetleri (AI)
-              </div>
-            </div>
-          </button>
-        </div>
-      )}
 
       {/* Dedicated Standalone /pakettalebi Route View */}
       {isPaketTalebiRoute ? (

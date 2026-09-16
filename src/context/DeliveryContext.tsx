@@ -53,12 +53,6 @@ interface DeliveryContextType {
   openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register', notice?: string | null) => void;
   closeAuthModal: () => void;
 
-  // AI Customer Support Modal Controls
-  isAiSupportOpen: boolean;
-  setIsAiSupportOpen: (open: boolean) => void;
-  openAiSupport: () => void;
-  closeAiSupport: () => void;
-
   // Requests
   requests: DeliveryRequest[];
   couriers: CourierInfo[];
@@ -278,15 +272,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
-
-  // 6. Global AI Customer Support Modal State
-  const [isAiSupportOpen, setIsAiSupportOpen] = useState<boolean>(false);
-  const openAiSupport = useCallback(() => {
-    setIsAiSupportOpen(true);
-  }, []);
-  const closeAiSupport = useCallback(() => {
-    setIsAiSupportOpen(false);
-  }, []);
 
   // Ref to track active user and requests for real-time notifications & vibration across devices
   const currentUserRef = React.useRef<UserAccount>(currentUser);
@@ -1767,10 +1752,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAuthModalNotice,
         openAuthModal,
         closeAuthModal,
-        isAiSupportOpen,
-        setIsAiSupportOpen,
-        openAiSupport,
-        closeAiSupport,
         requests,
         couriers,
         activeCourier,
