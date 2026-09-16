@@ -93,6 +93,7 @@ interface DeliveryContextType {
   // Filtered lists
   poolRequests: DeliveryRequest[];
   activeCourierDeliveries: DeliveryRequest[];
+  myCourierDeliveries: DeliveryRequest[];
   myCustomerOrders: DeliveryRequest[];
   activeStats: {
     poolCount: number;
@@ -1636,40 +1637,73 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Filtered queries
   const poolRequests = requests.filter((r) => r.status === 'pending_pool');
   
-  // Active deliveries for current courier (or admin)
+  // Helper to verify if an order strictly belongs to a specific courier
+  const isOrderAssignedToCourier = (r: DeliveryRequest, user: UserAccount): boolean => {
+    if (!r || !user) return false;
+    const cId = user.id;
+
+    // Strict ID match
+    if (r.assignedCourier?.id && r.assignedCourier.id === cId) return true;
+    if (r.courier?.id && r.courier.id === cId) return true;
+
+    // Strict email match (case-insensitive)
+    if (user.email && user.email.trim()) {
+      const uEmail = user.email.trim().toLowerCase();
+      if (r.assignedCourier?.email && r.assignedCourier.email.trim().toLowerCase() === uEmail) return true;
+      if (r.courier?.email && r.courier.email.trim().toLowerCase() === uEmail) return true;
+    }
+
+    // Strict phone match (normalized digits, matching last 10 digits)
+    if (user.phone && user.phone.trim()) {
+      const uPhone = user.phone.replace(/\D/g, '').slice(-10);
+      if (uPhone.length >= 7) {
+        const assignedPhone = r.assignedCourier?.phone ? r.assignedCourier.phone.replace(/\D/g, '').slice(-10) : '';
+        const courierPhone = r.courier?.phone ? r.courier.phone.replace(/\D/g, '').slice(-10) : '';
+        if (assignedPhone && assignedPhone === uPhone) return true;
+        if (courierPhone && courierPhone === uPhone) return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Active deliveries for current courier (strictly their own assigned orders)
   const activeCourierDeliveries = requests.filter(
     (r) =>
-      (r.assignedCourier?.id === currentUser.id || 
-       r.courier?.id === currentUser.id ||
-       (Boolean(currentUser.phone) && (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
-       currentUser.role === 'admin') &&
+      isOrderAssignedToCourier(r, currentUser) &&
       (r.status === 'courier_assigned' || r.status === 'picked_up' || r.status === 'near_destination')
   );
 
-  // Completed past deliveries for current courier (or admin)
+  // Completed past deliveries for current courier (strictly this courier's completed orders)
   const myCourierDeliveries = requests.filter(
     (r) =>
       r.status === 'delivered' &&
-      (r.assignedCourier?.id === currentUser.id ||
-       r.courier?.id === currentUser.id ||
-       (Boolean(currentUser.phone) && (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
-       currentUser.role === 'admin')
+      isOrderAssignedToCourier(r, currentUser)
   );
 
-  // Orders created by THIS customer (or admin)
+  // Orders created by THIS customer (strictly isolated for non-admin)
   const myCustomerOrders = requests.filter((r) => {
     if (currentUser.role === 'admin') return true;
     if (currentUser.id !== 'user-guest-01') {
-      return (
-        r.senderUserId === currentUser.id ||
-        (Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone)
-      );
+      const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
+      const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
+      const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
+
+      if (r.senderUserId && r.senderUserId === currentUser.id) return true;
+      if (uPhone && uPhone.length >= 7) {
+        const sPhone = r.sender?.contactPhone ? r.sender.contactPhone.replace(/\D/g, '').slice(-10) : '';
+        if (sPhone && sPhone === uPhone) return true;
+      }
+      if (uEmail && (r as any).senderEmail && (r as any).senderEmail.trim().toLowerCase() === uEmail) return true;
+      if (uName && uName !== 'yeni müşteri' && uName !== 'müşteri' && r.sender?.contactName?.trim().toLowerCase() === uName) return true;
+      return false;
     }
     const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
     const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
+    const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
     return (
       (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-      (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+      (Boolean(pPhone) && r.sender?.contactPhone && r.sender.contactPhone.replace(/\D/g, '').slice(-10) === pPhone)
     );
   });
 
@@ -1747,6 +1781,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         resetSiteCounter,
         poolRequests,
         activeCourierDeliveries,
+        myCourierDeliveries,
         myCustomerOrders,
         activeStats: {
           poolCount: poolRequests.length,

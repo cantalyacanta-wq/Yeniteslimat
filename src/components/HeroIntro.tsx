@@ -69,18 +69,25 @@ export const HeroIntro: React.FC = () => {
 
     // If logged in as customer or user
     if (currentUser.id !== 'user-guest-01') {
-      const matchesUserId = r.senderUserId === currentUser.id;
-      const matchesPhone = Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone;
-      const matchesEmail = Boolean(currentUser.email) && r.sender?.contactName === currentUser.name;
-      const matchesSessionOrder = (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone);
-      return matchesUserId || matchesPhone || matchesEmail || matchesSessionOrder;
+      const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
+      const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
+      const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
+
+      if (r.senderUserId && r.senderUserId === currentUser.id) return true;
+      if (uPhone && uPhone.length >= 7) {
+        const sPhone = r.sender?.contactPhone ? r.sender.contactPhone.replace(/\D/g, '').slice(-10) : '';
+        if (sPhone && sPhone === uPhone) return true;
+      }
+      if (uEmail && (r as any).senderEmail && (r as any).senderEmail.trim().toLowerCase() === uEmail) return true;
+      if (uName && uName !== 'yeni müşteri' && uName !== 'müşteri' && r.sender?.contactName?.trim().toLowerCase() === uName) return true;
+      return false;
     }
 
     // Guest user (not logged in): strictly only orders created in this device / browser session
+    const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
     return (
       (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-      (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+      (Boolean(pPhone) && r.sender?.contactPhone && r.sender.contactPhone.replace(/\D/g, '').slice(-10) === pPhone)
     );
   });
 
@@ -574,7 +581,26 @@ export const HeroIntro: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 self-end sm:self-center">
+          <div className="flex items-center gap-2.5 flex-wrap self-end sm:self-center">
+            {/* Past Deliveries Button */}
+            <button
+              type="button"
+              id="customer-past-deliveries-button"
+              onClick={() => {
+                const el = document.getElementById('customer-past-deliveries-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                  setCurrentView('history');
+                }
+              }}
+              className="px-4 py-3.5 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-600/70 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md shrink-0"
+              title="Geçmiş Teslimatları Görüntüle"
+            >
+              <History className="w-4 h-4 text-emerald-400" />
+              <span>Geçmiş Teslimatlarım ({deliveredOrders.length})</span>
+            </button>
+
             {isUserLoggedIn && (
               <button
                 type="button"
@@ -597,14 +623,14 @@ export const HeroIntro: React.FC = () => {
           </div>
         </div>
 
-        {/* Past Deliveries List Section (Eski Teslimatlar) */}
-        <div className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-5 text-white">
+        {/* Past Deliveries List Section (Geçmiş Teslimatlar) */}
+        <div id="customer-past-deliveries-section" className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-5 text-white">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
             <div className="flex items-center gap-2.5">
               <History className="w-5 h-5 text-emerald-400" />
               <h2 className="text-base sm:text-lg font-extrabold text-white">
-                Eski Teslimatlarım ({deliveredOrders.length})
+                Geçmiş Teslimatlarım ({deliveredOrders.length})
               </h2>
             </div>
 

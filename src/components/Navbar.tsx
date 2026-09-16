@@ -3,6 +3,8 @@ import {
   Bike,
   Shield,
   LogOut,
+  Package,
+  History,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -34,6 +36,25 @@ export const Navbar: React.FC = () => {
           icon: Bike,
           badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
           badgeColor: 'bg-amber-500 text-white font-extrabold animate-pulse',
+        },
+      ];
+    }
+
+    if (currentUser.role === 'customer') {
+      return [
+        {
+          id: 'customer',
+          label: 'Kurye Çağır',
+          icon: Package,
+          badge: null,
+          badgeColor: '',
+        },
+        {
+          id: 'history',
+          label: 'Geçmiş Teslimatlarım',
+          icon: History,
+          badge: activeStats.myOrdersCount > 0 ? activeStats.myOrdersCount : null,
+          badgeColor: 'bg-emerald-600 text-white font-bold',
         },
       ];
     }

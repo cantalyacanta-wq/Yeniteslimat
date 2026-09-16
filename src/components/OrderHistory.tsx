@@ -10,7 +10,9 @@ import {
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  Bike
+  Bike,
+  Plus,
+  Package
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -36,32 +38,48 @@ export const OrderHistory: React.FC = () => {
     }
 
     if (currentUser.role === 'courier') {
-      return requests.filter(
-        (r) =>
-          r.assignedCourier?.id === currentUser.id ||
-          r.courier?.id === currentUser.id ||
-          (Boolean(currentUser.phone) &&
-            (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone))
-      );
+      const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
+      const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
+      return requests.filter((r) => {
+        if (r.assignedCourier?.id === currentUser.id || r.courier?.id === currentUser.id) return true;
+        if (uEmail && (r.assignedCourier?.email?.trim().toLowerCase() === uEmail || r.courier?.email?.trim().toLowerCase() === uEmail)) return true;
+        if (uPhone && uPhone.length >= 7) {
+          const aPhone = r.assignedCourier?.phone ? r.assignedCourier.phone.replace(/\D/g, '').slice(-10) : '';
+          const cPhone = r.courier?.phone ? r.courier.phone.replace(/\D/g, '').slice(-10) : '';
+          if (aPhone === uPhone || cPhone === uPhone) return true;
+        }
+        return false;
+      });
     }
 
     // Customer or Guest:
     if (currentUser.id !== 'user-guest-01') {
+      const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
+      const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
+      const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
+
       return requests.filter((r) => {
-        const matchesUserId = r.senderUserId === currentUser.id;
-        const matchesPhone = Boolean(currentUser.phone) && r.sender?.contactPhone === currentUser.phone;
-        const matchesEmail = Boolean(currentUser.email) && r.sender?.contactName === currentUser.name;
-        const matchesSession = (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-          (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone);
-        return matchesUserId || matchesPhone || matchesEmail || matchesSession;
+        // 1. Direct owner user ID match
+        if (r.senderUserId && r.senderUserId === currentUser.id) return true;
+        // 2. Normalized phone match (last 10 digits)
+        if (uPhone && uPhone.length >= 7) {
+          const sPhone = r.sender?.contactPhone ? r.sender.contactPhone.replace(/\D/g, '').slice(-10) : '';
+          if (sPhone && sPhone === uPhone) return true;
+        }
+        // 3. Email match
+        if (uEmail && (r as any).senderEmail && (r as any).senderEmail.trim().toLowerCase() === uEmail) return true;
+        // 4. Exact customer name match (unless generic)
+        if (uName && uName !== 'yeni müşteri' && uName !== 'müşteri' && r.sender?.contactName?.trim().toLowerCase() === uName) return true;
+        return false;
       });
     }
 
     // Guest user: strictly only orders created in this browser session
+    const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
     return requests.filter(
       (r) =>
         (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-        (Boolean(lastSavedPhone) && r.sender?.contactPhone === lastSavedPhone)
+        (Boolean(pPhone) && r.sender?.contactPhone && r.sender.contactPhone.replace(/\D/g, '').slice(-10) === pPhone)
     );
   }, [requests, currentUser, lastSavedOrderId, lastSavedPhone]);
 
@@ -112,21 +130,28 @@ export const OrderHistory: React.FC = () => {
                 ? 'Tüm Siparişler ve Teslimat Geçmişi (Yönetici Paneli)'
                 : `Sipariş ve Teslimat Geçmişim (${currentUser.name})`}
             </h2>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-              Kişiye Özel Kayıtlar
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             {currentUser.role === 'courier'
-              ? 'Yalnızca sizin üstlendiğiniz ve alıcıya ulaştırdığınız kurye teslimatları listelenmektedir. Diğer kuryelerin geçmiş teslimatları gizlidir.'
+              ? 'Üstlendiğiniz ve tamamladığınız kurye teslimat kayıtlarınız.'
               : currentUser.role === 'admin'
               ? 'Yönetici erişimi: Sistem genelindeki tüm siparişler ve teslimat hareketleri.'
-              : 'Yalnızca tarafınızca oluşturulan ve size ait teslimat kayıtları listelenmektedir. Diğer müşterilerin siparişleri gizlidir.'}
+              : 'Tarafınızca oluşturulan sipariş ve teslimat kayıtlarınız.'}
           </p>
         </div>
 
-        {/* Filter & Search */}
+        {/* Filter & Search & Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          {currentUser.role === 'customer' && (
+            <button
+              type="button"
+              onClick={() => setCurrentView('customer')}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Yeni Kurye Çağır</span>
+            </button>
+          )}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input

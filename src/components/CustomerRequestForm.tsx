@@ -19,7 +19,8 @@ import {
   Navigation,
   Lock,
   Unlock,
-  Check
+  Check,
+  History
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
@@ -296,9 +297,24 @@ export const CustomerRequestForm: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-emerald-300 bg-[#011a14] px-3.5 py-2 rounded-2xl border border-emerald-700/50 self-start sm:self-auto">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Antalya İçi 30-45 Dk Jet Kurye</span>
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+          {currentUser.id !== 'user-guest-01' && (
+            <button
+              type="button"
+              id="customer-form-history-btn"
+              onClick={() => setCurrentView('history')}
+              className="px-4 py-2 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-600/70 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+              title="Geçmiş Teslimatlarımı Görüntüle"
+            >
+              <History className="w-4 h-4 text-emerald-400" />
+              <span>Geçmiş Teslimatlarım</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 text-xs text-emerald-300 bg-[#011a14] px-3.5 py-2 rounded-2xl border border-emerald-700/50">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Antalya İçi 30-45 Dk Jet Kurye</span>
+          </div>
         </div>
       </div>
 

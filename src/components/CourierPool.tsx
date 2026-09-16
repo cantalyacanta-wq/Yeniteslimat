@@ -31,6 +31,7 @@ export const CourierPool: React.FC = () => {
     requests,
     poolRequests,
     activeCourierDeliveries,
+    myCourierDeliveries,
     currentUser,
     isCourierOnline,
     setIsCourierOnline,
@@ -92,16 +93,8 @@ export const CourierPool: React.FC = () => {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullQuery)}`;
   };
 
-  // Completed deliveries - ONLY for this specific courier (or admin)
-  const completedDeliveries = requests.filter(
-    (r) =>
-      r.status === 'delivered' &&
-      (r.assignedCourier?.id === currentUser.id ||
-        r.courier?.id === currentUser.id ||
-        (Boolean(currentUser.phone) &&
-          (r.assignedCourier?.phone === currentUser.phone || r.courier?.phone === currentUser.phone)) ||
-        currentUser.role === 'admin')
-  );
+  // Completed deliveries - strictly for this specific courier
+  const completedDeliveries = myCourierDeliveries;
 
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6 animate-in fade-in duration-300">
@@ -540,15 +533,7 @@ export const CourierPool: React.FC = () => {
       {activeTab === 'completed' && (
         <div className="space-y-4">
           <div className="bg-[#021d17] p-4 rounded-2xl border border-emerald-800/60 text-white">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h3 className="font-extrabold text-sm sm:text-base">Tamamlanan Teslimatlarım ({completedDeliveries.length})</h3>
-              <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg">
-                Gizlilik Korumalı: Sadece Size Ait Teslimatlar
-              </span>
-            </div>
-            <p className="text-xs text-emerald-300/80 mt-1">
-              Yalnızca sizin tarafınızdan teslim edilen siparişler listelenir. Diğer kuryelerin teslimatları gizlidir.
-            </p>
+            <h3 className="font-extrabold text-sm sm:text-base">Tamamlanan Teslimatlarım ({completedDeliveries.length})</h3>
           </div>
 
           {completedDeliveries.length === 0 ? (
