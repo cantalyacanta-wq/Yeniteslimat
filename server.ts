@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
+import { GoogleGenAI } from '@google/genai';
 
 process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT EXCEPTION]', err);
@@ -2040,6 +2041,217 @@ app.post('/api/analytics/reset', (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// GEMINI AI CUSTOMER SUPPORT ENDPOINT
+// ==========================================
+let aiClient: GoogleGenAI | null = null;
+function getGenAIClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!aiClient) {
+    try {
+      aiClient = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+    } catch (e: any) {
+      console.warn('[GEMINI AI CLIENT INIT ERROR]:', e.message);
+      return null;
+    }
+  }
+  return aiClient;
+}
+
+const CUSTOMER_SUPPORT_SYSTEM_INSTRUCTION = `
+Sen Antalya Kurye Express platformunun 7/24 resmi Yapay Zeka Müşteri Hizmetleri ve Rehberlik Asistanısın.
+Adın: "Antalya Kurye AI Asistanı".
+Temel Görevin: Sitemize gelen müşterilere platformun nasıl kullanılacağını, kurye çağırma adımlarını, teslimat sürelerini, fiyatlandırmayı, canlı takibi ve tüm hizmet detaylarını anlaşılır, samimi, saygılı ve adım adım Türkçe anlatmaktır.
+
+SİTE KULLANIM VE HİZMET REHBERİ:
+1. SİTEDE NASIL KURYE ÇAĞRILIR (ADIM ADIM):
+   - 1. Adım: Ana sayfada veya üst menüdeki "Kurye Çağır" ya da "+ Yeni Paket" butonuna tıklayın.
+   - 2. Adım: "Çıkış İlçesi" (paketin nereden alınacağı) ve "Varış İlçesi" (nereye bırakılacağı) seçilir.
+   - 3. Adım: Paket Türü belirlenir (Evrak/Dosya, Küçük Paket, Koli/Kutu, Yemek/Gıda, Çiçek/Hediye, İlaç/Medikal, vb.).
+   - 4. Adım: Teslimat Hızı seçilir (Standart Jet Kurye: 30-45 dk veya Acil VIP Kurye: 15-30 dk).
+   - 5. Adım: Gönderici ve Alıcı ad, telefon numarası ve açık adres detayları yazılır.
+   - 6. Adım: Ödeme Yöntemi seçilir (Kapıda Nakit, Kredi Kartı/POS veya Banka Havale/EFT).
+   - 7. Adım: "Kurye Çağır" butonuna basılır. Sistem hemen size 6 haneli özel Takip Kodu (Örn: #AK-7492) üretir ve sipariş anında kurye havuzuna düşer.
+
+2. TESLİMAT SÜRESİ VE BÖLGELER:
+   - Süre: Şehir içi standart teslimatlar adresten alınıp varış noktasına ortalama 30-45 dakikada ulaştırılır. VIP Acil kurye talebinde süre 15-30 dakikadır.
+   - Hizmet Verilen Bölgeler: Muratpaşa (Lara, Şirinyalı, Fener, Meydankavağı, vb.), Konyaaltı (Liman, Hurma, Uncalı, vb.), Kepez, Aksu (Kundu / Oteller Bölgesi), Döşemealtı ve tüm Antalya ilçe ve mahalleleri.
+
+3. SİPARİŞ TAKİBİ VE CANLI RADAR:
+   - Sipariş oluşturulduğunda takip koduyla ana sayfada canlı radar haritası açılır.
+   - Kuryenizin siparişi kabul etmesi, paketi teslim alması ve alıcıya doğru yola çıkması harita ve durum çubuğunda canlı izlenebilir.
+
+4. GEÇMİŞ TESLİMATLAR:
+   - Giriş yapan müşterilerimiz ana sayfadaki veya menüdeki "Geçmiş Teslimatlarım" butonuna basarak önceki siparişlerini, kurye puanlamalarını ve teslimat fişlerini görebilir.
+
+5. ÖNEMLİ AYRIM (KURYE & MÜŞTERİ):
+   - Müşteriler paket gönderir.
+   - Kuryeler kendi hesaplarıyla girip Kurye Havuzu'ndan paketleri kabul eder ve teslim eder. Kuryeler paket gönderemez.
+
+6. DOĞRUDAN İLETİŞİM & CANLI DESTEK:
+   - Telefon & WhatsApp: 0507 754 74 84
+   - E-posta: kuryeantalyam@gmail.com
+   - 7 Gün 24 Saat nöbetçi moto kurye operasyonu mevcuttur.
+
+CEVAPLAMA TARZI VE KURALLAR:
+- Son derece yardımsever, nazik ve çözüm odaklı ol.
+- Kısa paragraflar ve okunaklı madde işaretleri kullan.
+- Kullanıcıyı doğrudan yapacağı adıma yönlendir (örn: "Hemen sol üstteki 'Kurye Çağır' sekmesine tıklayabilirsiniz").
+- Türkçe dil bilgisine ve yazım kurallarına özen göster.
+`;
+
+function getSmartFallbackResponse(query: string): string {
+  const q = query.toLowerCase();
+  
+  if (q.includes('nasıl') || q.includes('kullan') || q.includes('çağır') || q.includes('gönder') || q.includes('adım')) {
+    return `🛵 **Sitemizden Kurye Çağırmak Çok Kolay! İşte Adım Adım Rehber:**
+
+1️⃣ **"Kurye Çağır" Butonuna Basın:** Ana sayfadaki veya menüdeki yeşil "Kurye Çağır" butonuna tıklayın.
+2️⃣ **İlçeleri Seçin:** Paketin alınacağı çıkış ilçesini ve teslim edileceği varış ilçesini (örneğin Muratpaşa ➔ Konyaaltı) belirleyin.
+3️⃣ **Paket & Hız Belirleyin:** Evrak, koli, gıda veya hediye gibi paket türünüzü ve teslimat aciliyetini (Standart 30-45 dk veya VIP Acil) seçin.
+4️⃣ **Adres Bilgilerini Girin:** Gönderici ve alıcı ad-soyad, telefon ve açık adres bilgilerini yazın.
+5️⃣ **Ödeme Seçin & Onaylayın:** Kapıda Nakit, Kredi Kartı veya Havale/EFT seçeneğini işaretleyip talebinizi gönderin.
+
+Siparişiniz onaylandığı anda size özel **6 haneli Takip Kodu** üretilir ve Antalya kurye havuzumuza anında düşer! 🚀`;
+  }
+
+  if (q.includes('fiyat') || q.includes('ücret') || q.includes('kaç') || q.includes('para') || q.includes('tutar') || q.includes('maliyet')) {
+    return `💰 **Teslimat Ücretleri Nasıl Hesaplanır?**
+
+• Ücretlerimiz çıkış ve varış ilçesi arasındaki **mesafeye (kilometre)** ve paket türüne göre sistem tarafından otomatik hesaplanır.
+• Örneğin aynı ilçe içi teslimatlar uygun taban fiyattan başlar; ilçe değiştikçe şeffaf mesafe katsayısı eklenir.
+• "Kurye Çağır" formunda ilçeleri seçtiğiniz anda ekranda **anlık net fiyatı** görebilirsiniz; sürpriz veya gizli ek ücret çıkmaz!
+
+💳 **Ödeme Kolaylığı:** Kapıda Nakit, Kurye Kapınıza Geldiğinde Kredi Kartı (POS) veya Havale/EFT ile ödeyebilirsiniz.`;
+  }
+
+  if (q.includes('süre') || q.includes('dakika') || q.includes('zaman') || q.includes('ne kadar') || q.includes('hızlı') || q.includes('saat')) {
+    return `⏱️ **Antalya İçi Teslimat Sürelerimiz:**
+
+⚡ **Standart Jet Kurye:** Paketi adresten teslim alıp alıcıya ulaştırma süremiz ortalama **30 ile 45 dakika** arasındadır.
+🔥 **Acil VIP Moto Kurye:** Öncelikli express teslimat seçildiğinde en yakın kurye anında yönlendirilir ve teslimat **15 ile 30 dakika** içerisinde tamamlanır.
+🌙 **7/24 Nöbetçi Kurye:** Gece, hafta sonu veya tatil günlerinde de kesintisiz hizmet vermekteyiz.`;
+  }
+
+  if (q.includes('ilçe') || q.includes('nereler') || q.includes('nerede') || q.includes('bölge') || q.includes('konum') || q.includes('kundu') || q.includes('lara')) {
+    return `📍 **Hizmet Verdiğimiz İlçeler & Bölgeler:**
+
+Antalya'nın tamamında 7/24 moto kurye ağımız aktiftir:
+• **Muratpaşa:** Lara, Şirinyalı, Fener, Meydankavağı, Güzeloba, Meltem, vb.
+• **Konyaaltı:** Liman, Hurma, Gürsu, Arapsuyu, Uncalı, vb.
+• **Kepez:** Varsak, Dokuma, Düdenbaşı, Göksu, vb.
+• **Aksu & Kundu:** Oteller bölgesi, Kemerağzı, havalimanı çevresi.
+• **Döşemealtı:** Organize Sanayi ve çevre mahalleler.
+• Kemer ve çevre güzergahlara özel express kurye yönlendirilebilmektedir.`;
+  }
+
+  if (q.includes('takip') || q.includes('nerede') || q.includes('harita') || q.includes('radar') || q.includes('kod')) {
+    return `🔍 **Siparişinizi ve Kuryenizi Canlı Nasıl Takip Edebilirsiniz?**
+
+1. Sipariş verdiğinizde oluşturulan **#AK-XXXX** formatındaki takip kodunuzu kaydedin.
+2. Ana sayfada yer alan **Canlı Takip Radarı** üzerinden kuryenizin paketi almaya gelişini ve teslimata gidişini anlık haritada izleyebilirsiniz.
+3. Kuryeniz kapıya ulaştığında ve teslimatı gerçekleştirdiğinde SMS/ekran bildirimi ile anında bilgilendirilirsiniz.`;
+  }
+
+  if (q.includes('iletişim') || q.includes('telefon') || q.includes('numara') || q.includes('whatsapp') || q.includes('adres') || q.includes('yetkili')) {
+    return `📞 **Antalya Kurye Express 7/24 İletişim Kanalları:**
+
+• **Çağrı & WhatsApp Canlı Destek:** 0507 754 74 84
+• **Resmi E-Posta:** kuryeantalyam@gmail.com
+• **Çalışma Saatleri:** 7 Gün 24 Saat Kesintisiz
+
+Dilediğiniz an arayabilir, WhatsApp'tan yazabilir veya sitemiz üzerinden hemen kurye talebi oluşturabilirsiniz!`;
+  }
+
+  return `👋 **Merhaba! Ben Antalya Kurye 7/24 Yapay Zeka Müşteri Asistanınızım.**
+
+Antalya genelinde motorlu kurye ve express paket taşımacılığı konusunda size yardımcı olmaktan mutluluk duyarım.
+
+Bana şunları sorabilirsiniz:
+• 🛵 **"Nasıl kurye çağırabilirim?"**
+• ⏱️ **"Paketim kaç dakikada teslim edilir?"**
+• 💰 **"Fiyatlar nasıl hesaplanıyor?"**
+• 📍 **"Hangi ilçelere hizmet veriyorsunuz?"**
+• 🔍 **"Kuryemi haritada nasıl takip ederim?"**
+• 📞 **"Müşteri hizmetleri telefon numarası nedir?"**
+
+Nasıl yardımcı olabilirim?`;
+}
+
+app.post('/api/customer-support-ai', async (req, res) => {
+  try {
+    const { message, history, userInfo } = req.body || {};
+    const userQuery = typeof message === 'string' ? message.trim() : '';
+
+    if (!userQuery) {
+      return res.status(400).json({ error: 'Lütfen bir soru giriniz.' });
+    }
+
+    const ai = getGenAIClient();
+
+    if (!ai) {
+      console.log('[CUSTOMER SUPPORT AI] Gemini API key not configured, using smart knowledge engine.');
+      const fallbackReply = getSmartFallbackResponse(userQuery);
+      return res.json({
+        reply: fallbackReply,
+        source: 'knowledge-engine',
+      });
+    }
+
+    try {
+      // Build context
+      let promptContent = '';
+      if (userInfo && userInfo.name) {
+        promptContent += `Müşteri Bilgisi: İsim: ${userInfo.name}, İlçe: ${userInfo.district || 'Antalya'}\n`;
+      }
+      
+      if (Array.isArray(history) && history.length > 0) {
+        promptContent += 'Önceki konuşma geçmişi:\n';
+        for (const item of history.slice(-6)) {
+          promptContent += `${item.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${item.text}\n`;
+        }
+        promptContent += '\n';
+      }
+
+      promptContent += `Müşterinin Yeni Sorusu: ${userQuery}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: promptContent,
+        config: {
+          systemInstruction: CUSTOMER_SUPPORT_SYSTEM_INSTRUCTION,
+          temperature: 0.6,
+        },
+      });
+
+      const replyText = response.text || getSmartFallbackResponse(userQuery);
+
+      return res.json({
+        reply: replyText,
+        source: 'gemini-3.8-flash',
+      });
+    } catch (genErr: any) {
+      console.warn('[CUSTOMER SUPPORT AI] Gemini API error, falling back to smart engine:', genErr.message);
+      const fallbackReply = getSmartFallbackResponse(userQuery);
+      return res.json({
+        reply: fallbackReply,
+        source: 'knowledge-engine-fallback',
+      });
+    }
+  } catch (err: any) {
+    console.error('[CUSTOMER SUPPORT AI ERROR]', err);
+    res.status(500).json({ error: 'Destek yanıtı alınırken bir hata oluştu.' });
   }
 });
 

@@ -5,6 +5,7 @@ import {
   LogOut,
   Package,
   History,
+  Bot,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -16,6 +17,7 @@ export const Navbar: React.FC = () => {
     currentUser,
     logout,
     openAuthModal,
+    openAiSupport,
   } = useDelivery();
 
   interface NavItem {
@@ -146,6 +148,19 @@ export const Navbar: React.FC = () => {
 
           {/* Right Section: Compact Button or Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* 7/24 AI Customer Service Quick Button (for non-couriers) */}
+            {currentUser.role !== 'courier' && (
+              <button
+                type="button"
+                id="navbar-ai-support-btn"
+                onClick={openAiSupport}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-900/80 to-teal-900/80 hover:from-emerald-800 hover:to-teal-800 text-xs font-bold text-emerald-200 hover:text-white shadow-xs transition cursor-pointer active:scale-95"
+                title="7/24 Yapay Zeka Müşteri Hizmetleri & Canlı Destek"
+              >
+                <Bot className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="hidden sm:inline text-xs">7/24 AI Destek</span>
+              </button>
+            )}
             
             {/* If logged in with active account */}
             {currentUser.id !== 'user-guest-01' && currentUser.email ? (

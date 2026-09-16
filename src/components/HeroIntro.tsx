@@ -29,7 +29,9 @@ import {
   Search,
   History,
   FileText,
-  LogOut
+  LogOut,
+  Bot,
+  Headphones,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
@@ -48,6 +50,7 @@ export const HeroIntro: React.FC = () => {
     openAuthModal,
     rateDelivery,
     logout,
+    openAiSupport,
   } = useDelivery();
 
   // If a courier is logged in, directly show CourierPool and never customer interfaces
@@ -178,7 +181,19 @@ export const HeroIntro: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
+            {/* 7/24 AI Customer Service Button */}
+            <button
+              type="button"
+              id="hero-ai-support-btn-active"
+              onClick={openAiSupport}
+              className="px-4 py-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-600 hover:from-emerald-600 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-700/30 border border-emerald-400/40 flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+              title="7/24 Yapay Zeka Müşteri Hizmetleri & Canlı Destek"
+            >
+              <Bot className="w-4 h-4 text-emerald-200" />
+              <span>Müşteri Hizmetleri (AI)</span>
+            </button>
+
             {isUserLoggedIn && (
               <button
                 type="button"
@@ -588,6 +603,18 @@ export const HeroIntro: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap self-end sm:self-center">
+            {/* 7/24 AI Customer Service Button */}
+            <button
+              type="button"
+              id="customer-ai-support-button"
+              onClick={openAiSupport}
+              className="px-4 py-3.5 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-600 hover:from-emerald-600 hover:to-teal-500 text-white border border-emerald-400/50 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-lg shadow-emerald-900/40 shrink-0"
+              title="7/24 Yapay Zeka Müşteri Hizmetleri & Sitenin Kullanımı"
+            >
+              <Bot className="w-4 h-4 text-emerald-200" />
+              <span>7/24 Müşteri Hizmetleri (AI)</span>
+            </button>
+
             {/* Past Deliveries Button */}
             <button
               type="button"
@@ -627,6 +654,35 @@ export const HeroIntro: React.FC = () => {
               <span>Yeni Paket</span>
             </button>
           </div>
+        </div>
+
+        {/* AI Customer Service & Site Usage Helpful Banner */}
+        <div className="bg-gradient-to-r from-[#01261e] via-[#023328] to-[#01221a] p-4 sm:p-5 rounded-3xl border border-emerald-700/50 shadow-lg text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shrink-0">
+              <Bot className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <span>Siteyi Nasıl Kullanacağınızı mı Öğrenmek İstiyorsunuz?</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold tracking-wider">
+                  7/24 AI Canlı Destek
+                </span>
+              </h3>
+              <p className="text-xs text-emerald-300/80 mt-0.5">
+                Kurye çağırma adımları, fiyat hesaplama, teslimat süreleri veya takip hakkında aklınıza takılan her şeyi yapay zeka asistanımıza sorabilirsiniz.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={openAiSupport}
+            className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+          >
+            <Bot className="w-4 h-4 text-emerald-200" />
+            <span>Asistana Soru Sor</span>
+          </button>
         </div>
 
         {/* Past Deliveries List Section (Geçmiş Teslimatlar) */}
