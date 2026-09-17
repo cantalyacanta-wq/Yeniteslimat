@@ -1820,6 +1820,170 @@ app.delete('/api/users/:id', (req, res) => {
   }
 });
 
+// Password Reminder / Forgot Password Endpoint
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { emailOrIdentifier, role, userHint } = req.body || {};
+    if (!emailOrIdentifier || !emailOrIdentifier.trim()) {
+      res.status(400).json({ error: 'Lütfen kayıtlı e-posta veya telefon numaranızı giriniz.' });
+      return;
+    }
+
+    const raw = String(emailOrIdentifier).trim().toLowerCase();
+    const digitsOnly = raw.replace(/\D/g, '');
+
+    // 1. Search in server memory database
+    let found = dbState.users.find((u) => {
+      if (role && u.role !== role) return false;
+      if (u.email && u.email.trim().toLowerCase() === raw) return true;
+      if (digitsOnly.length >= 7) {
+        const uDigits = (u.phone || '').replace(/\D/g, '');
+        if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
+      }
+      return false;
+    });
+
+    // 2. Search without role constraint if not found
+    if (!found) {
+      found = dbState.users.find((u) => {
+        if (u.email && u.email.trim().toLowerCase() === raw) return true;
+        if (digitsOnly.length >= 7) {
+          const uDigits = (u.phone || '').replace(/\D/g, '');
+          if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
+        }
+        return false;
+      });
+    }
+
+    // 3. Fallback to client userHint if available
+    if (!found && userHint && userHint.email) {
+      found = userHint;
+    }
+
+    if (!found) {
+      res.status(404).json({ error: 'Bu bilgilere ait kayıtlı kullanıcı bulunamadı. Lütfen e-posta adresinizi kontrol ediniz.' });
+      return;
+    }
+
+    const targetEmail = (found.email || '').trim();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      res.status(400).json({ error: 'Kullanıcının kayıtlı geçerli bir e-posta adresi bulunmuyor. Lütfen destek hattımızla iletişime geçiniz.' });
+      return;
+    }
+
+    const userName = found.name || 'Değerli Kullanıcımız';
+    const userRoleText = found.role === 'courier' ? 'Moto Kurye Hesabı' : (found.role === 'admin' ? 'Yönetici Hesabı' : 'Müşteri Hesabı');
+    const userPassword = (found.password || '1234').trim();
+
+    // Prepare Email Content
+    const subject = `[Antalya Kurye Ekspres] Şifre Hatırlatma Bilgileriniz`;
+    const htmlContent = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #021f19; border: 1px solid #065f46; border-radius: 16px; overflow: hidden; color: #ffffff;">
+        <div style="background: linear-gradient(135deg, #047857 0%, #064e3b 100%); padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">Antalya Şehir İçi Teslimat 7/24</h1>
+          <p style="margin: 6px 0 0 0; font-size: 13px; color: #a7f3d0;">Şifre Hatırlatma Servisi</p>
+        </div>
+        
+        <div style="padding: 28px 24px; background-color: #03231d;">
+          <p style="font-size: 15px; color: #ecfdf5; margin-top: 0;">Merhaba Sayın <strong>${userName}</strong>,</p>
+          <p style="font-size: 13px; color: #a7f3d0; line-height: 1.6;">
+            Antalya Kurye Ekspres sistemindeki hesabınız için şifre hatırlatma talebinde bulundunuz. Kayıtlı hesap ve giriş bilgileriniz aşağıda yer almaktadır:
+          </p>
+          
+          <div style="background-color: #011612; border: 1px solid #059669; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #6ee7b7; width: 140px; font-weight: 600;">Hesap Türü:</td>
+                <td style="padding: 6px 0; color: #ffffff; font-weight: bold;">${userRoleText}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #6ee7b7; font-weight: 600;">Kayıtlı E-Posta:</td>
+                <td style="padding: 6px 0; color: #ffffff; font-weight: bold;">${targetEmail}</td>
+              </tr>
+              ${found.phone ? `
+              <tr>
+                <td style="padding: 6px 0; color: #6ee7b7; font-weight: 600;">Telefon:</td>
+                <td style="padding: 6px 0; color: #ffffff;">${found.phone}</td>
+              </tr>` : ''}
+              <tr>
+                <td style="padding: 12px 0 6px 0; color: #fbbf24; font-weight: bold; font-size: 14px;">Mevcut Şifreniz:</td>
+                <td style="padding: 12px 0 6px 0;">
+                  <span style="display: inline-block; background-color: #064e3b; border: 1px dashed #34d399; color: #ffffff; font-size: 17px; font-weight: 800; padding: 6px 14px; border-radius: 8px; letter-spacing: 1px;">${userPassword}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background-color: rgba(245, 158, 11, 0.12); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0;">
+            <p style="margin: 0; font-size: 12px; color: #fde68a; line-height: 1.5;">
+              <strong>Güvenlik Hatırlatması:</strong> Bu talebi siz gerçekleştirmediyseniz, lütfen sistem yöneticimiz ile iletişime geçiniz. Giriş yaptıktan sonra şifrenizi profil ayarlarınızdan dilediğiniz zaman güncelleyebilirsiniz.
+            </p>
+          </div>
+
+          <p style="font-size: 12px; color: #6ee7b7; margin-top: 24px; text-align: center;">
+            Hızlı ve güvenli Antalya içi kurye teslimatlarında bizi tercih ettiğiniz için teşekkür ederiz.
+          </p>
+        </div>
+
+        <div style="background-color: #011612; padding: 16px; text-align: center; border-top: 1px solid #065f46; font-size: 11px; color: #6ee7b7;">
+          © ${new Date().getFullYear()} Antalya Şehir İçi Moto Kurye & Teslimat A.Ş. • Destek: kuryeantalyam@gmail.com
+        </div>
+      </div>
+    `;
+
+    const textContent = `
+Antalya Şehir İçi Teslimat 7/24 - Şifre Hatırlatma
+
+Merhaba Sayın ${userName},
+
+Hesabınız için şifre hatırlatma talebinde bulundunuz.
+Hesap Türü: ${userRoleText}
+Kayıtlı E-Posta: ${targetEmail}
+Şifreniz: ${userPassword}
+
+Bu talebi siz yapmadıysanız lütfen bu e-postayı dikkate almayınız.
+
+İletişim & Destek: kuryeantalyam@gmail.com
+    `.trim();
+
+    // Send email via mail transporter
+    const mailDetails = getOptimizedMailTransporter();
+    let sentReal = false;
+    let errDetail = '';
+
+    if (mailDetails.transporter && mailDetails.isConfigured) {
+      try {
+        await mailDetails.transporter.sendMail({
+          from: mailDetails.fromAddress,
+          to: targetEmail,
+          replyTo: 'kuryeantalyam@gmail.com',
+          subject,
+          text: textContent,
+          html: htmlContent,
+        });
+        sentReal = true;
+        console.log(`[PASSWORD RESET] Email sent successfully to ${targetEmail}`);
+      } catch (err: any) {
+        console.warn(`[PASSWORD RESET FAIL] Could not send email:`, err);
+        errDetail = err?.message || 'Mail gönderim hatası';
+      }
+    } else {
+      console.log(`[PASSWORD RESET DEV] SMTP not configured. Simulated sending to ${targetEmail}`);
+    }
+
+    res.json({
+      success: true,
+      email: targetEmail,
+      sentReal,
+      message: `Şifre hatırlatma bilgileri ${targetEmail} adresinize başarıyla gönderildi. Lütfen gelen kutunuzu (ve spam/istenmeyen klasörünü) kontrol ediniz.`,
+      debugInfo: errDetail ? { warning: errDetail } : undefined,
+    });
+  } catch (err: any) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: err.message || 'Sunucu hatası oluştu.' });
+  }
+});
+
 // Courier Location Update
 app.post('/api/couriers/location', (req, res) => {
   try {

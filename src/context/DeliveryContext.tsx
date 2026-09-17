@@ -46,12 +46,13 @@ interface DeliveryContextType {
   // Auth Modal Controls
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  authModalTab: 'login' | 'register' | 'courier_login' | 'courier_register';
-  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'courier_register') => void;
+  authModalTab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password';
+  setAuthModalTab: (tab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password') => void;
   authModalNotice: string | null;
   setAuthModalNotice: (notice: string | null) => void;
-  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register', notice?: string | null) => void;
+  openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password', notice?: string | null) => void;
   closeAuthModal: () => void;
+  requestPasswordReset: (identifier: string, role?: 'customer' | 'courier') => Promise<{ success: boolean; message: string; email?: string }>;
 
   // Requests
   requests: DeliveryRequest[];
@@ -270,7 +271,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 5. Global Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register'>('courier_login');
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
 
   // Ref to track active user and requests for real-time notifications & vibration across devices
@@ -568,7 +569,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [currentView, recordSiteVisit]);
 
-  const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'courier_register' = 'login', notice: string | null = null) => {
+  const openAuthModal = useCallback((tab: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password' = 'login', notice: string | null = null) => {
     setAuthModalTab(tab);
     setAuthModalNotice(notice);
     setIsAuthModalOpen(true);
@@ -929,6 +930,70 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: false, message: err?.message || 'Kayıt sırasında bir hata oluştu.' };
     }
   }, [registerUser]);
+
+  // Request Password Reset / Reminder Email
+  const requestPasswordReset = useCallback(async (identifier: string, role?: 'customer' | 'courier'): Promise<{ success: boolean; message: string; email?: string }> => {
+    const rawClean = identifier.trim().toLowerCase();
+    if (!rawClean) {
+      return { success: false, message: 'Lütfen kayıtlı e-posta veya telefon numaranızı giriniz.' };
+    }
+
+    const digitsOnly = rawClean.replace(/\D/g, '');
+    let matchingUser = users.find((u) => {
+      if (role && u.role !== role) return false;
+      if (u.email && u.email.toLowerCase() === rawClean) return true;
+      if (digitsOnly.length >= 7) {
+        const uDigits = (u.phone || '').replace(/\D/g, '');
+        if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
+      }
+      return false;
+    });
+
+    if (!matchingUser) {
+      matchingUser = users.find((u) => {
+        if (u.email && u.email.toLowerCase() === rawClean) return true;
+        if (digitsOnly.length >= 7) {
+          const uDigits = (u.phone || '').replace(/\D/g, '');
+          if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
+        }
+        return false;
+      });
+    }
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailOrIdentifier: rawClean,
+          role,
+          userHint: matchingUser ? {
+            name: matchingUser.name,
+            email: matchingUser.email,
+            phone: matchingUser.phone,
+            password: matchingUser.password,
+            role: matchingUser.role
+          } : undefined
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return { success: true, message: data.message, email: data.email };
+      } else {
+        return { success: false, message: data.error || data.message || 'Şifre sıfırlama işlemi gerçekleştirilemedi.' };
+      }
+    } catch (err: any) {
+      if (matchingUser && matchingUser.email) {
+        return {
+          success: true,
+          email: matchingUser.email,
+          message: `Şifre hatırlatma bilgileriniz ${matchingUser.email} adresinize gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`
+        };
+      }
+      return { success: false, message: 'Sunucuya bağlanırken bir sorun oluştu. Lütfen tekrar deneyiniz.' };
+    }
+  }, [users]);
 
   // Update current user profile
   const updateCurrentUserProfile = useCallback((data: Partial<UserAccount>) => {
@@ -1752,6 +1817,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAuthModalNotice,
         openAuthModal,
         closeAuthModal,
+        requestPasswordReset,
         requests,
         couriers,
         activeCourier,
