@@ -2011,11 +2011,14 @@ Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
 Destek & İletişim: 0507 754 74 84 | kuryeantalyam@gmail.com
     `.trim();
 
-    // Create fresh direct Gmail transport with high deliverability
+    // Create fresh direct Gmail transport with high deliverability and socket timeouts
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
     });
 
     let sentReal = false;

@@ -972,38 +972,77 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
     }
 
-    try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          emailOrIdentifier: rawClean,
-          role,
-          userHint: matchingUser ? {
-            name: matchingUser.name,
-            email: matchingUser.email,
-            phone: matchingUser.phone,
-            password: matchingUser.password,
-            role: matchingUser.role
-          } : undefined
-        }),
-      });
+    const requestPayload = {
+      emailOrIdentifier: rawClean,
+      role,
+      userHint: matchingUser ? {
+        id: matchingUser.id,
+        name: matchingUser.name,
+        email: matchingUser.email,
+        phone: matchingUser.phone,
+        password: matchingUser.password,
+        role: matchingUser.role
+      } : undefined
+    };
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        return {
-          success: true,
-          message: data.message,
-          email: data.email,
-          refCode: data.refCode,
-          isSelfSent: data.isSelfSent,
-        };
-      } else {
-        return { success: false, message: data.error || data.message || 'Şifre sıfırlama işlemi gerçekleştirilemedi.' };
+    let res: Response | null = null;
+    let data: any = null;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestPayload),
+        });
+
+        const rawText = await res.text();
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          data = null;
+        }
+
+        // If response is valid JSON from our server
+        if (data) {
+          if (res.ok && data.success) {
+            return {
+              success: true,
+              message: data.message || 'Şifre hatırlatma bilgileri e-posta adresinize başarıyla iletildi.',
+              email: data.email || rawClean,
+              refCode: data.refCode,
+              isSelfSent: data.isSelfSent,
+            };
+          } else if (data.error || data.message) {
+            return {
+              success: false,
+              message: data.error || data.message,
+            };
+          }
+        }
+
+        // If status was not ok and didn't have structured JSON, retry or fall through
+        if (!res.ok && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 600));
+          continue;
+        }
+      } catch (fetchErr: any) {
+        console.warn(`[REQUEST PASSWORD RESET ATTEMPT ${attempt} FAILED]`, fetchErr);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 800));
+          continue;
+        }
       }
-    } catch (err: any) {
-      return { success: false, message: 'E-posta sunucusuna bağlanırken bir sorun oluştu. Lütfen tekrar deneyiniz.' };
     }
+
+    if (data && (data.error || data.message)) {
+      return { success: false, message: data.error || data.message };
+    }
+
+    return {
+      success: false,
+      message: 'E-posta servisi şu anda yanıt veremedi. Lütfen birkaç saniye sonra tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.'
+    };
   }, [users]);
 
   // Update current user profile
