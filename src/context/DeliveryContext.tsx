@@ -985,22 +985,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } : undefined
     };
 
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/auth/forgot-password` 
+      : '/api/auth/forgot-password';
+
+    let lastErrorMessage = '';
     let res: Response | null = null;
     let data: any = null;
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        res = await fetch('/api/auth/forgot-password', {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        res = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify(requestPayload),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         const rawText = await res.text();
         try {
           data = JSON.parse(rawText);
         } catch {
           data = null;
+          lastErrorMessage = rawText.slice(0, 150);
         }
 
         // If response is valid JSON from our server
@@ -1021,12 +1035,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         }
 
-        // If status was not ok and didn't have structured JSON, retry or fall through
         if (!res.ok && attempt < 2) {
           await new Promise((r) => setTimeout(r, 600));
           continue;
         }
       } catch (fetchErr: any) {
+        lastErrorMessage = fetchErr?.message || '';
         console.warn(`[REQUEST PASSWORD RESET ATTEMPT ${attempt} FAILED]`, fetchErr);
         if (attempt < 2) {
           await new Promise((r) => setTimeout(r, 800));
@@ -1041,7 +1055,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     return {
       success: false,
-      message: 'E-posta servisi şu anda yanıt veremedi. Lütfen birkaç saniye sonra tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.'
+      message: lastErrorMessage
+        ? `Sunucu bağlantı uyarısı (${lastErrorMessage}). Lütfen internet bağlantınızı kontrol edip tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.`
+        : 'E-posta servisi şu anda yanıt veremedi. Lütfen birkaç saniye sonra tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.'
     };
   }, [users]);
 

@@ -38,6 +38,17 @@ try {
   console.warn('[FIREBASE BACKEND] Direct Firestore connection warning:', fbErr.message);
 }
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -2011,14 +2022,18 @@ Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
 Destek & İletişim: 0507 754 74 84 | kuryeantalyam@gmail.com
     `.trim();
 
-    // Create fresh direct Gmail transport with high deliverability and socket timeouts
+    console.log(`[PASSWORD RESET REQUEST] Received for: ${emailOrIdentifier}, targetEmail: ${targetEmail}`);
+
+    // Create direct Gmail SSL transport on port 465 (high deliverability, fastest negotiation)
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
 
     let sentReal = false;
