@@ -2362,6 +2362,11 @@ const viteInitPromise =
 if (process.env.NODE_ENV !== 'production') {
   app.use(async (req, res, next) => {
     try {
+      // If an unexpected non-API POST/PUT/DELETE arrives (e.g. form submission), redirect to GET / to prevent blank screen
+      if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api')) {
+        return res.redirect(303, '/');
+      }
+
       if (viteServerInstance) {
         return viteServerInstance.middlewares(req, res, next);
       }
@@ -2377,7 +2382,10 @@ if (process.env.NODE_ENV !== 'production') {
 } else {
   const distPath = path.join(process.cwd(), 'dist');
   app.use(express.static(distPath));
-  app.get('*', (req, res) => {
+  app.all('*', (req, res) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api')) {
+      return res.redirect(303, '/');
+    }
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

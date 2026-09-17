@@ -2748,15 +2748,15 @@ export const AdminManagement: React.FC = () => {
                                   : 'bg-amber-950 text-amber-300 border border-amber-600/50'
                               }`}
                             >
-                              {order.status === 'delivered'
+                              {(order.status as string) === 'delivered'
                                 ? 'Teslim Edildi'
-                                : order.status === 'cancelled'
+                                : (order.status as string) === 'cancelled'
                                 ? 'İptal Edildi'
-                                : order.status === 'in_transit'
+                                : (order.status as string) === 'in_transit' || order.status === 'near_destination'
                                 ? 'Yolda'
                                 : order.status === 'picked_up'
                                 ? 'Alındı'
-                                : order.status === 'accepted'
+                                : (order.status as string) === 'accepted' || order.status === 'courier_assigned'
                                 ? 'Kurye Atandı'
                                 : 'Bekliyor'}
                             </span>

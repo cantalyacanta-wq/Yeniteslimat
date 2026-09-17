@@ -76,7 +76,7 @@ interface DeliveryContextType {
   
   // Actions
   createNewRequest: (params: Omit<DeliveryRequest, 'id' | 'trackingCode' | 'createdAt' | 'updatedAt' | 'status' | 'deliveryCode' | 'estimatedDistanceKm' | 'estimatedDurationMins' | 'price' | 'courierEarnings'>) => DeliveryRequest;
-  acceptRequest: (requestId: string, courierId?: string) => void;
+  acceptRequest: (requestId: string, courierOverride?: CourierInfo | string) => void;
   updateStatus: (requestId: string, nextStatus: DeliveryStatus) => { success: boolean; message?: string };
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
   cancelRequest: (requestId: string) => void;
@@ -985,9 +985,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } : undefined
     };
 
-    const apiUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/auth/forgot-password` 
-      : '/api/auth/forgot-password';
+    const apiUrl = '/api/auth/forgot-password';
 
     let lastErrorMessage = '';
     let res: Response | null = null;

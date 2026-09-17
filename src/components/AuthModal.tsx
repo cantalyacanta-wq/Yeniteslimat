@@ -98,8 +98,11 @@ export const AuthModal: React.FC = () => {
   if (!isAuthModalOpen) return null;
 
   // Handle Forgot Password Submit
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleForgotPasswordSubmit = async (e?: React.SyntheticEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setForgotError(null);
     setForgotSuccess(null);
 
@@ -112,15 +115,15 @@ export const AuthModal: React.FC = () => {
     setForgotLoading(true);
     try {
       const res = await requestPasswordReset(clean, isCourierFlow ? 'courier' : 'customer');
-      if (res.success) {
+      if (res && res.success) {
         setForgotSuccess({
-          message: res.message,
+          message: res.message || 'Şifre hatırlatma bilgileriniz e-posta adresinize gönderildi.',
           email: res.email || clean,
           isSelfSent: res.isSelfSent,
           refCode: res.refCode,
         });
       } else {
-        setForgotError(res.message || 'Şifre hatırlatma işlemi tamamlanamadı. Lütfen bilgilerinizi kontrol ediniz.');
+        setForgotError(res?.message || 'Şifre hatırlatma işlemi tamamlanamadı. Lütfen bilgilerinizi kontrol ediniz.');
       }
     } catch (err: any) {
       setForgotError(err?.message || 'Bir bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
@@ -276,7 +279,7 @@ export const AuthModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-gradient-to-br from-[#0c1f19] via-[#091a14] to-[#040e0b] rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-emerald-700/60 space-y-4 text-white my-auto max-h-[92vh] overflow-y-auto">
+      <div className="relative bg-gradient-to-br from-[#0c1f19] via-[#091a14] to-[#040e0b] rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-emerald-700/60 space-y-4 text-white my-auto max-h-[92vh] min-h-[320px] overflow-y-auto">
         
         {/* Header with Close */}
         <div className="flex items-center justify-between border-b border-emerald-800/60 pb-3">
@@ -999,37 +1002,45 @@ export const AuthModal: React.FC = () => {
         {/* VIEW E: FORGOT PASSWORD (CUSTOMER OR COURIER) */}
         {/* =================================================================== */}
         {isForgotPassword && (
-          <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
+          <form
+            action="javascript:void(0);"
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleForgotPasswordSubmit(e);
+            }}
+            className="space-y-3.5"
+          >
             <div className="p-3 bg-[#03231d] border border-emerald-700/60 rounded-xl text-xs text-emerald-200/90 leading-relaxed flex items-start gap-2.5 shadow-xs">
               <KeyRound className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-white mb-0.5">Şifrenizi mi unuttunuz?</p>
                 <p className="text-[11px] text-emerald-300/80 leading-relaxed">
-                  Kayıtlı e-posta adresinizi giriniz. Sistemde kayıtlı şifre hatırlatma bilgileriniz mail adresinize anında güvenli olarak gönderilecektir.
+                  Kayıtlı e-posta adresinizi veya telefonunuzu giriniz. Sistemde kayıtlı şifre hatırlatma bilgileriniz e-posta adresinize anında güvenle iletilecektir.
                 </p>
               </div>
             </div>
 
             {forgotError && (
-              <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>{forgotError}</span>
+              <div className="p-3 bg-rose-950/90 border border-rose-500/80 rounded-xl text-xs text-rose-200 flex items-start gap-2.5 shadow-md">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span className="leading-snug">{forgotError}</span>
               </div>
             )}
 
             {forgotSuccess && (
-              <div className="p-4 bg-[#03231d] border border-emerald-500/70 rounded-2xl text-xs text-emerald-200 space-y-3 shadow-lg">
-                <div className="flex items-start gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-400">
+              <div className="p-4 bg-[#032821] border-2 border-emerald-400 rounded-2xl text-xs text-emerald-200 space-y-3 shadow-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/25 border border-emerald-400/60 flex items-center justify-center shrink-0 text-emerald-300 shadow-md">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     <p className="font-extrabold text-white text-sm">E-Posta Başarıyla Gönderildi!</p>
-                    <p className="text-[11px] text-emerald-300/90 leading-relaxed">
-                      Şifre hatırlatma bilgileriniz <strong>{forgotSuccess.email}</strong> adresine Google SMTP sunucusu aracılığıyla iletildi.
+                    <p className="text-[11px] text-emerald-200 leading-relaxed">
+                      Şifre hatırlatma bilgileriniz <strong className="text-white underline">{forgotSuccess.email}</strong> adresine Google SMTP sunucusu aracılığıyla iletildi.
                     </p>
                     {forgotSuccess.refCode && (
-                      <p className="text-[10px] text-emerald-400/80 font-mono">
+                      <p className="text-[10px] text-emerald-300 font-mono pt-0.5">
                         Güvenlik Referans Kodu: #{forgotSuccess.refCode}
                       </p>
                     )}
@@ -1037,17 +1048,17 @@ export const AuthModal: React.FC = () => {
                 </div>
 
                 {/* Detailed Deliverability Guidance */}
-                <div className="p-3 bg-[#011612] border border-emerald-700/60 rounded-xl space-y-2 text-[11px] text-emerald-300/90 leading-relaxed">
+                <div className="p-3 bg-[#011a15] border border-emerald-600/50 rounded-xl space-y-2 text-[11px] text-emerald-300/90 leading-relaxed">
                   <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
                     <HelpCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>Mail Adresinize Henüz Ulaşmadıysa:</span>
                   </div>
-                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-emerald-200/85">
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-emerald-200/90">
                     <li>Lütfen e-posta kutunuzun <strong>Spam / İstenmeyen</strong> ve <strong>Tanıtımlar</strong> klasörlerini kontrol ediniz.</li>
                     <li>Gmail arama çubuğuna <strong>in:anywhere Antalya</strong> yazarak tüm klasörlerde aratabilirsiniz.</li>
                     {forgotSuccess.isSelfSent && (
                       <li className="text-amber-200 font-semibold">
-                        <strong>Gmail Bildirimi:</strong> Kendi adresinize (kuryeantalyam@gmail.com) gönderildiği için Gmail bu mesajı Gelen Kutusu yerine <strong>"Gönderilmiş Öğeler" (Sent)</strong> veya <strong>"Tüm Postalar" (All Mail)</strong> sekmesinde gösterir.
+                        <strong>Gmail Bildirimi:</strong> Kendi adresinize (kuryeantalyam@gmail.com) gönderildiği için mesaj <strong>Gönderilmiş Öğeler</strong> sekmesinde yer alır.
                       </li>
                     )}
                   </ul>
@@ -1061,7 +1072,7 @@ export const AuthModal: React.FC = () => {
                       setForgotSuccess(null);
                       setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
                     }}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-500/25 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                   >
                     <LogIn className="w-3.5 h-3.5" />
                     <span>Giriş Ekranına Dön</span>
@@ -1072,9 +1083,9 @@ export const AuthModal: React.FC = () => {
                     onClick={() => {
                       setForgotSuccess(null);
                     }}
-                    className="px-3 py-2.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold rounded-xl transition cursor-pointer"
+                    className="px-3 py-2.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-600 text-emerald-200 text-xs font-bold rounded-xl transition cursor-pointer"
                   >
-                    Tekrar Dene
+                    Yeni Arama
                   </button>
                 </div>
               </div>
@@ -1094,6 +1105,13 @@ export const AuthModal: React.FC = () => {
                       placeholder="ornek@antalya.com veya 05XX XXX XX XX"
                       value={forgotIdentifier}
                       onChange={(e) => setForgotIdentifier(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleForgotPasswordSubmit(e);
+                        }
+                      }}
                       className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                     />
                   </div>
@@ -1103,7 +1121,12 @@ export const AuthModal: React.FC = () => {
                 </div>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleForgotPasswordSubmit(e);
+                  }}
                   disabled={forgotLoading}
                   className={`w-full py-2.5 ${
                     isCourierFlow

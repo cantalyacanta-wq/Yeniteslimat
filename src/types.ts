@@ -55,6 +55,7 @@ export interface UserAccount {
   totalOrders?: number;
   totalEarnings?: number;
   isOnline?: boolean;
+  vehicleType?: string;
 }
 
 export interface LocationInfo {
@@ -63,6 +64,7 @@ export interface LocationInfo {
   addressDetail: string;
   contactName: string;
   contactPhone: string;
+  contactEmail?: string;
   buildingNo?: string;
   lat: number;
   lng: number;
