@@ -52,7 +52,15 @@ interface DeliveryContextType {
   setAuthModalNotice: (notice: string | null) => void;
   openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password', notice?: string | null) => void;
   closeAuthModal: () => void;
-  requestPasswordReset: (identifier: string, role?: 'customer' | 'courier') => Promise<{ success: boolean; message: string; email?: string }>;
+  requestPasswordReset: (identifier: string, role?: 'customer' | 'courier') => Promise<{
+    success: boolean;
+    message: string;
+    email?: string;
+    refCode?: number;
+    isSelfSent?: boolean;
+    userPassword?: string;
+    passwordHint?: string;
+  }>;
 
   // Requests
   requests: DeliveryRequest[];
@@ -932,7 +940,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [registerUser]);
 
   // Request Password Reset / Reminder Email
-  const requestPasswordReset = useCallback(async (identifier: string, role?: 'customer' | 'courier'): Promise<{ success: boolean; message: string; email?: string }> => {
+  const requestPasswordReset = useCallback(async (identifier: string, role?: 'customer' | 'courier'): Promise<{
+    success: boolean;
+    message: string;
+    email?: string;
+    refCode?: number;
+    isSelfSent?: boolean;
+    userPassword?: string;
+    passwordHint?: string;
+  }> => {
     const rawClean = identifier.trim().toLowerCase();
     if (!rawClean) {
       return { success: false, message: 'Lütfen kayıtlı e-posta veya telefon numaranızı giriniz.' };
@@ -979,7 +995,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const data = await res.json();
       if (res.ok && data.success) {
-        return { success: true, message: data.message, email: data.email };
+        return {
+          success: true,
+          message: data.message,
+          email: data.email,
+          refCode: data.refCode,
+          isSelfSent: data.isSelfSent,
+          userPassword: data.userPassword,
+          passwordHint: data.passwordHint,
+        };
       } else {
         return { success: false, message: data.error || data.message || 'Şifre sıfırlama işlemi gerçekleştirilemedi.' };
       }
@@ -988,6 +1012,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return {
           success: true,
           email: matchingUser.email,
+          userPassword: matchingUser.password,
           message: `Şifre hatırlatma bilgileriniz ${matchingUser.email} adresinize gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`
         };
       }

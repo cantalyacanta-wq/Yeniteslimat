@@ -18,7 +18,11 @@ import {
   KeyRound,
   Sparkles,
   Zap,
-  FileText
+  FileText,
+  Copy,
+  Check,
+  Eye,
+  HelpCircle
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, UserRole } from '../types';
@@ -54,7 +58,16 @@ export const AuthModal: React.FC = () => {
   const [forgotIdentifier, setForgotIdentifier] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
-  const [forgotSuccess, setForgotSuccess] = useState<{ message: string; email: string } | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<{
+    message: string;
+    email: string;
+    isSelfSent?: boolean;
+    refCode?: number;
+    userPassword?: string;
+    passwordHint?: string;
+  } | null>(null);
+  const [showDirectPassword, setShowDirectPassword] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   // Customer Register Form State
   const [customerName, setCustomerName] = useState('');
@@ -104,12 +117,18 @@ export const AuthModal: React.FC = () => {
     }
 
     setForgotLoading(true);
+    setShowDirectPassword(false);
+    setCopiedPassword(false);
     try {
       const res = await requestPasswordReset(clean, isCourierFlow ? 'courier' : 'customer');
       if (res.success) {
         setForgotSuccess({
           message: res.message,
           email: res.email || clean,
+          isSelfSent: res.isSelfSent,
+          refCode: res.refCode,
+          userPassword: res.userPassword,
+          passwordHint: res.passwordHint,
         });
       } else {
         setForgotError(res.message || 'Şifre hatırlatma işlemi tamamlanamadı. Lütfen bilgilerinizi kontrol ediniz.');
@@ -1010,29 +1029,118 @@ export const AuthModal: React.FC = () => {
             )}
 
             {forgotSuccess && (
-              <div className="p-3.5 bg-emerald-950/95 border border-emerald-500/70 rounded-xl text-xs text-emerald-200 space-y-2.5">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="p-4 bg-[#03231d] border border-emerald-500/70 rounded-2xl text-xs text-emerald-200 space-y-3 shadow-lg">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
                   <div className="space-y-1">
-                    <p className="font-bold text-white text-xs">E-posta Başarıyla Gönderildi!</p>
+                    <p className="font-extrabold text-white text-sm">E-Posta Başarıyla Gönderildi!</p>
                     <p className="text-[11px] text-emerald-300/90 leading-relaxed">
-                      {forgotSuccess.message}
+                      Şifre hatırlatma bilgileriniz <strong>{forgotSuccess.email}</strong> adresine Google SMTP sunucusu aracılığıyla iletildi.
                     </p>
+                    {forgotSuccess.refCode && (
+                      <p className="text-[10px] text-emerald-400/80 font-mono">
+                        Güvenlik Referans Kodu: #{forgotSuccess.refCode}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIdentifier(forgotSuccess.email);
-                    setForgotSuccess(null);
-                    setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
-                  }}
-                  className="w-full py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-lg transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Giriş Ekranına Git</span>
-                </button>
+                {/* Detailed Deliverability Guidance */}
+                <div className="p-3 bg-[#011612] border border-emerald-700/60 rounded-xl space-y-2 text-[11px] text-emerald-300/90 leading-relaxed">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
+                    <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Mail Adresinize Henüz Ulaşmadıysa:</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-emerald-200/85">
+                    <li>Lütfen e-posta kutunuzun <strong>Spam / İstenmeyen</strong> ve <strong>Tanıtımlar</strong> klasörlerini kontrol ediniz.</li>
+                    <li>Gmail arama çubuğuna <strong>in:anywhere Antalya</strong> yazarak tüm klasörlerde aratabilirsiniz.</li>
+                    {forgotSuccess.isSelfSent && (
+                      <li className="text-amber-200 font-semibold">
+                        <strong>Gmail Bildirimi:</strong> Kendi adresinize (kuryeantalyam@gmail.com) gönderildiği için Gmail bu mesajı Gelen Kutusu yerine <strong>"Gönderilmiş Öğeler" (Sent)</strong> veya <strong>"Tüm Postalar" (All Mail)</strong> sekmesinde gösterir.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Instant Password Reveal Fallback */}
+                {!showDirectPassword ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectPassword(true)}
+                    className="w-full py-2 px-3 bg-emerald-900/60 hover:bg-emerald-900 border border-emerald-600/60 text-emerald-300 hover:text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>E-posta Gelmedi mi? Şifremi Hemen Ekranda Göster</span>
+                  </button>
+                ) : (
+                  <div className="p-3 bg-[#01140f] border border-amber-500/70 rounded-xl space-y-2.5 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-300">Kayıtlı Hesap Şifreniz:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (forgotSuccess.userPassword) {
+                            navigator.clipboard.writeText(forgotSuccess.userPassword);
+                            setCopiedPassword(true);
+                            setTimeout(() => setCopiedPassword(false), 2000);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-700/60 transition cursor-pointer"
+                      >
+                        {copiedPassword ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span>Kopyalandı</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Şifreyi Kopyala</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="p-2 bg-[#06241b] border border-emerald-600/50 rounded-lg text-center">
+                      <span className="font-mono text-base font-extrabold text-white tracking-wider">
+                        {forgotSuccess.userPassword || '1234'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-emerald-400/80 text-center">
+                      Bu şifre ile hesabınıza hemen giriş yapabilirsiniz.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier(forgotSuccess.email);
+                      if (forgotSuccess.userPassword) {
+                        setPassword(forgotSuccess.userPassword);
+                      }
+                      setForgotSuccess(null);
+                      setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
+                    }}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Şifre ile Giriş Yap</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotSuccess(null);
+                      setShowDirectPassword(false);
+                    }}
+                    className="px-3 py-2.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Tekrar Dene
+                  </button>
+                </div>
               </div>
             )}
 
