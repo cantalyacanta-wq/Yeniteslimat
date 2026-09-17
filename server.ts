@@ -1917,75 +1917,98 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const fromAddress = `"${fromName}" <${smtpUser}>`;
     const isSelfSent = targetEmail.toLowerCase() === smtpUser.toLowerCase();
 
-    const subject = `[Antalya Teslimat] Hesap Şifre Hatırlatma (#${refCode}) - ${timeStr}`;
+    // Subject and clean, high-deliverability light transactional template
+    const subject = `Antalya Kurye Ekspres: Şifre Hatırlatma Bilgileriniz (#${refCode})`;
     const htmlContent = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #021f19; border: 1px solid #065f46; border-radius: 16px; overflow: hidden; color: #ffffff;">
-        <div style="background: linear-gradient(135deg, #047857 0%, #064e3b 100%); padding: 24px; text-align: center;">
-          <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">Antalya Şehir İçi Teslimat 7/24</h1>
-          <p style="margin: 6px 0 0 0; font-size: 13px; color: #a7f3d0;">Hesap Güvenlik & Şifre Hatırlatma Servisi</p>
-        </div>
-        
-        <div style="padding: 28px 24px; background-color: #03231d;">
-          <p style="font-size: 15px; color: #ecfdf5; margin-top: 0;">Merhaba Sayın <strong>${userName}</strong>,</p>
-          <p style="font-size: 13px; color: #a7f3d0; line-height: 1.6;">
-            Antalya Kurye platformundaki hesabınız için şifre hatırlatma talebinde bulundunuz. Kayıtlı hesap ve giriş bilgileriniz aşağıda güvenle listelenmiştir:
-          </p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 20px 10px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #047857; padding: 24px 20px; text-align: center;">
+              <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">Antalya Şehir İçi Moto Kurye</h1>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #d1fae5;">Şifre Hatırlatma Bildirimi</p>
+            </td>
+          </tr>
           
-          <div style="background-color: #011612; border: 1px solid #059669; border-radius: 12px; padding: 18px; margin: 20px 0;">
-            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 6px 0; color: #6ee7b7; width: 140px; font-weight: 600;">Hesap Türü:</td>
-                <td style="padding: 6px 0; color: #ffffff; font-weight: bold;">${userRoleText}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6ee7b7; font-weight: 600;">Kayıtlı E-Posta:</td>
-                <td style="padding: 6px 0; color: #ffffff; font-weight: bold;">${targetEmail}</td>
-              </tr>
-              ${found.phone ? `
-              <tr>
-                <td style="padding: 6px 0; color: #6ee7b7; font-weight: 600;">Telefon:</td>
-                <td style="padding: 6px 0; color: #ffffff;">${found.phone}</td>
-              </tr>` : ''}
-              <tr>
-                <td style="padding: 12px 0 6px 0; color: #fbbf24; font-weight: bold; font-size: 14px;">Mevcut Şifreniz:</td>
-                <td style="padding: 12px 0 6px 0;">
-                  <span style="display: inline-block; background-color: #064e3b; border: 1px dashed #34d399; color: #ffffff; font-size: 18px; font-weight: 800; padding: 8px 16px; border-radius: 8px; letter-spacing: 1px;">${userPassword}</span>
-                </td>
-              </tr>
-            </table>
-          </div>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 28px 24px;">
+              <p style="font-size: 15px; margin-top: 0; color: #0f172a; font-weight: 600;">Merhaba Sayın ${userName},</p>
+              <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
+                Antalya Kurye Ekspres platformundaki hesabınız için şifre hatırlatma talebinde bulundunuz. Kayıtlı hesap bilgileriniz ve şifreniz aşağıda yer almaktadır:
+              </p>
+              
+              <!-- Info Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin: 16px 0; padding: 16px;">
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; width: 130px; font-weight: 600;">Hesap Türü:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 700;">${userRoleText}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">E-Posta:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 600;">${targetEmail}</td>
+                </tr>
+                ${found.phone ? `
+                <tr>
+                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">Telefon:</td>
+                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px;">${found.phone}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 12px 0 4px 0; color: #047857; font-size: 14px; font-weight: 700;">Giriş Şifreniz:</td>
+                  <td style="padding: 12px 0 4px 0;">
+                    <span style="display: inline-block; background-color: #ecfdf5; border: 1.5px solid #059669; color: #065f46; font-size: 18px; font-weight: 800; padding: 6px 14px; border-radius: 6px; letter-spacing: 1px;">
+                      ${userPassword}
+                    </span>
+                  </td>
+                </tr>
+              </table>
 
-          <div style="background-color: rgba(245, 158, 11, 0.12); border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0;">
-            <p style="margin: 0; font-size: 12px; color: #fde68a; line-height: 1.5;">
-              <strong>Güvenlik Uyarısı:</strong> Bu talebi siz gerçekleştirmediyseniz lütfen derhal sistem yöneticimiz ile iletişime geçiniz. Giriş yaptıktan sonra şifrenizi dilediğiniz zaman güncelleyebilirsiniz.
-            </p>
-          </div>
+              <!-- Notice -->
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 14px; border-radius: 4px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+                  <strong>Güvenlik Uyarısı:</strong> Bu talebi siz gerçekleştirmediyseniz lütfen müşteri hizmetlerimiz ile (0507 754 74 84) iletişime geçiniz. Giriş yaptıktan sonra şifrenizi profil ayarlarınızdan değiştirebilirsiniz.
+                </p>
+              </div>
 
-          <p style="font-size: 12px; color: #6ee7b7; margin-top: 20px; text-align: center;">
-            Güvenlik Doğrulama Kodu: <strong>#${refCode}</strong> • ${dateStr} ${timeStr}
-          </p>
-        </div>
+              <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 20px 0 0 0;">
+                Güvenlik Doğrulama: <strong>#${refCode}</strong> • ${dateStr} ${timeStr}
+              </p>
+            </td>
+          </tr>
 
-        <div style="background-color: #011612; padding: 16px; text-align: center; border-top: 1px solid #065f46; font-size: 11px; color: #6ee7b7;">
-          © ${now.getFullYear()} Antalya Şehir İçi Moto Kurye & Teslimat A.Ş. • Destek & İletişim: 0507 754 74 84 • kuryeantalyam@gmail.com
-        </div>
-      </div>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+              © ${now.getFullYear()} Antalya Şehir İçi Moto Kurye & Teslimat A.Ş.<br>
+              Destek: <strong>0507 754 74 84</strong> • <a href="mailto:kuryeantalyam@gmail.com" style="color: #047857; text-decoration: none;">kuryeantalyam@gmail.com</a>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `;
 
     const textContent = `
-Antalya Şehir İçi Teslimat 7/24 - Şifre Hatırlatma
+Antalya Şehir İçi Moto Kurye - Şifre Hatırlatma
 
 Merhaba Sayın ${userName},
 
 Hesabınız için şifre hatırlatma talebinde bulundunuz.
+
 Hesap Türü: ${userRoleText}
 Kayıtlı E-Posta: ${targetEmail}
 Şifreniz: ${userPassword}
 
-Güvenlik Referans: #${refCode} (${dateStr} ${timeStr})
+Güvenlik Referans Kodu: #${refCode} (${dateStr} ${timeStr})
 
 Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
-İletişim & Destek: 0507 754 74 84 | kuryeantalyam@gmail.com
+Destek & İletişim: 0507 754 74 84 | kuryeantalyam@gmail.com
     `.trim();
 
     // Create fresh direct Gmail transport with high deliverability
@@ -2056,7 +2079,7 @@ Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
       return;
     }
 
-    // Return success along with security details and instant display options
+    // Return success without leaking the user's password on client API response
     res.json({
       success: true,
       email: targetEmail,
@@ -2065,10 +2088,6 @@ Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
       isSelfSent,
       userName,
       userRole: found.role,
-      userPassword,
-      passwordHint: userPassword.length <= 4 
-        ? `${userPassword[0]}***` 
-        : `${userPassword.slice(0, 1)}***${userPassword.slice(-1)}`,
       message: `Şifre hatırlatma bilgileri ${targetEmail} adresinize başarıyla iletildi.`,
     });
   } catch (err: any) {

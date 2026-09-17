@@ -58,8 +58,6 @@ interface DeliveryContextType {
     email?: string;
     refCode?: number;
     isSelfSent?: boolean;
-    userPassword?: string;
-    passwordHint?: string;
   }>;
 
   // Requests
@@ -946,8 +944,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     email?: string;
     refCode?: number;
     isSelfSent?: boolean;
-    userPassword?: string;
-    passwordHint?: string;
   }> => {
     const rawClean = identifier.trim().toLowerCase();
     if (!rawClean) {
@@ -1001,22 +997,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           email: data.email,
           refCode: data.refCode,
           isSelfSent: data.isSelfSent,
-          userPassword: data.userPassword,
-          passwordHint: data.passwordHint,
         };
       } else {
         return { success: false, message: data.error || data.message || 'Şifre sıfırlama işlemi gerçekleştirilemedi.' };
       }
     } catch (err: any) {
-      if (matchingUser && matchingUser.email) {
-        return {
-          success: true,
-          email: matchingUser.email,
-          userPassword: matchingUser.password,
-          message: `Şifre hatırlatma bilgileriniz ${matchingUser.email} adresinize gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`
-        };
-      }
-      return { success: false, message: 'Sunucuya bağlanırken bir sorun oluştu. Lütfen tekrar deneyiniz.' };
+      return { success: false, message: 'E-posta sunucusuna bağlanırken bir sorun oluştu. Lütfen tekrar deneyiniz.' };
     }
   }, [users]);
 
