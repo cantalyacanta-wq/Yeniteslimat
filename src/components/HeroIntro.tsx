@@ -135,7 +135,7 @@ export const HeroIntro: React.FC = () => {
     }
   };
 
-  const isUserLoggedIn = currentUser.id !== 'user-guest-01' || (currentUser.role === 'customer' && currentUser.name !== 'Misafir Müşteri');
+  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && currentUser.role === 'customer' && Boolean(currentUser.email);
 
   // Filter history items for logged-in customer
   const filteredDeliveredOrders = deliveredOrders.filter((req) => {
@@ -178,19 +178,18 @@ export const HeroIntro: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-            {/* Always visible Oturumu Kapat button on customer active order page */}
-            <button
-              type="button"
-              id="active-order-top-logout-btn"
-              onClick={logout}
-              className="px-4 py-3 bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/70 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md shrink-0"
-              title="Oturumu Kapat / Çıkış Yap"
-            >
-              <LogOut className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>Oturumu Kapat</span>
-            </button>
-
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            {isUserLoggedIn && (
+              <button
+                type="button"
+                onClick={logout}
+                className="px-4 py-3 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                title="Oturumu Kapat"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span className="hidden sm:inline">Oturumu Kapat</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setCurrentView('customer')}
@@ -384,7 +383,7 @@ export const HeroIntro: React.FC = () => {
 
           {/* Package Info & Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-emerald-800/50">
-            <div className="flex items-center gap-3 text-xs flex-wrap">
+            <div className="flex items-center gap-3 text-xs">
               <span className="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-bold">
                 📦 {activeCustomerOrder.packageName}
               </span>
@@ -393,31 +392,17 @@ export const HeroIntro: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-              {/* Oturumu Kapat Button inside active order details */}
+            {/* Cancel Order Button */}
+            {activeCustomerOrder.status === 'pending_pool' && (
               <button
                 type="button"
-                id="active-order-card-logout-btn"
-                onClick={logout}
-                className="px-3.5 py-2 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shadow-xs"
-                title="Oturumu Kapat"
+                onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                className="px-4 py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-auto"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                <span>Oturumu Kapat</span>
+                <X className="w-4 h-4" />
+                <span>Talebi İptal Et</span>
               </button>
-
-              {/* Cancel Order Button */}
-              {activeCustomerOrder.status === 'pending_pool' && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmCancelModal(activeCustomerOrder)}
-                  className="px-4 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Talebi İptal Et</span>
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

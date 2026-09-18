@@ -218,17 +218,7 @@ export const OrderTracker: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
-                    title="Oturumu Kapat / Çıkış Yap"
-                  >
-                    <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Oturumu Kapat</span>
-                  </button>
-
+                <div className="flex items-center gap-3">
                   {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
                     <button
                       type="button"

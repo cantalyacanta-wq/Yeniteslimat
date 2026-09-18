@@ -12,15 +12,14 @@ import {
   AlertCircle,
   Bike,
   Plus,
-  Package,
-  LogOut,
+  Package
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
 import { ReceiptModal } from './ReceiptModal';
 
 export const OrderHistory: React.FC = () => {
-  const { requests, currentUser, setSelectedTrackingId, setCurrentView, logout } = useDelivery();
+  const { requests, currentUser, setSelectedTrackingId, setCurrentView } = useDelivery();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
@@ -151,19 +150,6 @@ export const OrderHistory: React.FC = () => {
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Yeni Kurye Çağır</span>
-            </button>
-          )}
-
-          {currentUser.id !== 'user-guest-01' && (
-            <button
-              type="button"
-              id="order-history-logout-btn"
-              onClick={logout}
-              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-2xs"
-              title="Oturumu Kapat / Çıkış Yap"
-            >
-              <LogOut className="w-3.5 h-3.5 text-rose-600" />
-              <span>Oturumu Kapat</span>
             </button>
           )}
           <div className="relative">
