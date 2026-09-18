@@ -438,13 +438,18 @@ export const PaketTalebiPoolPage: React.FC = () => {
                         <Zap className="w-5 h-5 animate-pulse" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono font-black text-base text-amber-400">
                             #{req.trackingCode}
                           </span>
                           <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 font-bold text-[10px] uppercase border border-emerald-800/60">
                             {req.packageName || 'Standart Paket'}
                           </span>
+                          {req.tipAmount && req.tipAmount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-extrabold text-[10px] border border-amber-500/80 shadow-sm animate-pulse">
+                              +{req.tipAmount} ₺ Bahşiş
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-emerald-400/80 mt-0.5">
                           Tahmini Teslimat: ~{req.estimatedDurationMins || 35} Dk
@@ -453,7 +458,14 @@ export const PaketTalebiPoolPage: React.FC = () => {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] text-emerald-400/70 block font-medium">Kurye Kazancı</span>
+                      <div className="flex items-center justify-end gap-1">
+                        <span className="text-[10px] text-emerald-400/70 block font-medium">Kurye Kazancı</span>
+                        {req.tipAmount && req.tipAmount > 0 && (
+                          <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/60 px-1 rounded">
+                            Bahşiş Dahil
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xl font-black text-emerald-300">
                         +{req.courierEarnings || Math.round(req.price * 0.85)} ₺
                       </span>

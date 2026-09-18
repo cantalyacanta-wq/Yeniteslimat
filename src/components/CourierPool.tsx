@@ -262,15 +262,21 @@ export const CourierPool: React.FC = () => {
                   {/* Top Bar */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between border-b border-emerald-800/50 pb-2.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-black bg-[#011410] text-amber-400 px-2.5 py-1 rounded-lg border border-emerald-800/60">
                           {req.trackingCode}
                         </span>
-                        <span className="text-xs font-bold text-emerald-200 truncate max-w-[150px]">
+                        <span className="text-xs font-bold text-emerald-200 truncate max-w-[140px]">
                           {req.packageName}
                         </span>
+                        {req.tipAmount && req.tipAmount > 0 && (
+                          <span className="text-[10px] font-black text-amber-300 bg-amber-950/90 border border-amber-500/80 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            +{req.tipAmount} ₺ Bahşiş
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-600/50 px-2.5 py-0.5 rounded-full">
+                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-600/50 px-2.5 py-0.5 rounded-full shrink-0">
                         ~{req.estimatedDurationMins} dk
                       </span>
                     </div>
@@ -314,7 +320,14 @@ export const CourierPool: React.FC = () => {
                   {/* Accept Action */}
                   <div className="pt-3 border-t border-emerald-800/50 flex items-center justify-between gap-3">
                     <div>
-                      <span className="text-[10px] text-emerald-400/80 block font-medium">Kurye Kazancı</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-emerald-400/80 block font-medium">Kurye Kazancı</span>
+                        {req.tipAmount && req.tipAmount > 0 && (
+                          <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/60 px-1.5 py-0.2 rounded">
+                            {req.tipAmount} ₺ Bahşiş Dahil
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xl font-black text-amber-400">{req.courierEarnings} ₺</span>
                     </div>
 

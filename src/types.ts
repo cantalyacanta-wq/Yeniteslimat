@@ -111,6 +111,7 @@ export interface DeliveryRequest {
   estimatedDurationMins: number;
   price: number;
   courierEarnings: number;
+  tipAmount?: number;
   paymentMethod: PaymentMethod;
   isPaid: boolean;
   

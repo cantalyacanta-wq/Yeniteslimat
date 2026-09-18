@@ -20,7 +20,10 @@ import {
   Lock,
   Unlock,
   Check,
-  History
+  History,
+  Heart,
+  Coins,
+  Sparkles,
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
@@ -154,6 +157,19 @@ export const CustomerRequestForm: React.FC = () => {
   const [urgency, setUrgency] = useState<UrgencyType>('standard');
   const [noteForCourier, setNoteForCourier] = useState<string>('');
 
+  // Tip / Bahşiş state
+  const [selectedTip, setSelectedTip] = useState<number>(0);
+  const [isCustomTip, setIsCustomTip] = useState<boolean>(false);
+  const [customTipInput, setCustomTipInput] = useState<string>('');
+
+  const tipAmount = useMemo(() => {
+    if (isCustomTip) {
+      const parsed = parseInt(customTipInput.replace(/\D/g, ''), 10);
+      return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    }
+    return selectedTip;
+  }, [isCustomTip, customTipInput, selectedTip]);
+
   // UI state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -257,6 +273,7 @@ export const CustomerRequestForm: React.FC = () => {
         urgency,
         paymentMethod,
         isPaid: paymentMethod === 'online_credit_card',
+        tipAmount: tipAmount > 0 ? tipAmount : undefined,
       });
 
       // Clear non-locked fields
@@ -267,6 +284,9 @@ export const CustomerRequestForm: React.FC = () => {
       }
       setPackageName('');
       setNoteForCourier('');
+      setSelectedTip(0);
+      setIsCustomTip(false);
+      setCustomTipInput('');
 
       // Auto redirect to customer home and focus tracking radar screen as requested
       setSelectedTrackingId(newReq.id);
@@ -604,6 +624,122 @@ export const CustomerRequestForm: React.FC = () => {
                 className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 outline-none"
               />
             </div>
+
+            {/* Kuryeye Bahşiş Alanı */}
+            <div className="bg-[#021f19] border border-emerald-700/60 rounded-2xl p-4 sm:p-5 space-y-3 shadow-md">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400 shrink-0">
+                    <Heart className="w-4 h-4 fill-amber-400/30" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-extrabold text-white tracking-wide">
+                        Kuryeye Bahşiş Ekleyin
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/50 px-2 py-0.5 rounded-full">
+                        Opsiyonel
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-300/80 leading-relaxed mt-0.5">
+                      Bahşişin %100'ü doğrudan kuryeye aktarılır. Bahşişli siparişler kurye havuzunda öne çıkar ve çok daha hızlı kabul edilir.
+                    </p>
+                  </div>
+                </div>
+
+                {tipAmount > 0 && (
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-amber-300/90 block font-medium">Eklenen Bahşiş</span>
+                    <span className="text-sm font-black text-amber-400">+{tipAmount} ₺</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bahşiş Seçenek Butonları */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[
+                  { label: 'Yok', value: 0 },
+                  { label: '25 ₺', value: 25 },
+                  { label: '50 ₺', value: 50 },
+                  { label: '75 ₺', value: 75 },
+                  { label: '100 ₺', value: 100 },
+                ].map((preset) => {
+                  const isSelected = !isCustomTip && selectedTip === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => {
+                        setIsCustomTip(false);
+                        setSelectedTip(preset.value);
+                        setCustomTipInput('');
+                      }}
+                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-amber-400 shadow-md shadow-amber-500/20 ring-2 ring-amber-400/40'
+                          : 'bg-[#06120d] text-emerald-200 border-emerald-800/70 hover:bg-emerald-950/70 hover:border-emerald-700'
+                      }`}
+                    >
+                      {preset.value > 0 && <Coins className="w-3 h-3 text-amber-300" />}
+                      <span>{preset.label}</span>
+                    </button>
+                  );
+                })}
+
+                {/* Özel Tutar Butonu */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomTip(true);
+                    setSelectedTip(0);
+                  }}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    isCustomTip
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-amber-400 shadow-md shadow-amber-500/20 ring-2 ring-amber-400/40'
+                      : 'bg-[#06120d] text-emerald-200 border-emerald-800/70 hover:bg-emerald-950/70 hover:border-emerald-700'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>Özel Tutar</span>
+                </button>
+              </div>
+
+              {/* Özel Tutar Giriş Kutusu */}
+              {isCustomTip && (
+                <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="5000"
+                      step="5"
+                      value={customTipInput}
+                      onChange={(e) => setCustomTipInput(e.target.value)}
+                      placeholder="Bahşiş tutarını yazınız (Örn: 150)"
+                      className="w-full bg-[#06120d] border border-amber-500/80 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none font-bold"
+                      autoFocus
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-400">
+                      ₺ Bahşiş
+                    </span>
+                  </div>
+                  {customTipInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomTipInput('');
+                        setIsCustomTip(false);
+                        setSelectedTip(0);
+                      }}
+                      className="p-2.5 rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400 hover:text-white transition cursor-pointer"
+                      title="Sıfırla"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Form Error */}
@@ -636,11 +772,15 @@ export const CustomerRequestForm: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-1">
               <div>
                 <span className="text-xs text-emerald-300/80 block font-medium">
-                  Kurye Hizmet Bedeli ({packageType === 'food' ? 'Yemek Menüsü' : 'Standart Paket'})
+                  {tipAmount > 0 ? 'Toplam Tutar (Bahşiş Dahil)' : `Kurye Hizmet Bedeli (${packageType === 'food' ? 'Yemek Menüsü' : 'Standart Paket'})`}
                 </span>
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-3xl font-black text-emerald-400">{estimate.price} ₺</span>
-                  {estimate.isSameDistrict ? (
+                  <span className="text-3xl font-black text-emerald-400">{estimate.price + tipAmount} ₺</span>
+                  {tipAmount > 0 ? (
+                    <span className="text-xs text-amber-300 bg-amber-950/80 border border-amber-600/60 px-2.5 py-0.5 rounded-lg font-medium">
+                      Tarife {estimate.price} ₺ + Bahşiş {tipAmount} ₺
+                    </span>
+                  ) : estimate.isSameDistrict ? (
                     <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg font-medium">
                       Aynı ilçe ({senderDistrict}) • Baz Fiyat ({estimate.basePrice} ₺)
                     </span>
@@ -661,7 +801,7 @@ export const CustomerRequestForm: React.FC = () => {
                 }`}
               >
                 <Bike className="w-5 h-5 shrink-0" />
-                <span>{isSubmitting ? 'Talep İletiliyor...' : `Kurye Çağır (${estimate.price} ₺)`}</span>
+                <span>{isSubmitting ? 'Talep İletiliyor...' : `Kurye Çağır (${estimate.price + tipAmount} ₺)`}</span>
               </button>
             </div>
           </div>

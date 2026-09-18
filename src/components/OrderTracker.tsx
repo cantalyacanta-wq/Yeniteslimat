@@ -324,7 +324,15 @@ export const OrderTracker: React.FC = () => {
                   <span>İçerik: <strong className="text-slate-800">{currentOrder.packageName}</strong> ({currentOrder.packageWeightKg} kg)</span>
                 </div>
                 <div>
-                  <span>Tutar: <strong className="text-slate-900 text-sm">{currentOrder.price} ₺</strong> ({currentOrder.isPaid ? 'Online Ödendi' : 'Kapıda Ödeme'})</span>
+                  <span>
+                    Tutar: <strong className="text-slate-900 text-sm">{currentOrder.price} ₺</strong>
+                    {currentOrder.tipAmount && currentOrder.tipAmount > 0 ? (
+                      <span className="text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[11px] font-semibold ml-1.5">
+                        +{currentOrder.tipAmount} ₺ Bahşiş Dahil
+                      </span>
+                    ) : null}
+                    <span className="text-slate-500 ml-1">({currentOrder.isPaid ? 'Online Ödendi' : 'Kapıda Ödeme'})</span>
+                  </span>
                 </div>
               </div>
             </div>

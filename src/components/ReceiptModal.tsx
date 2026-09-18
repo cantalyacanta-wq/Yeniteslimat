@@ -110,12 +110,26 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onClose }) =>
             </div>
 
             {/* Total Fee */}
-            <div className="bg-slate-900 text-white p-3.5 rounded-lg flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Hizmet Bedeli</span>
-                <span className="text-xs text-slate-300">KDV Dahil Net Tutar</span>
+            <div className="bg-slate-900 text-white p-3.5 rounded-lg space-y-2">
+              {order.tipAmount && order.tipAmount > 0 ? (
+                <div className="space-y-1 text-xs border-b border-slate-700/80 pb-2">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Taşıma / Hizmet Bedeli:</span>
+                    <span>{order.price - order.tipAmount} ₺</span>
+                  </div>
+                  <div className="flex justify-between text-amber-300 font-semibold">
+                    <span>Kurye Bahşişi:</span>
+                    <span>+{order.tipAmount} ₺</span>
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Toplam Tutar</span>
+                  <span className="text-xs text-slate-300">KDV Dahil Net Tutar</span>
+                </div>
+                <span className="text-2xl font-black text-white">{order.price} ₺</span>
               </div>
-              <span className="text-2xl font-black text-white">{order.price} ₺</span>
             </div>
 
             {/* Verification Stamp */}

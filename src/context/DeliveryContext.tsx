@@ -1290,6 +1290,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }).catch(() => {});
       }
 
+      const tip = Math.max(0, Math.round(Number(params.tipAmount) || 0));
+      const totalPrice = estimate.price + tip;
+      const totalCourierEarnings = estimate.courierEarnings + tip;
+
       const newRequest: DeliveryRequest = {
         ...params,
         id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1300,8 +1304,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         status: 'pending_pool', // ALWAYS starts in pool waiting for courier
         estimatedDistanceKm: estimate.distanceKm,
         estimatedDurationMins: estimate.durationMins,
-        price: estimate.price,
-        courierEarnings: estimate.courierEarnings,
+        tipAmount: tip,
+        price: totalPrice,
+        courierEarnings: totalCourierEarnings,
       };
 
       // 1. Immediately update local state
