@@ -12,7 +12,7 @@ import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
-import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
+import { Bike, ShieldCheck, Zap, FileText, Package } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -44,6 +44,35 @@ const MainContent: React.FC = () => {
           {currentView === 'courier' && (
             currentUser.role === 'courier' || currentUser.role === 'admin' ? (
               <CourierPool />
+            ) : currentUser.role === 'customer' ? (
+              <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
+                  <Package className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-extrabold text-white">Müşteri Hesabındasınız</h3>
+                  <p className="text-xs text-emerald-300/80">
+                    Kurye havuzu yalnızca aktif kuryeler içindir. Antalya içi paket göndermek veya kurye çağırmak için müşteri panelinizi kullanabilirsiniz.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('customer')}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>Müşteri Paneline Dön (Kurye Çağır)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('home')}
+                    className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+                  >
+                    Ana Sayfaya Dön
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">

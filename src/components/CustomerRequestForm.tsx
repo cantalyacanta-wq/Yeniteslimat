@@ -25,6 +25,7 @@ import {
   Coins,
   Sparkles,
   BookmarkCheck,
+  LogOut,
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
@@ -42,6 +43,7 @@ export const CustomerRequestForm: React.FC = () => {
     currentUser, 
     cancelRequest,
     openAuthModal,
+    logout,
   } = useDelivery();
 
   // Address Lock checkbox state
@@ -345,16 +347,29 @@ export const CustomerRequestForm: React.FC = () => {
 
         <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
           {currentUser.id !== 'user-guest-01' && (
-            <button
-              type="button"
-              id="customer-form-history-btn"
-              onClick={() => setCurrentView('history')}
-              className="px-4 py-2 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-600/70 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
-              title="Geçmiş Teslimatlarımı Görüntüle"
-            >
-              <History className="w-4 h-4 text-emerald-400" />
-              <span>Geçmiş Teslimatlarım</span>
-            </button>
+            <>
+              <button
+                type="button"
+                id="customer-form-history-btn"
+                onClick={() => setCurrentView('history')}
+                className="px-4 py-2 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-600/70 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+                title="Geçmiş Teslimatlarımı Görüntüle"
+              >
+                <History className="w-4 h-4 text-emerald-400" />
+                <span>Geçmiş Teslimatlarım</span>
+              </button>
+
+              <button
+                type="button"
+                id="customer-form-logout-btn"
+                onClick={logout}
+                className="px-3.5 py-2 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0"
+                title="Oturumu Kapat"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                <span>Oturumu Kapat</span>
+              </button>
+            </>
           )}
 
           <div className="flex items-center gap-2 text-xs text-emerald-300 bg-[#011a14] px-3.5 py-2 rounded-2xl border border-emerald-700/50">

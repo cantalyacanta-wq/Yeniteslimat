@@ -1228,6 +1228,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, guestUser.id);
       localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
       sessionStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
+      localStorage.removeItem('ant_last_customer_order_id');
+      localStorage.removeItem('ant_last_customer_phone');
     } catch (e) {
       console.warn('Logout storage write error:', e);
     }

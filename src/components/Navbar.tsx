@@ -3,6 +3,7 @@ import {
   Bike,
   Shield,
   LogOut,
+  LogIn,
   Package,
   History,
 } from 'lucide-react';
@@ -147,8 +148,8 @@ export const Navbar: React.FC = () => {
           {/* Right Section: Compact Button or Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             
-            {/* If logged in with active account */}
-            {currentUser.id !== 'user-guest-01' && currentUser.email ? (
+            {/* If logged in with active account (not guest) */}
+            {currentUser.id !== 'user-guest-01' ? (
               <>
                 {/* User Profile Info Badge */}
                 <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-xl border border-emerald-800/60 bg-[#03241d] text-xs text-white">
@@ -161,7 +162,7 @@ export const Navbar: React.FC = () => {
                         : 'bg-teal-600'
                     }`}
                   >
-                    {currentUser.name.split(' ')[0][0]}
+                    {(currentUser.name || 'M').split(' ')[0][0]}
                   </div>
                   <div className="text-left hidden sm:block">
                     <div className="font-bold text-white text-xs truncate max-w-[90px] sm:max-w-[120px]">
@@ -180,26 +181,42 @@ export const Navbar: React.FC = () => {
                 {/* Direct Logout Button */}
                 <button
                   type="button"
+                  id="navbar-logout-btn"
                   onClick={logout}
                   title="Oturumu Kapat / Çıkış Yap"
-                  className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-xs"
                 >
                   <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="hidden md:inline text-[11px]">Çıkış</span>
+                  <span className="text-[11px] font-bold">Oturumu Kapat</span>
                 </button>
               </>
             ) : (
-              /* If Guest / Not Logged In -> Courier Login Button */
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <button
-                  type="button"
-                  onClick={() => openAuthModal('courier_login')}
-                  className="flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/30 shrink-0"
-                >
-                  <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
-                  <span className="whitespace-nowrap">Kurye Girişi</span>
-                </button>
-              </div>
+              /* If Guest / Not Logged In */
+              /* IMPORTANT: Müşteri panelinde veya müşteri akışında kurye giriş butonu KESİNLİKLE gözükmesin! */
+              (currentView !== 'customer' && currentView !== 'history' && currentView !== 'tracker' && currentUser.role !== 'customer') ? (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('courier_login')}
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/30 shrink-0"
+                  >
+                    <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
+                    <span className="whitespace-nowrap">Kurye Girişi</span>
+                  </button>
+                </div>
+              ) : (
+                /* In customer view/panel, show customer login button */
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('login')}
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 bg-emerald-800/80 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-emerald-600/50 shrink-0"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                    <span className="whitespace-nowrap">Müşteri Girişi</span>
+                  </button>
+                </div>
+              )
             )}
           </div>
         </div>
