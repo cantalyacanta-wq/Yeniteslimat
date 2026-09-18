@@ -24,6 +24,7 @@ import {
   Heart,
   Coins,
   Sparkles,
+  BookmarkCheck,
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
@@ -80,7 +81,7 @@ export const CustomerRequestForm: React.FC = () => {
         if (parsed.address) return parsed.address;
       }
     } catch {}
-    return '';
+    return currentUser.address || '';
   });
 
   const [senderName, setSenderName] = useState<string>(() => {
@@ -215,12 +216,13 @@ export const CustomerRequestForm: React.FC = () => {
     }
   }, [isReceiverLocked, receiverDistrict, receiverAddress, receiverName, receiverPhone]);
 
-  // Sync sender name and phone when user switches profile (if not locked)
+  // Sync sender info when user switches profile (if not locked)
   useEffect(() => {
     if (!isSenderLocked) {
       if (currentUser.name && !senderName) setSenderName(currentUser.name);
       if (currentUser.phone && !senderPhone) setSenderPhone(currentUser.phone);
       if (currentUser.district) setSenderDistrict(currentUser.district);
+      if (currentUser.address && !senderAddress) setSenderAddress(currentUser.address);
     }
   }, [currentUser, isSenderLocked]);
 
@@ -430,7 +432,35 @@ export const CustomerRequestForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                <label className="block text-xs font-semibold text-emerald-200">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+                {currentUser.address && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSenderAddress(currentUser.address || '');
+                      if (currentUser.district) {
+                        setSenderDistrict(currentUser.district);
+                      }
+                      if (currentUser.name && !senderName) {
+                        setSenderName(currentUser.name);
+                      }
+                      if (currentUser.phone && !senderPhone) {
+                        setSenderPhone(currentUser.phone);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      senderAddress === currentUser.address
+                        ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
+                        : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
+                    }`}
+                    title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
+                  >
+                    <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span>{senderAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -518,7 +548,35 @@ export const CustomerRequestForm: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                <label className="block text-xs font-semibold text-emerald-200">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
+                {currentUser.address && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReceiverAddress(currentUser.address || '');
+                      if (currentUser.district) {
+                        setReceiverDistrict(currentUser.district);
+                      }
+                      if (currentUser.name && !receiverName) {
+                        setReceiverName(currentUser.name);
+                      }
+                      if (currentUser.phone && !receiverPhone) {
+                        setReceiverPhone(currentUser.phone);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      receiverAddress === currentUser.address
+                        ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
+                        : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
+                    }`}
+                    title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
+                  >
+                    <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span>{receiverAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required

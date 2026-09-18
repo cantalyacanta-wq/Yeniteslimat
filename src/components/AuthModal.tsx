@@ -67,6 +67,7 @@ export const AuthModal: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerDistrict, setCustomerDistrict] = useState<DistrictName>('Muratpaşa');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [customerCompany, setCustomerCompany] = useState('');
   const [customerPassword, setCustomerPassword] = useState('');
   const [customerPasswordConfirm, setCustomerPasswordConfirm] = useState('');
@@ -207,6 +208,7 @@ export const AuthModal: React.FC = () => {
         phone: customerPhone.trim(),
         email: customerEmail.trim().toLowerCase(),
         district: customerDistrict,
+        address: customerAddress.trim(),
         companyName: customerCompany.trim(),
         password: customerPassword.trim(),
         role: 'customer',
@@ -587,6 +589,20 @@ export const AuthModal: React.FC = () => {
                   placeholder="Örn: Eczane, Restoran veya Butik İsmi"
                   value={customerCompany}
                   onChange={(e) => setCustomerCompany(e.target.value)}
+                  className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-orange-400 block">Açık Adresiniz (Paket gönderirken hazır bulunur)</label>
+              <div className="relative">
+                <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-400" />
+                <input
+                  type="text"
+                  placeholder="Örn: Şirinyalı Mah. 1487 Sok. No: 12 Daire: 4"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
                   className="w-full bg-[#06120d] border border-emerald-800/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-hidden font-medium"
                 />
               </div>

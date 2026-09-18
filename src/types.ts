@@ -50,6 +50,8 @@ export interface UserAccount {
   role: UserRole;
   companyName?: string;
   district?: DistrictName;
+  neighborhood?: string;
+  address?: string;
   avatarUrl?: string;
   createdAt: string;
   totalOrders?: number;

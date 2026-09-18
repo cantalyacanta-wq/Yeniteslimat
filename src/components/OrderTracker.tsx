@@ -16,6 +16,7 @@ import {
   Copy,
   Check,
   RotateCcw,
+  LogOut,
   X
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
@@ -30,7 +31,8 @@ export const OrderTracker: React.FC = () => {
     setSelectedTrackingId, 
     rateDelivery,
     setCurrentView,
-    cancelRequest 
+    cancelRequest,
+    logout 
   } = useDelivery();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,25 +154,40 @@ export const OrderTracker: React.FC = () => {
           </p>
         </div>
 
-        {/* Search input */}
-        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Takip No (Örn: ANT-9842)"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 uppercase font-mono font-semibold focus:bg-white focus:border-orange-500 outline-hidden"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer"
-          >
-            Sorgula
-          </button>
-        </form>
+        {/* Search input & User actions */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap">
+          <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1 md:w-auto">
+            <div className="relative flex-1 md:w-60">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Takip No (Örn: ANT-9842)"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 uppercase font-mono font-semibold focus:bg-white focus:border-orange-500 outline-hidden"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0"
+            >
+              Sorgula
+            </button>
+          </form>
+
+          {currentUser.id !== 'user-guest-01' && (
+            <button
+              type="button"
+              id="order-tracker-logout-btn"
+              onClick={logout}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs shrink-0"
+              title="Oturumu Kapat"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>Oturumu Kapat</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {currentOrder ? (
