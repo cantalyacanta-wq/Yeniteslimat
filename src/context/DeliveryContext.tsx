@@ -52,7 +52,7 @@ interface DeliveryContextType {
   setAuthModalNotice: (notice: string | null) => void;
   openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password', notice?: string | null) => void;
   closeAuthModal: () => void;
-  requestPasswordReset: (identifier: string, role?: 'customer' | 'courier') => Promise<{
+  requestPasswordReset: (identifier: string, role?: 'customer' | 'courier' | 'admin') => Promise<{
     success: boolean;
     message: string;
     email?: string;
@@ -939,7 +939,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [registerUser]);
 
   // Request Password Reset / Reminder Email
-  const requestPasswordReset = useCallback(async (identifier: string, role?: 'customer' | 'courier'): Promise<{
+  const requestPasswordReset = useCallback(async (identifier: string, role?: 'customer' | 'courier' | 'admin'): Promise<{
     success: boolean;
     message: string;
     email?: string;

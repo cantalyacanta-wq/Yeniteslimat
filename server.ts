@@ -2029,6 +2029,26 @@ app.post('/api/auth/forgot-password', async (req, res) => {
             break;
           }
         }
+
+        // Also check couriers collection in Firestore if still not found
+        if (!found) {
+          const couriersSnap = await getDocs(collection(serverFirestoreDb, 'couriers'));
+          for (const docSnap of couriersSnap.docs) {
+            const d = docSnap.data();
+            if (!d) continue;
+            const dEmail = (d.email || '').trim().toLowerCase();
+            const dPhoneDigits = (d.phone || '').replace(/\D/g, '');
+            if (dEmail && dEmail === raw) {
+              found = { ...d, id: docSnap.id, role: 'courier' };
+              break;
+            }
+            if (digitsOnly.length >= 7 && (dPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(dPhoneDigits) || dPhoneDigits === digitsOnly)) {
+              found = { ...d, id: docSnap.id, role: 'courier' };
+              break;
+            }
+          }
+        }
+
         if (found) {
           const existingIdx = dbState.users.findIndex(x => x.id === found.id || (found.email && x.email === found.email));
           if (existingIdx >= 0) dbState.users[existingIdx] = { ...dbState.users[existingIdx], ...found };
@@ -2057,7 +2077,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     const userName = found.name || 'Değerli Kullanıcımız';
     const userRoleText = found.role === 'courier' ? 'Moto Kurye Hesabı' : (found.role === 'admin' ? 'Yönetici Hesabı' : 'Müşteri Hesabı');
-    const userPassword = (found.password || '1234').trim();
+    const userPassword = (found.password || found.sifre || found.pass || '1234').trim();
 
     // Prepare dynamic codes & timestamps to ensure high deliverability and avoid Gmail conversation bundling
     const refCode = Math.floor(100000 + Math.random() * 900000);

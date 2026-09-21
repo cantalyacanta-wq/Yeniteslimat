@@ -3,12 +3,13 @@ import { ShieldCheck, Lock, Mail, AlertCircle, CheckCircle2, ArrowRight, Home } 
 import { useDelivery } from '../context/DeliveryContext';
 
 export const AdminLoginGate: React.FC = () => {
-  const { loginUser, setCurrentView } = useDelivery();
+  const { loginUser, setCurrentView, requestPasswordReset } = useDelivery();
   const [identifier, setIdentifier] = useState('kuryeantalyam@gmail.com');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,9 +84,35 @@ export const AdminLoginGate: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-emerald-300 block">
-              Yönetici Giriş Şifresi
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-emerald-300 block">
+                Yönetici Giriş Şifresi
+              </label>
+              <button
+                type="button"
+                disabled={forgotLoading}
+                onClick={async () => {
+                  setError(null);
+                  setSuccess(null);
+                  setForgotLoading(true);
+                  try {
+                    const res = await requestPasswordReset(identifier.trim() || 'kuryeantalyam@gmail.com', 'admin');
+                    if (res.success) {
+                      setSuccess(`Şifreniz ${res.email || 'kuryeantalyam@gmail.com'} adresine gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`);
+                    } else {
+                      setError(res.message || 'Şifre gönderilemedi.');
+                    }
+                  } catch (e: any) {
+                    setError('Bağlantı hatası oluştu.');
+                  } finally {
+                    setForgotLoading(false);
+                  }
+                }}
+                className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer transition disabled:opacity-50"
+              >
+                {forgotLoading ? 'Gönderiliyor...' : 'Şifremi Unuttum?'}
+              </button>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-3 text-emerald-400" />
               <input

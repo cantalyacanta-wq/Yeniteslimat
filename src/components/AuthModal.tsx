@@ -342,67 +342,106 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Navigation bar: Forgot Password Return Bar OR 2-Tab Navigation */}
-        {isForgotPassword ? (
-          <div className="flex items-center justify-between p-2 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setForgotError(null);
-                setForgotSuccess(null);
-                setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
-              }}
-              className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold transition cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{isCourierFlow ? 'Kurye Girişine Dön' : 'Giriş Ekranına Dön'}</span>
-            </button>
-            <span className="text-[11px] text-emerald-300/70 font-medium">Şifremi Unuttum</span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginError(null);
-                setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
-              }}
-              className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                !isRegister
-                  ? isCourierFlow
-                    ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                  : 'text-emerald-300/80 hover:text-white'
-              }`}
-            >
-              {isCourierFlow ? (
-                <Bike className="w-3.5 h-3.5" />
-              ) : (
-                <LogIn className="w-3.5 h-3.5" />
-              )}
-              <span>{isCourierFlow ? 'Kurye Girişi' : 'Giriş Yap'}</span>
-            </button>
+        {/* Account Role Selector: Müşteri vs Kurye */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#02130e] rounded-2xl border border-emerald-800/80 text-xs font-bold shadow-inner">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginError(null);
+              setForgotError(null);
+              if (isForgotPassword) setAuthModalTab('forgot_password');
+              else if (isRegister) setAuthModalTab('register');
+              else setAuthModalTab('login');
+            }}
+            className={`py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              !isCourierFlow
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-emerald-950/40'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Müşteri Hesabı</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginError(null);
+              setForgotError(null);
+              if (isForgotPassword) setAuthModalTab('courier_forgot_password');
+              else if (isRegister) setAuthModalTab('courier_register');
+              else setAuthModalTab('courier_login');
+            }}
+            className={`py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              isCourierFlow
+                ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                : 'text-amber-300/70 hover:text-white hover:bg-amber-950/30'
+            }`}
+          >
+            <Bike className="w-3.5 h-3.5" />
+            <span>Moto Kurye Hesabı</span>
+          </button>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCustomerError(null);
-                setCourierError(null);
-                setAuthModalTab(isCourierFlow ? 'courier_register' : 'register');
-              }}
-              className={`py-2 px-3 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                isRegister
-                  ? isCourierFlow
-                    ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
-                    : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                  : 'text-emerald-300/80 hover:text-white'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>{isCourierFlow ? 'Kurye Kayıt Ol' : 'Kayıt Ol'}</span>
-            </button>
-          </div>
-        )}
+        {/* 3-Tab Navigation Bar: Giriş Yap | Kayıt Ol | Şifremi Unuttum */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginError(null);
+              setForgotError(null);
+              setAuthModalTab(isCourierFlow ? 'courier_login' : 'login');
+            }}
+            className={`py-2 px-1 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              !isRegister && !isForgotPassword
+                ? isCourierFlow
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
+            }`}
+          >
+            <LogIn className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Giriş Yap</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCustomerError(null);
+              setCourierError(null);
+              setAuthModalTab(isCourierFlow ? 'courier_register' : 'register');
+            }}
+            className={`py-2 px-1 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              isRegister
+                ? isCourierFlow
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
+            }`}
+          >
+            <UserPlus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{isCourierFlow ? 'Kurye Ol' : 'Kayıt Ol'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setForgotError(null);
+              setForgotSuccess(null);
+              if (identifier) setForgotIdentifier(identifier);
+              setAuthModalTab(isCourierFlow ? 'courier_forgot_password' : 'forgot_password');
+            }}
+            className={`py-2 px-1 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 ${
+              isForgotPassword
+                ? isCourierFlow
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
+                  : 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md'
+                : 'text-emerald-300/80 hover:text-white'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Şifremi Unuttum</span>
+          </button>
+        </div>
 
         {/* =================================================================== */}
         {/* VIEW A: CUSTOMER LOGIN */}
@@ -724,7 +763,7 @@ export const AuthModal: React.FC = () => {
         {/* =================================================================== */}
         {/* VIEW C: COURIER LOGIN */}
         {/* =================================================================== */}
-        {isCourierFlow && !isRegister && (
+        {isCourierFlow && !isRegister && !isForgotPassword && (
           <form onSubmit={handleLoginSubmit} className="space-y-3.5">
             {loginError && (
               <div className="p-2.5 bg-rose-950/80 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2">
@@ -1030,9 +1069,11 @@ export const AuthModal: React.FC = () => {
             <div className="p-3 bg-[#03231d] border border-emerald-700/60 rounded-xl text-xs text-emerald-200/90 leading-relaxed flex items-start gap-2.5 shadow-xs">
               <KeyRound className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-white mb-0.5">Şifrenizi mi unuttunuz?</p>
+                <p className="font-bold text-white mb-0.5">
+                  {isCourierFlow ? 'Moto Kurye Şifre Hatırlatma' : 'Müşteri Şifre Hatırlatma'}
+                </p>
                 <p className="text-[11px] text-emerald-300/80 leading-relaxed">
-                  Kayıtlı e-posta adresinizi veya telefonunuzu giriniz. Sistemde kayıtlı şifre hatırlatma bilgileriniz e-posta adresinize anında güvenle iletilecektir.
+                  Kayıtlı e-posta adresinizi yazınız. Sistemde kayıtlı giriş şifreniz e-posta adresinize güvenle gönderilecektir.
                 </p>
               </div>
             </div>

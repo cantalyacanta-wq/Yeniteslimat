@@ -23,6 +23,7 @@ import {
   History,
   ChevronDown,
   ChevronUp,
+  KeyRound,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
@@ -269,6 +270,14 @@ export const PaketTalebiPoolPage: React.FC = () => {
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Kurye Ol / Başvuru Formu Doldur</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal('courier_forgot_password', 'Kayıtlı e-posta adresinizi yazarak kurye şifrenizi e-posta adresinize alabilirsiniz.')}
+                className="px-3.5 py-2 bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-white font-bold text-xs rounded-xl transition border border-amber-500/40 flex items-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                <span>Şifremi Unuttum</span>
               </button>
             </div>
           </div>
