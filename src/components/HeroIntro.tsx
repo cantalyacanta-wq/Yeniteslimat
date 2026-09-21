@@ -789,7 +789,11 @@ export const HeroIntro: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                openAuthModal('login', 'Kurye talebi oluşturmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
+                if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
+                  setCurrentView('customer');
+                } else {
+                  openAuthModal('login', 'Paket göndermek ve kurye çağırmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
+                }
               }}
               className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
             >
@@ -801,7 +805,16 @@ export const HeroIntro: React.FC = () => {
 
           {/* 3 Core Services Highlight (Google Target Keywords) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-left">
-            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+            <div 
+              onClick={() => {
+                if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
+                  setCurrentView('customer');
+                } else {
+                  openAuthModal('login', 'Paket göndermek için lütfen müşteri girişi yapınız.');
+                }
+              }}
+              className="p-4 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950/90 border border-emerald-700/50 hover:border-emerald-500 space-y-1 shadow-sm transition cursor-pointer"
+            >
               <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
                 <Package className="w-4 h-4 text-emerald-400" />
                 <span>Antalya Paket Gönder</span>
@@ -811,7 +824,16 @@ export const HeroIntro: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+            <div 
+              onClick={() => {
+                if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
+                  setCurrentView('customer');
+                } else {
+                  openAuthModal('login', 'Kurye çağırmak için lütfen müşteri girişi yapınız.');
+                }
+              }}
+              className="p-4 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950/90 border border-emerald-700/50 hover:border-amber-500 space-y-1 shadow-sm transition cursor-pointer"
+            >
               <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
                 <Bike className="w-4 h-4 text-amber-400" />
                 <span>Kurye Çağır (7/24)</span>
@@ -821,7 +843,16 @@ export const HeroIntro: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-emerald-950/70 border border-emerald-700/50 space-y-1 shadow-sm">
+            <div 
+              onClick={() => {
+                if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
+                  setCurrentView('customer');
+                } else {
+                  openAuthModal('login', 'Acil paket göndermek için lütfen müşteri girişi yapınız.');
+                }
+              }}
+              className="p-4 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950/90 border border-emerald-700/50 hover:border-teal-500 space-y-1 shadow-sm transition cursor-pointer"
+            >
               <div className="flex items-center gap-2 text-teal-300 font-bold text-sm">
                 <Clock className="w-4 h-4 text-teal-400" />
                 <span>Acil Paket Gönder</span>

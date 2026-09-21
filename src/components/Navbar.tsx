@@ -190,22 +190,13 @@ export const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              /* If Guest / Not Logged In -> Customer and Courier Login Buttons */
+              /* If Guest / Not Logged In -> Dedicated Courier Login Button in Header Banner */
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
-                  onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 hover:text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-emerald-600/50 shrink-0"
-                  title="Müşteri Girişi / Şifremi Unuttum"
-                >
-                  <User className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                  <span className="whitespace-nowrap">Giriş Yap</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => openAuthModal('courier_login')}
-                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-xs active:scale-95 border border-amber-400/40 shrink-0"
-                  title="Kurye Girişi / Şifremi Unuttum"
+                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md active:scale-95 border border-amber-400/40 shrink-0"
+                  title="Moto Kurye Girişi & Şifre İşlemleri"
                 >
                   <Bike className="w-3.5 h-3.5 text-amber-100 shrink-0" />
                   <span className="whitespace-nowrap">Kurye Girişi</span>

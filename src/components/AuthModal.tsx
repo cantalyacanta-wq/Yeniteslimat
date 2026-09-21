@@ -348,47 +348,7 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Account Role Selector: Müşteri vs Kurye */}
-        <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#02130e] rounded-2xl border border-emerald-800/80 text-xs font-bold shadow-inner">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginError(null);
-              setForgotError(null);
-              if (isForgotPassword) setAuthModalTab('forgot_password');
-              else if (isRegister) setAuthModalTab('register');
-              else setAuthModalTab('login');
-            }}
-            className={`py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              !isCourierFlow
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                : 'text-emerald-300/70 hover:text-white hover:bg-emerald-950/40'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Müşteri Hesabı</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setLoginError(null);
-              setForgotError(null);
-              if (isForgotPassword) setAuthModalTab('courier_forgot_password');
-              else if (isRegister) setAuthModalTab('courier_register');
-              else setAuthModalTab('courier_login');
-            }}
-            className={`py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              isCourierFlow
-                ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white shadow-md'
-                : 'text-amber-300/70 hover:text-white hover:bg-amber-950/30'
-            }`}
-          >
-            <Bike className="w-3.5 h-3.5" />
-            <span>Moto Kurye Hesabı</span>
-          </button>
-        </div>
-
-        {/* 3-Tab Navigation Bar: Giriş Yap | Kayıt Ol | Şifremi Unuttum */}
+        {/* 3-Tab Navigation Bar dedicated strictly to Current Role (Customer or Courier) */}
         <div className="grid grid-cols-3 gap-1 p-1 bg-[#050d09] rounded-xl border border-emerald-800/60 text-xs font-bold">
           <button
             type="button"
@@ -406,7 +366,7 @@ export const AuthModal: React.FC = () => {
             }`}
           >
             <LogIn className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Giriş Yap</span>
+            <span className="truncate">{isCourierFlow ? 'Kurye Girişi' : 'Müşteri Girişi'}</span>
           </button>
 
           <button
@@ -424,8 +384,12 @@ export const AuthModal: React.FC = () => {
                 : 'text-emerald-300/80 hover:text-white'
             }`}
           >
-            <UserPlus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{isCourierFlow ? 'Kurye Ol' : 'Kayıt Ol'}</span>
+            {isCourierFlow ? (
+              <Bike className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <UserPlus className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span className="truncate">{isCourierFlow ? 'Kurye Başvuru' : 'Kayıt Ol'}</span>
           </button>
 
           <button
