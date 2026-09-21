@@ -1058,6 +1058,56 @@ function initFirestoreSync() {
   } catch (err: any) {
     console.warn('[FIRESTORE COUNTER SYNC INIT FAIL]', err.message);
   }
+
+  // 4. Synchronize Password Reset Requests Collection (Real-time onSnapshot)
+  try {
+    const pwdReqColRef = collection(serverFirestoreDb, 'password_reset_requests');
+    onSnapshot(
+      pwdReqColRef,
+      (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data: any = change.doc.data();
+            if (data && data.status === 'pending') {
+              console.log(`[FIRESTORE PWD RESET] 🔑 New password reset request detected: ${data.emailOrIdentifier} (${change.doc.id})`);
+              const docRef = doc(serverFirestoreDb, 'password_reset_requests', change.doc.id);
+              try {
+                // Mark as processing
+                await setDoc(docRef, { status: 'processing' }, { merge: true });
+                const result = await processPasswordResetRequest({
+                  emailOrIdentifier: data.emailOrIdentifier,
+                  role: data.role,
+                  userHint: data.userHint,
+                });
+                await setDoc(docRef, {
+                  status: result.success ? 'completed' : 'failed',
+                  error: result.error || null,
+                  message: result.message || null,
+                  email: result.email || null,
+                  refCode: result.refCode || null,
+                  isSelfSent: result.isSelfSent || false,
+                  processedAt: new Date().toISOString(),
+                }, { merge: true });
+                console.log(`[FIRESTORE PWD RESET] Request ${change.doc.id} processed: ${result.success ? 'SUCCESS' : 'FAILED - ' + result.error}`);
+              } catch (procErr: any) {
+                console.error('[FIRESTORE PWD RESET PROC ERROR]', procErr);
+                await setDoc(docRef, {
+                  status: 'failed',
+                  error: procErr?.message || 'İşlem sırasında hata meydana geldi.',
+                  processedAt: new Date().toISOString(),
+                }, { merge: true });
+              }
+            }
+          }
+        });
+      },
+      (err) => {
+        console.warn('[FIRESTORE PWD RESET LISTENER ERROR]', err.message);
+      }
+    );
+  } catch (err: any) {
+    console.warn('[FIRESTORE PWD RESET INIT FAIL]', err.message);
+  }
 }
 
 // Initial Firestore connection trigger
@@ -1976,21 +2026,45 @@ app.delete('/api/users/:id', (req, res) => {
   }
 });
 
-// Password Reminder / Forgot Password Endpoint
-app.post('/api/auth/forgot-password', async (req, res) => {
-  try {
-    const { emailOrIdentifier, role, userHint } = req.body || {};
-    if (!emailOrIdentifier || !emailOrIdentifier.trim()) {
-      res.status(400).json({ error: 'Lütfen kayıtlı e-posta veya telefon numaranızı giriniz.' });
-      return;
+// Core logic for processing password reset requests (shared between HTTP API and Firestore Real-Time Queue)
+async function processPasswordResetRequest(params: {
+  emailOrIdentifier: string;
+  role?: string;
+  userHint?: any;
+}): Promise<{
+  success: boolean;
+  status?: number;
+  email?: string;
+  sentReal?: boolean;
+  refCode?: number;
+  isSelfSent?: boolean;
+  userName?: string;
+  userRole?: string;
+  message?: string;
+  error?: string;
+}> {
+  const { emailOrIdentifier, role, userHint } = params;
+  if (!emailOrIdentifier || !emailOrIdentifier.trim()) {
+    return { success: false, status: 400, error: 'Lütfen kayıtlı e-posta veya telefon numaranızı giriniz.' };
+  }
+
+  const raw = String(emailOrIdentifier).trim().toLowerCase();
+  const digitsOnly = raw.replace(/\D/g, '');
+
+  // 1. Search in server memory database (with role match if provided)
+  let found = dbState.users.find((u) => {
+    if (role && u.role !== role) return false;
+    if (u.email && u.email.trim().toLowerCase() === raw) return true;
+    if (digitsOnly.length >= 7) {
+      const uDigits = (u.phone || '').replace(/\D/g, '');
+      if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
     }
+    return false;
+  });
 
-    const raw = String(emailOrIdentifier).trim().toLowerCase();
-    const digitsOnly = raw.replace(/\D/g, '');
-
-    // 1. Search in server memory database (with role match if provided)
-    let found = dbState.users.find((u) => {
-      if (role && u.role !== role) return false;
+  // 2. Search without role constraint if not found
+  if (!found) {
+    found = dbState.users.find((u) => {
       if (u.email && u.email.trim().toLowerCase() === raw) return true;
       if (digitsOnly.length >= 7) {
         const uDigits = (u.phone || '').replace(/\D/g, '');
@@ -1998,178 +2072,173 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       }
       return false;
     });
+  }
 
-    // 2. Search without role constraint if not found
-    if (!found) {
-      found = dbState.users.find((u) => {
-        if (u.email && u.email.trim().toLowerCase() === raw) return true;
-        if (digitsOnly.length >= 7) {
-          const uDigits = (u.phone || '').replace(/\D/g, '');
-          if (uDigits.endsWith(digitsOnly) || digitsOnly.endsWith(uDigits) || uDigits === digitsOnly) return true;
+  // 3. Search directly in Firestore if available and not found in memory
+  if (!found && serverFirestoreDb) {
+    try {
+      const usersSnap = await getDocs(collection(serverFirestoreDb, 'users'));
+      for (const docSnap of usersSnap.docs) {
+        const d = docSnap.data();
+        if (!d) continue;
+        const dEmail = (d.email || '').trim().toLowerCase();
+        const dPhoneDigits = (d.phone || '').replace(/\D/g, '');
+        if (dEmail && dEmail === raw) {
+          found = { ...d, id: docSnap.id };
+          break;
         }
-        return false;
-      });
-    }
+        if (digitsOnly.length >= 7 && (dPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(dPhoneDigits) || dPhoneDigits === digitsOnly)) {
+          found = { ...d, id: docSnap.id };
+          break;
+        }
+      }
 
-    // 3. Search directly in Firestore if available and not found in memory
-    if (!found && serverFirestoreDb) {
-      try {
-        const usersSnap = await getDocs(collection(serverFirestoreDb, 'users'));
-        for (const docSnap of usersSnap.docs) {
+      // Also check couriers collection in Firestore if still not found
+      if (!found) {
+        const couriersSnap = await getDocs(collection(serverFirestoreDb, 'couriers'));
+        for (const docSnap of couriersSnap.docs) {
           const d = docSnap.data();
           if (!d) continue;
           const dEmail = (d.email || '').trim().toLowerCase();
           const dPhoneDigits = (d.phone || '').replace(/\D/g, '');
           if (dEmail && dEmail === raw) {
-            found = { ...d, id: docSnap.id };
+            found = { ...d, id: docSnap.id, role: 'courier' };
             break;
           }
           if (digitsOnly.length >= 7 && (dPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(dPhoneDigits) || dPhoneDigits === digitsOnly)) {
-            found = { ...d, id: docSnap.id };
+            found = { ...d, id: docSnap.id, role: 'courier' };
             break;
           }
         }
-
-        // Also check couriers collection in Firestore if still not found
-        if (!found) {
-          const couriersSnap = await getDocs(collection(serverFirestoreDb, 'couriers'));
-          for (const docSnap of couriersSnap.docs) {
-            const d = docSnap.data();
-            if (!d) continue;
-            const dEmail = (d.email || '').trim().toLowerCase();
-            const dPhoneDigits = (d.phone || '').replace(/\D/g, '');
-            if (dEmail && dEmail === raw) {
-              found = { ...d, id: docSnap.id, role: 'courier' };
-              break;
-            }
-            if (digitsOnly.length >= 7 && (dPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(dPhoneDigits) || dPhoneDigits === digitsOnly)) {
-              found = { ...d, id: docSnap.id, role: 'courier' };
-              break;
-            }
-          }
-        }
-
-        if (found) {
-          const existingIdx = dbState.users.findIndex(x => x.id === found.id || (found.email && x.email === found.email));
-          if (existingIdx >= 0) dbState.users[existingIdx] = { ...dbState.users[existingIdx], ...found };
-          else dbState.users.push(found);
-        }
-      } catch (fErr: any) {
-        console.warn('[FORGOT PASSWORD FIRESTORE LOOKUP ERR]', fErr?.message);
       }
+
+      if (found) {
+        const existingIdx = dbState.users.findIndex(x => x.id === found.id || (found.email && x.email === found.email));
+        if (existingIdx >= 0) dbState.users[existingIdx] = { ...dbState.users[existingIdx], ...found };
+        else dbState.users.push(found);
+      }
+    } catch (fErr: any) {
+      console.warn('[FORGOT PASSWORD FIRESTORE LOOKUP ERR]', fErr?.message);
     }
+  }
 
-    // 4. Fallback to client userHint if available
-    if (!found && userHint && userHint.email) {
-      found = userHint;
-    }
+  // 4. Fallback to client userHint if available
+  if (!found && userHint && userHint.email) {
+    found = userHint;
+  }
 
-    if (!found) {
-      res.status(404).json({ error: 'Bu bilgilere ait kayıtlı kullanıcı bulunamadı. Lütfen e-posta veya telefon bilginizi kontrol ediniz.' });
-      return;
-    }
+  if (!found) {
+    return {
+      success: false,
+      status: 404,
+      error: 'Bu bilgilere ait kayıtlı kullanıcı bulunamadı. Lütfen e-posta veya telefon bilginizi kontrol ediniz.',
+    };
+  }
 
-    const targetEmail = (found.email || '').trim();
-    if (!targetEmail || !targetEmail.includes('@')) {
-      res.status(400).json({ error: 'Kullanıcının kayıtlı geçerli bir e-posta adresi bulunmuyor. Lütfen destek hattımızla (0507 754 74 84) iletişime geçiniz.' });
-      return;
-    }
+  const targetEmail = (found.email || '').trim();
+  if (!targetEmail || !targetEmail.includes('@')) {
+    return {
+      success: false,
+      status: 400,
+      error: 'Kullanıcının kayıtlı geçerli bir e-posta adresi bulunmuyor. Lütfen destek hattımızla (0507 754 74 84) iletişime geçiniz.',
+    };
+  }
 
-    const userName = found.name || 'Değerli Kullanıcımız';
-    const userRoleText = found.role === 'courier' ? 'Moto Kurye Hesabı' : (found.role === 'admin' ? 'Yönetici Hesabı' : 'Müşteri Hesabı');
-    const userPassword = (found.password || found.sifre || found.pass || '1234').trim();
+  const userName = found.name || 'Değerli Kullanıcımız';
+  const userRoleText = found.role === 'courier' ? 'Moto Kurye Hesabı' : (found.role === 'admin' ? 'Yönetici Hesabı' : 'Müşteri Hesabı');
+  const userPassword = (found.password || found.sifre || found.pass || '1234').trim();
 
-    // Prepare dynamic codes & timestamps to ensure high deliverability and avoid Gmail conversation bundling
-    const refCode = Math.floor(100000 + Math.random() * 900000);
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const dateStr = now.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Prepare dynamic codes & timestamps to ensure high deliverability and avoid Gmail conversation bundling
+  const refCode = Math.floor(100000 + Math.random() * 900000);
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = now.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    const cfg = dbState.smtpConfig;
-    const smtpUser = (cfg?.user || 'kuryeantalyam@gmail.com').trim();
-    const smtpPass = (cfg?.pass || 'tlnsrezkaobytsvg').replace(/\s+/g, '').trim();
-    const fromName = cfg?.fromName || 'Antalya Şehir İçi Teslimat 7/24';
-    const fromAddress = `"${fromName}" <${smtpUser}>`;
-    const isSelfSent = targetEmail.toLowerCase() === smtpUser.toLowerCase();
+  const cfg = dbState.smtpConfig;
+  const smtpUser = (cfg?.user || 'kuryeantalyam@gmail.com').trim();
+  const smtpPass = (cfg?.pass || 'tlnsrezkaobytsvg').replace(/\s+/g, '').trim();
+  const fromName = cfg?.fromName || 'Antalya Şehir İçi Teslimat 7/24';
+  const fromAddress = `"${fromName}" <${smtpUser}>`;
+  const isSelfSent = targetEmail.toLowerCase() === smtpUser.toLowerCase();
 
-    // Subject and clean, high-deliverability light transactional template
-    const subject = `Antalya Kurye Ekspres: Şifre Hatırlatma Bilgileriniz (#${refCode})`;
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="margin: 0; padding: 20px 10px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
-        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-          <!-- Header -->
-          <tr>
-            <td style="background-color: #047857; padding: 24px 20px; text-align: center;">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">Antalya Şehir İçi Moto Kurye</h1>
-              <p style="margin: 4px 0 0 0; font-size: 13px; color: #d1fae5;">Şifre Hatırlatma Bildirimi</p>
-            </td>
-          </tr>
-          
-          <!-- Content -->
-          <tr>
-            <td style="padding: 28px 24px;">
-              <p style="font-size: 15px; margin-top: 0; color: #0f172a; font-weight: 600;">Merhaba Sayın ${userName},</p>
-              <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
-                Antalya Kurye Ekspres platformundaki hesabınız için şifre hatırlatma talebinde bulundunuz. Kayıtlı hesap bilgileriniz ve şifreniz aşağıda yer almaktadır:
+  // Subject and clean, high-deliverability light transactional template
+  const subject = `Antalya Kurye Ekspres: Şifre Hatırlatma Bilgileriniz (#${refCode})`;
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 20px 10px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <!-- Header -->
+        <tr>
+          <td style="background-color: #047857; padding: 24px 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">Antalya Şehir İçi Moto Kurye</h1>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #d1fae5;">Şifre Hatırlatma Bildirimi</p>
+          </td>
+        </tr>
+        
+        <!-- Content -->
+        <tr>
+          <td style="padding: 28px 24px;">
+            <p style="font-size: 15px; margin-top: 0; color: #0f172a; font-weight: 600;">Merhaba Sayın ${userName},</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 20px;">
+              Antalya Kurye Ekspres platformundaki hesabınız için şifre hatırlatma talebinde bulundunuz. Kayıtlı hesap bilgileriniz ve şifreniz aşağıda yer almaktadır:
+            </p>
+            
+            <!-- Info Box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin: 16px 0; padding: 16px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px; width: 130px; font-weight: 600;">Hesap Türü:</td>
+                <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 700;">${userRoleText}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">E-Posta:</td>
+                <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 600;">${targetEmail}</td>
+              </tr>
+              ${found.phone ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">Telefon:</td>
+                <td style="padding: 6px 0; color: #0f172a; font-size: 13px;">${found.phone}</td>
+              </tr>` : ''}
+              <tr>
+                <td style="padding: 12px 0 4px 0; color: #047857; font-size: 14px; font-weight: 700;">Giriş Şifreniz:</td>
+                <td style="padding: 12px 0 4px 0;">
+                  <span style="display: inline-block; background-color: #ecfdf5; border: 1.5px solid #059669; color: #065f46; font-size: 18px; font-weight: 800; padding: 6px 14px; border-radius: 6px; letter-spacing: 1px;">
+                    ${userPassword}
+                  </span>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Notice -->
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 14px; border-radius: 4px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+                <strong>Güvenlik Uyarısı:</strong> Bu talebi siz gerçekleştirmediyseniz lütfen müşteri hizmetlerimiz ile (0507 754 74 84) iletişime geçiniz. Giriş yaptıktan sonra şifrenizi profil ayarlarınızdan değiştirebilirsiniz.
               </p>
-              
-              <!-- Info Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin: 16px 0; padding: 16px;">
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; width: 130px; font-weight: 600;">Hesap Türü:</td>
-                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 700;">${userRoleText}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">E-Posta:</td>
-                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px; font-weight: 600;">${targetEmail}</td>
-                </tr>
-                ${found.phone ? `
-                <tr>
-                  <td style="padding: 6px 0; color: #64748b; font-size: 13px; font-weight: 600;">Telefon:</td>
-                  <td style="padding: 6px 0; color: #0f172a; font-size: 13px;">${found.phone}</td>
-                </tr>` : ''}
-                <tr>
-                  <td style="padding: 12px 0 4px 0; color: #047857; font-size: 14px; font-weight: 700;">Giriş Şifreniz:</td>
-                  <td style="padding: 12px 0 4px 0;">
-                    <span style="display: inline-block; background-color: #ecfdf5; border: 1.5px solid #059669; color: #065f46; font-size: 18px; font-weight: 800; padding: 6px 14px; border-radius: 6px; letter-spacing: 1px;">
-                      ${userPassword}
-                    </span>
-                  </td>
-                </tr>
-              </table>
+            </div>
 
-              <!-- Notice -->
-              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 14px; border-radius: 4px; margin: 20px 0;">
-                <p style="margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;">
-                  <strong>Güvenlik Uyarısı:</strong> Bu talebi siz gerçekleştirmediyseniz lütfen müşteri hizmetlerimiz ile (0507 754 74 84) iletişime geçiniz. Giriş yaptıktan sonra şifrenizi profil ayarlarınızdan değiştirebilirsiniz.
-                </p>
-              </div>
+            <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 20px 0 0 0;">
+              Güvenlik Doğrulama: <strong>#${refCode}</strong> • ${dateStr} ${timeStr}
+            </p>
+          </td>
+        </tr>
 
-              <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 20px 0 0 0;">
-                Güvenlik Doğrulama: <strong>#${refCode}</strong> • ${dateStr} ${timeStr}
-              </p>
-            </td>
-          </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+            © ${now.getFullYear()} Antalya Şehir İçi Moto Kurye & Teslimat A.Ş.<br>
+            Destek: <strong>0507 754 74 84</strong> • <a href="mailto:kuryeantalyam@gmail.com" style="color: #047857; text-decoration: none;">kuryeantalyam@gmail.com</a>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-              © ${now.getFullYear()} Antalya Şehir İçi Moto Kurye & Teslimat A.Ş.<br>
-              Destek: <strong>0507 754 74 84</strong> • <a href="mailto:kuryeantalyam@gmail.com" style="color: #047857; text-decoration: none;">kuryeantalyam@gmail.com</a>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const textContent = `
+  const textContent = `
 Antalya Şehir İçi Moto Kurye - Şifre Hatırlatma
 
 Merhaba Sayın ${userName},
@@ -2184,94 +2253,105 @@ Güvenlik Referans Kodu: #${refCode} (${dateStr} ${timeStr})
 
 Bu talebi siz yapmadıysanız lütfen dikkate almayınız.
 Destek & İletişim: 0507 754 74 84 | kuryeantalyam@gmail.com
-    `.trim();
+  `.trim();
 
-    console.log(`[PASSWORD RESET REQUEST] Received for: ${emailOrIdentifier}, targetEmail: ${targetEmail}`);
+  console.log(`[PASSWORD RESET REQUEST] Processing for: ${emailOrIdentifier}, targetEmail: ${targetEmail}`);
 
-    // Create direct Gmail SSL transport on port 465 (high deliverability, fastest negotiation)
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: { user: smtpUser, pass: smtpPass },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+  // Create direct Gmail SSL transport on port 465 (high deliverability, fastest negotiation)
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: smtpUser, pass: smtpPass },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
+
+  let sentReal = false;
+  let errDetail = '';
+  let sendResultInfo: any = null;
+
+  try {
+    sendResultInfo = await transporter.sendMail({
+      from: fromAddress,
+      to: targetEmail,
+      replyTo: smtpUser,
+      subject,
+      text: textContent,
+      html: htmlContent,
+      priority: 'high',
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+      },
     });
+    sentReal = true;
+    console.log(`[PASSWORD RESET] Email sent successfully to ${targetEmail}. Google SMTP response: ${sendResultInfo?.response}`);
 
-    let sentReal = false;
-    let errDetail = '';
-    let sendResultInfo: any = null;
-
-    try {
-      sendResultInfo = await transporter.sendMail({
-        from: fromAddress,
-        to: targetEmail,
-        replyTo: smtpUser,
-        subject,
-        text: textContent,
-        html: htmlContent,
-        priority: 'high',
-        headers: {
-          'X-Priority': '1',
-          'X-MSMail-Priority': 'High',
-          'Importance': 'high',
-        },
-      });
-      sentReal = true;
-      console.log(`[PASSWORD RESET] Email sent successfully to ${targetEmail}. Google SMTP response: ${sendResultInfo?.response}`);
-
-      // Record in system email logs so it appears in Admin panel
-      dbState.emailLogs.unshift({
-        id: `mail-pwd-${Date.now()}-${refCode}`,
-        timestamp: new Date().toISOString(),
-        orderId: `pwd-reset-${found.id || 'user'}`,
-        trackingCode: `REF-${refCode}`,
-        recipients: [targetEmail],
-        subject,
-        status: 'sent',
-        summary: `Şifre Hatırlatma (${userRoleText}) -> ${targetEmail}`,
-        response: sendResultInfo?.response || '250 OK',
-      });
-      if (dbState.emailLogs.length > 60) dbState.emailLogs = dbState.emailLogs.slice(0, 60);
-      saveDatabase();
-    } catch (sendErr: any) {
-      console.error(`[PASSWORD RESET FAIL] Error delivering email:`, sendErr);
-      errDetail = sendErr?.message || 'SMTP iletim hatası';
-
-      dbState.emailLogs.unshift({
-        id: `mail-pwd-${Date.now()}-${refCode}`,
-        timestamp: new Date().toISOString(),
-        orderId: `pwd-reset-${found.id || 'user'}`,
-        trackingCode: `REF-${refCode}`,
-        recipients: [targetEmail],
-        subject,
-        status: 'failed',
-        summary: `Şifre Hatırlatma Başarısız: ${errDetail}`,
-      });
-      saveDatabase();
-    }
-
-    if (!sentReal) {
-      res.status(500).json({
-        success: false,
-        error: `E-posta sunucusuna bağlanırken hata oluştu: ${errDetail}. Lütfen destek hattımızla (0507 754 74 84) iletişime geçiniz.`
-      });
-      return;
-    }
-
-    // Return success without leaking the user's password on client API response
-    res.json({
-      success: true,
-      email: targetEmail,
-      sentReal: true,
-      refCode,
-      isSelfSent,
-      userName,
-      userRole: found.role,
-      message: `Şifre hatırlatma bilgileri ${targetEmail} adresinize başarıyla iletildi.`,
+    // Record in system email logs so it appears in Admin panel
+    dbState.emailLogs.unshift({
+      id: `mail-pwd-${Date.now()}-${refCode}`,
+      timestamp: new Date().toISOString(),
+      orderId: `pwd-reset-${found.id || 'user'}`,
+      trackingCode: `REF-${refCode}`,
+      recipients: [targetEmail],
+      subject,
+      status: 'sent',
+      summary: `Şifre Hatırlatma (${userRoleText}) -> ${targetEmail}`,
+      response: sendResultInfo?.response || '250 OK',
     });
+    if (dbState.emailLogs.length > 60) dbState.emailLogs = dbState.emailLogs.slice(0, 60);
+    saveDatabase();
+  } catch (sendErr: any) {
+    console.error(`[PASSWORD RESET FAIL] Error delivering email:`, sendErr);
+    errDetail = sendErr?.message || 'SMTP iletim hatası';
+
+    dbState.emailLogs.unshift({
+      id: `mail-pwd-${Date.now()}-${refCode}`,
+      timestamp: new Date().toISOString(),
+      orderId: `pwd-reset-${found.id || 'user'}`,
+      trackingCode: `REF-${refCode}`,
+      recipients: [targetEmail],
+      subject,
+      status: 'failed',
+      summary: `Şifre Hatırlatma Başarısız: ${errDetail}`,
+    });
+    saveDatabase();
+  }
+
+  if (!sentReal) {
+    return {
+      success: false,
+      status: 500,
+      error: `E-posta sunucusuna bağlanırken hata oluştu: ${errDetail}. Lütfen destek hattımızla (0507 754 74 84) iletişime geçiniz.`,
+    };
+  }
+
+  return {
+    success: true,
+    email: targetEmail,
+    sentReal: true,
+    refCode,
+    isSelfSent,
+    userName,
+    userRole: found.role,
+    message: `Şifre hatırlatma bilgileri ${targetEmail} adresinize başarıyla iletildi.`,
+  };
+}
+
+// Password Reminder / Forgot Password Endpoint
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { emailOrIdentifier, role, userHint } = req.body || {};
+    const result = await processPasswordResetRequest({ emailOrIdentifier, role, userHint });
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(result.status || 400).json({ error: result.error || result.message });
+    }
   } catch (err: any) {
     console.error('Forgot password error:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası oluştu.' });

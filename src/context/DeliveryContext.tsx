@@ -18,6 +18,7 @@ import {
   updateRequestInFirestore,
   saveUserToFirestore,
   deleteUserFromFirestore,
+  requestPasswordResetViaFirestore,
 } from '../services/firestoreService';
 
 interface DeliveryContextType {
@@ -992,10 +993,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let res: Response | null = null;
     let data: any = null;
 
+    // 1. First attempt: Direct HTTP API
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         res = await fetch(apiUrl, {
           method: 'POST',
@@ -1021,17 +1023,29 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (res.ok && data.success) {
             return {
               success: true,
-              message: data.message || 'Şifre hatırlatma bilgileri e-posta adresinize başarıyla iletildi.',
+              message: typeof data.message === 'string' ? data.message : 'Şifre hatırlatma bilgileri e-posta adresinize iletildi.',
               email: data.email || rawClean,
-              refCode: data.refCode,
-              isSelfSent: data.isSelfSent,
+              refCode: typeof data.refCode === 'number' ? data.refCode : undefined,
+              isSelfSent: Boolean(data.isSelfSent),
             };
           } else if (data.error || data.message) {
-            return {
-              success: false,
-              message: data.error || data.message,
-            };
+            const serverErrMsg = typeof data.error === 'string' 
+              ? data.error 
+              : (data.error?.message || (typeof data.message === 'string' ? data.message : 'Kullanıcı bulunamadı.'));
+            // If user was genuinely not found on server or email is invalid, return immediately
+            if (serverErrMsg.includes('bulunamadı') || serverErrMsg.includes('geçerli bir e-posta')) {
+              return {
+                success: false,
+                message: serverErrMsg,
+              };
+            }
           }
+        }
+
+        // If 404 (e.g. static hosting on Vercel where /api doesn't exist), break early to trigger Firestore fallback
+        if (res.status === 404) {
+          console.warn('[HTTP 404 on /api/auth/forgot-password, proceeding to Firestore Queue fallback]');
+          break;
         }
 
         if (!res.ok && attempt < 2) {
@@ -1042,21 +1056,37 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         lastErrorMessage = fetchErr?.message || '';
         console.warn(`[REQUEST PASSWORD RESET ATTEMPT ${attempt} FAILED]`, fetchErr);
         if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, 800));
+          await new Promise((r) => setTimeout(r, 600));
           continue;
         }
       }
     }
 
-    if (data && (data.error || data.message)) {
-      return { success: false, message: data.error || data.message };
+    // 2. Second attempt: Cloud Firestore Real-Time Queue Fallback
+    // This allows password reset to function 100% reliably even when hosted statically (e.g., on Vercel)
+    try {
+      console.info('[FORGOT PASSWORD] Invoking resilient Cloud Firestore queue fallback...');
+      const fsRes = await requestPasswordResetViaFirestore(rawClean, role, requestPayload.userHint);
+      if (fsRes && (fsRes.success || fsRes.message)) {
+        return {
+          success: fsRes.success,
+          message: typeof fsRes.message === 'string' ? fsRes.message : 'Şifre hatırlatma talebi işlendi.',
+          email: fsRes.email || rawClean,
+          refCode: fsRes.refCode,
+          isSelfSent: fsRes.isSelfSent,
+        };
+      }
+    } catch (fsErr: any) {
+      console.warn('[FIRESTORE QUEUE FALLBACK FAILED]', fsErr);
     }
+
+    const fallbackErrMsg = lastErrorMessage
+      ? `Sunucu bağlantı uyarısı (${lastErrorMessage}). Lütfen internet bağlantınızı kontrol edip tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.`
+      : 'E-posta servisi şu anda yanıt veremedi. Lütfen birkaç saniye sonra tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.';
 
     return {
       success: false,
-      message: lastErrorMessage
-        ? `Sunucu bağlantı uyarısı (${lastErrorMessage}). Lütfen internet bağlantınızı kontrol edip tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.`
-        : 'E-posta servisi şu anda yanıt veremedi. Lütfen birkaç saniye sonra tekrar deneyiniz veya 0507 754 74 84 nolu destek hattımızı arayınız.'
+      message: fallbackErrMsg,
     };
   }, [users]);
 

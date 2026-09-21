@@ -224,3 +224,89 @@ export async function enqueueEmailToFirestore(job: {
   }
 }
 
+// Request password reset via Cloud Firestore Queue
+export async function requestPasswordResetViaFirestore(
+  identifier: string,
+  role?: string,
+  userHint?: any
+): Promise<{
+  success: boolean;
+  message: string;
+  email?: string;
+  refCode?: number;
+  isSelfSent?: boolean;
+}> {
+  try {
+    const cleanId = identifier.trim().toLowerCase();
+    const resetId = `pwd-req-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const docRef = doc(db, 'password_reset_requests', resetId);
+
+    await setDoc(docRef, {
+      id: resetId,
+      emailOrIdentifier: cleanId,
+      role: role || null,
+      userHint: userHint ? JSON.parse(JSON.stringify(userHint)) : null,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    });
+
+    // Wait for the backend processor to finish
+    return new Promise((resolve) => {
+      let resolved = false;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          try { unsub(); } catch {}
+          resolve({
+            success: false,
+            message: 'E-posta servisi şu anda meşgul. Lütfen birkaç saniye sonra tekrar deneyiniz veya doğrudan 0507 754 74 84 nolu destek hattımızı arayınız.',
+          });
+        }
+      }, 12000);
+
+      const unsub = onSnapshot(
+        docRef,
+        (snap) => {
+          if (!snap.exists()) return;
+          const data: any = snap.data();
+          if (data && (data.status === 'completed' || data.status === 'failed')) {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              try { unsub(); } catch {}
+
+              if (data.status === 'completed') {
+                resolve({
+                  success: true,
+                  message: typeof data.message === 'string' ? data.message : 'Şifre hatırlatma bilgileri e-posta adresinize iletildi.',
+                  email: data.email || cleanId,
+                  refCode: typeof data.refCode === 'number' ? data.refCode : undefined,
+                  isSelfSent: Boolean(data.isSelfSent),
+                });
+              } else {
+                const errStr = typeof data.error === 'string'
+                  ? data.error
+                  : (data.error?.message || 'Şifre hatırlatma işlemi tamamlanamadı.');
+                resolve({
+                  success: false,
+                  message: errStr,
+                });
+              }
+            }
+          }
+        },
+        (error) => {
+          console.warn('[Firestore] Error watching reset request:', error);
+        }
+      );
+    });
+  } catch (err: any) {
+    console.error('[Firestore] Failed to request password reset via Firestore:', err);
+    const errText = typeof err === 'string' ? err : (err?.message || 'Şifre sıfırlama talebi oluşturulamadı.');
+    return {
+      success: false,
+      message: errText,
+    };
+  }
+}
+

@@ -55,7 +55,7 @@ export const AdminLoginGate: React.FC = () => {
           {error && (
             <div className="p-3 bg-rose-950/90 border border-rose-500/60 rounded-xl text-xs text-rose-200 flex items-center gap-2 animate-in fade-in">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>{error}</span>
+              <span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
             </div>
           )}
 

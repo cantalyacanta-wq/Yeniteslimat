@@ -118,16 +118,22 @@ export const AuthModal: React.FC = () => {
       const res = await requestPasswordReset(clean, isCourierFlow ? 'courier' : 'customer');
       if (res && res.success) {
         setForgotSuccess({
-          message: res.message || 'Şifre hatırlatma bilgileriniz e-posta adresinize gönderildi.',
+          message: typeof res.message === 'string' ? res.message : 'Şifre hatırlatma bilgileriniz e-posta adresinize gönderildi.',
           email: res.email || clean,
-          isSelfSent: res.isSelfSent,
+          isSelfSent: Boolean(res.isSelfSent),
           refCode: res.refCode,
         });
       } else {
-        setForgotError(res?.message || 'Şifre hatırlatma işlemi tamamlanamadı. Lütfen bilgilerinizi kontrol ediniz.');
+        const errorText = typeof res?.message === 'string'
+          ? res.message
+          : (res?.message && (res.message as any).message ? (res.message as any).message : 'Şifre hatırlatma işlemi tamamlanamadı. Lütfen bilgilerinizi kontrol ediniz.');
+        setForgotError(errorText);
       }
     } catch (err: any) {
-      setForgotError(err?.message || 'Bir bağlantı hatası oluştu. Lütfen tekrar deneyiniz.');
+      const errText = typeof err === 'string'
+        ? err
+        : (err?.message || (typeof err?.code === 'string' ? err.code : 'Bir bağlantı hatası oluştu. Lütfen tekrar deneyiniz.'));
+      setForgotError(errText);
     } finally {
       setForgotLoading(false);
     }
@@ -1081,7 +1087,11 @@ export const AuthModal: React.FC = () => {
             {forgotError && (
               <div className="p-3 bg-rose-950/90 border border-rose-500/80 rounded-xl text-xs text-rose-200 flex items-start gap-2.5 shadow-md">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span className="leading-snug">{forgotError}</span>
+                <span className="leading-snug">
+                  {typeof forgotError === 'string'
+                    ? forgotError
+                    : ((forgotError as any)?.message || JSON.stringify(forgotError))}
+                </span>
               </div>
             )}
 
