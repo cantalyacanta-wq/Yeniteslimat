@@ -320,55 +320,78 @@ if (Array.isArray(dbState.requests)) {
 }
 
 // ==========================================
-// EMAIL NOTIFICATION SYSTEM FOR COURIERS
+// EMAIL NOTIFICATION SYSTEM FOR REQUESTS & DISPATCH
 // ==========================================
 
-function getRegisteredCourierEmails(): string[] {
-  const emails = new Set<string>();
+export function isTestOrFakeOrder(order: any): boolean {
+  if (!order) return true;
+  const id = String(order.id || '').toLowerCase().trim();
+  const tracking = String(order.trackingCode || '').toUpperCase().trim();
+  const senderName = String(order.sender?.contactName || '').toLowerCase().trim();
+  const receiverName = String(order.receiver?.contactName || '').toLowerCase().trim();
+  const pkgName = String(order.packageName || '').toLowerCase().trim();
 
-  // 1. Dispatcher & admin management email - ALWAYS guaranteed kuryeantalyam@gmail.com
-  emails.add('kuryeantalyam@gmail.com');
+  if (order.isTest === true) return true;
+  if (
+    id.startsWith('req-sample-') ||
+    id.startsWith('req-test-') ||
+    id.startsWith('req-live-test') ||
+    id.startsWith('test-') ||
+    id.startsWith('sample-')
+  ) {
+    return true;
+  }
+  if (
+    tracking === 'ANT-3333' ||
+    tracking === 'ANT-5892' ||
+    tracking === 'ANT-9999' ||
+    tracking === 'ANT-TEST' ||
+    tracking.startsWith('TEST-') ||
+    tracking.startsWith('REF-')
+  ) {
+    return true;
+  }
+  if (senderName.includes('test') || senderName.includes('deneme') || senderName.includes('örnek') || senderName.includes('ornek')) return true;
+  if (receiverName.includes('test') || receiverName.includes('deneme') || receiverName.includes('örnek') || receiverName.includes('ornek')) return true;
+  if (pkgName.includes('test paketi') || pkgName.includes('örnek')) return true;
+  if (senderName === 'umit torun' && receiverName === 'umit torun') return true;
+
+  return false;
+}
+
+export function getOrderNotificationRecipients(orderOrIsTest?: any): string[] {
+  const isTest = typeof orderOrIsTest === 'boolean' ? orderOrIsTest : isTestOrFakeOrder(orderOrIsTest);
+  const recipients = new Set<string>();
+
+  // 1. Primary business & dispatch management email - ALWAYS guaranteed kuryeantalyam@gmail.com
+  recipients.add('kuryeantalyam@gmail.com');
   const adminEmail = (dbState.smtpConfig?.user || 'kuryeantalyam@gmail.com').trim().toLowerCase();
   if (adminEmail && adminEmail.includes('@')) {
-    emails.add(adminEmail);
+    recipients.add(adminEmail);
   }
 
-  // 2. Active courier in field (Ümit Torun) - permanently guaranteed
-  emails.add('cantalyacanta@gmail.com');
-
-  // 3. All registered users with role 'courier' or 'admin' with deliverable email
-  if (Array.isArray(dbState.users)) {
-    dbState.users
-      .filter((u) => {
-        if (!u || !u.email || !u.email.includes('@')) return false;
-        const em = u.email.trim().toLowerCase();
-        if (em === 'ahmet@antalyakurye.com' || em === 'mustafa@antalyakurye.com') return false;
-        return u.role === 'courier' || u.role === 'admin';
-      })
-      .forEach((u) => emails.add(u.email.trim().toLowerCase()));
+  // CRITICAL RULE: If test/fake order or test dispatch, STOP HERE!
+  // NEVER send test or fake orders to couriers!
+  if (isTest) {
+    return Array.from(recipients);
   }
 
-  // 4. All items in couriers list
-  if (Array.isArray(dbState.couriers)) {
-    dbState.couriers
-      .filter((c) => {
-        if (!c || !c.email || !c.email.includes('@')) return false;
-        const em = c.email.trim().toLowerCase();
-        if (em === 'ahmet@antalyakurye.com' || em === 'mustafa@antalyakurye.com') return false;
-        return true;
-      })
-      .forEach((c) => emails.add(c.email.trim().toLowerCase()));
-  }
-
-  // 5. Any custom registered courier notification emails
+  // 2. Extra courier/dispatch emails explicitly configured by admin in Admin Panel
   if (Array.isArray(dbState.extraCourierEmails)) {
     dbState.extraCourierEmails
       .filter((em) => em && em.includes('@') && !em.toLowerCase().endsWith('@antalyakurye.com'))
-      .forEach((em) => emails.add(em.trim().toLowerCase()));
+      .forEach((em) => recipients.add(em.trim().toLowerCase()));
   }
 
-  return Array.from(emails);
+  // NOTE: We strictly DO NOT blast to all registered courier user accounts (dbState.users).
+  // Couriers view and claim orders directly via the live pool in the app (#pakettalebi).
+  // This prevents fake/test orders reaching couriers and eliminates Gmail SMTP quota/throttling blocks.
+
+  return Array.from(recipients);
 }
+
+// Backward compatibility alias
+const getRegisteredCourierEmails = getOrderNotificationRecipients;
 
 // ==========================================
 // ASYNCHRONOUS EMAIL QUEUE & OPTIMIZED WORKER
@@ -378,6 +401,7 @@ export interface EmailJob {
   id: string;
   orderId: string;
   trackingCode: string;
+  isTest?: boolean;
   specificRecipient?: string;
   recipients: string[];
   subject: string;
@@ -399,11 +423,7 @@ const emailQueue: EmailJob[] = [];
 const emailQueueEvents = new EventEmitter();
 let isQueueWorkerRunning = false;
 
-// Pre-warmed pooled transporter for zero connection overhead
-let cachedTransporter: nodemailer.Transporter | null = null;
-let lastTransporterKey = '';
-
-function getOptimizedMailTransporter() {
+function createDirectMailTransporter() {
   const cfg = dbState.smtpConfig;
   const envHost = process.env.SMTP_HOST;
   const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
@@ -420,27 +440,19 @@ function getOptimizedMailTransporter() {
   const port = isGmail ? 465 : (Number(cfg?.port) || 587);
   const secure = port === 465;
 
-  const key = `${user}:${pass}:${host}:${port}:${secure}`;
-
   if (user && pass && cfg?.enabled !== false) {
-    if (!cachedTransporter || lastTransporterKey !== key) {
-      lastTransporterKey = key;
-      cachedTransporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        pool: true, // Pooled connection keeps socket warm for sub-second execution
-        maxConnections: 3,
-        maxMessages: 100,
-        rateLimit: 5,
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 10000,
-        tls: { rejectUnauthorized: false },
-      } as nodemailer.TransportOptions);
-    }
-    return { transporter: cachedTransporter, fromAddress, isConfigured: true, user, host };
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    } as nodemailer.TransportOptions);
+
+    return { transporter, fromAddress, isConfigured: true, user, host };
   }
 
   return { transporter: null, fromAddress, isConfigured: false, user, host };
@@ -461,10 +473,10 @@ async function processEmailQueue() {
       job.attempts += 1;
       const startTime = Date.now();
 
-      console.log(`[ASYNC QUEUE] 🚀 Processing job #${job.id} for Order #${job.trackingCode} (Attempt ${job.attempts}/${job.maxAttempts})`);
+      console.log(`[ASYNC QUEUE] 🚀 Processing job #${job.id} for Order #${job.trackingCode} (Attempt ${job.attempts}/${job.maxAttempts}) to: ${job.recipients.join(', ')}`);
 
       try {
-        const mailDetails = getOptimizedMailTransporter();
+        const mailDetails = createDirectMailTransporter();
         let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
         let errorMessage: string | undefined;
         let isRealDelivery = false;
@@ -472,41 +484,40 @@ async function processEmailQueue() {
         const failedRecipients: { email: string; error: string }[] = [];
 
         if (mailDetails.transporter && mailDetails.isConfigured) {
-          // Parallel dispatch across all registered recipients
-          const sendResults = await Promise.allSettled(
-            job.recipients.map(async (targetEmail) => {
-              return await mailDetails.transporter!.sendMail({
+          for (const targetEmail of job.recipients) {
+            try {
+              const info = await mailDetails.transporter.sendMail({
                 from: mailDetails.fromAddress,
                 to: targetEmail,
                 replyTo: 'kuryeantalyam@gmail.com',
                 subject: job.subject,
                 text: job.textContent,
                 html: job.htmlContent,
+                priority: 'high',
+                headers: {
+                  'X-Priority': '1',
+                  'X-MSMail-Priority': 'High',
+                  'Importance': 'high',
+                },
               });
-            })
-          );
-
-          sendResults.forEach((res, idx) => {
-            const targetEmail = job.recipients[idx];
-            if (res.status === 'fulfilled') {
               sentRecipients.push(targetEmail);
-            } else {
-              const reason = (res as PromiseRejectedResult).reason?.message || 'Bilinmeyen hata';
-              failedRecipients.push({ email: targetEmail, error: reason });
-              console.warn(`[ASYNC QUEUE FAIL] Target ${targetEmail} failed: ${reason}`);
+              console.log(`[ASYNC QUEUE SUCCESS] Delivered to ${targetEmail}. SMTP response: ${info.response}`);
+            } catch (sendErr: any) {
+              failedRecipients.push({ email: targetEmail, error: sendErr.message || 'SMTP hatası' });
+              console.warn(`[ASYNC QUEUE FAIL] Target ${targetEmail} failed:`, sendErr.message);
             }
-          });
+          }
 
           if (sentRecipients.length > 0) {
             emailStatus = 'sent';
             isRealDelivery = true;
-            console.log(`[ASYNC QUEUE SUCCESS] Delivered to ${sentRecipients.length} couriers: ${sentRecipients.join(', ')} in ${Date.now() - startTime}ms`);
+            console.log(`[ASYNC QUEUE SUCCESS] Successfully delivered to ${sentRecipients.length} address(es): ${sentRecipients.join(', ')} in ${Date.now() - startTime}ms`);
             if (failedRecipients.length > 0) {
-              errorMessage = `Kısmi iletim (${sentRecipients.length} başarılı). Hata alanlar: ${failedRecipients.map(f => f.email).join(', ')}`;
+              errorMessage = `Kısmi iletim (${sentRecipients.length} başarılı). Hata alanlar: ${failedRecipients.map((f) => f.email).join(', ')}`;
             }
           } else {
             emailStatus = 'failed';
-            errorMessage = failedRecipients.map(f => `${f.email}: ${f.error}`).join(' | ');
+            errorMessage = failedRecipients.map((f) => `${f.email}: ${f.error}`).join(' | ');
             throw new Error(errorMessage || 'Tüm alıcılara gönderim başarısız oldu.');
           }
         } else {
@@ -532,7 +543,7 @@ async function processEmailQueue() {
           order.emailDispatchedAt = job.completedAt;
         }
 
-        // Update Firestore document directly (using setDoc with merge: true so it never fails if document does not exist yet)
+        // Update Firestore document directly
         if (serverFirestoreDb && job.orderId) {
           try {
             const reqDocRef = doc(serverFirestoreDb, 'delivery_requests', job.orderId);
@@ -575,8 +586,8 @@ async function processEmailQueue() {
 
         if (job.attempts < job.maxAttempts) {
           job.status = 'pending';
-          console.log(`[ASYNC QUEUE RETRY] Scheduling retry for Job #${job.id} in 1s...`);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          console.log(`[ASYNC QUEUE RETRY] Scheduling retry for Job #${job.id} in 2s...`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         } else {
           job.status = 'failed';
           job.completedAt = new Date().toISOString();
@@ -595,40 +606,23 @@ emailQueueEvents.on('job_enqueued', () => {
   });
 });
 
-function maskName(name?: string): string {
-  if (!name || typeof name !== 'string' || !name.trim()) return 'M***';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'M***';
-  return parts.map((part) => `${part.charAt(0).toUpperCase()}***`).join(' ');
-}
-
-function maskPhone(phone?: string): string {
-  if (!phone || typeof phone !== 'string' || !phone.trim()) return '0555555****';
-  let digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('90') && digits.length === 12) {
-    digits = '0' + digits.slice(2);
-  } else if (!digits.startsWith('0') && digits.length === 10) {
-    digits = '0' + digits;
-  }
-  if (digits.length >= 7) {
-    const prefix = digits.slice(0, digits.length - 4);
-    return `${prefix}****`;
-  }
-  return '0555555****';
-}
-
 // Non-blocking Enqueue helper
 function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = false) {
   const orderId = order.id || '';
   const trackingCode = order.trackingCode || orderId || 'ANT-0000';
+  const isTest = isTestOrFakeOrder(order);
 
-  // Prevent duplicate jobs
+  // Prevent duplicate jobs for non-force real requests
   if (!isForce) {
     const alreadyDispatched =
       order.emailDispatched === true ||
       (orderId && dispatchedEmailOrderIds.has(orderId)) ||
       (trackingCode && dispatchedEmailOrderIds.has(trackingCode)) ||
-      emailQueue.some((j) => (j.orderId === orderId || j.trackingCode === trackingCode) && (j.status === 'pending' || j.status === 'processing' || j.status === 'sent'));
+      emailQueue.some(
+        (j) =>
+          (j.orderId === orderId || j.trackingCode === trackingCode) &&
+          (j.status === 'pending' || j.status === 'processing' || j.status === 'sent')
+      );
 
     if (alreadyDispatched) {
       console.log(`[ASYNC QUEUE DEDUP] Order ${orderId} (#${trackingCode}) already enqueued or dispatched. Skipping.`);
@@ -641,87 +635,233 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
     }
   }
 
+  // Recipient resolution with courier protection
   let recipients: string[] = [];
   if (specificRecipient && specificRecipient.includes('@')) {
-    recipients = [specificRecipient.trim().toLowerCase()];
+    const targetClean = specificRecipient.trim().toLowerCase();
+    // If it is a test/fake order, ensure couriers NEVER receive it
+    if (isTest) {
+      const isRegisteredCourier = (dbState.users || []).some(
+        (u) => u.role === 'courier' && u.email && u.email.toLowerCase() === targetClean && targetClean !== 'kuryeantalyam@gmail.com'
+      );
+      if (isRegisteredCourier) {
+        console.warn(`[SAFETY] Prevented sending test email to courier ${targetClean}. Diverting to admin.`);
+        recipients = ['kuryeantalyam@gmail.com'];
+      } else {
+        recipients = [targetClean];
+      }
+    } else {
+      recipients = [targetClean];
+    }
   } else {
-    recipients = getRegisteredCourierEmails();
-  }
-
-  if (recipients.length === 0) {
-    return { success: false, status: 'no_recipients', message: 'Kayıtlı kurye e-posta adresi bulunamadı.' };
+    recipients = getOrderNotificationRecipients(order);
   }
 
   const senderDist = order.sender?.district || 'Antalya';
   const senderNeighborhood = order.sender?.neighborhood ? ` (${order.sender.neighborhood})` : '';
-  const senderAddr = order.sender?.addressDetail || order.sender?.address || '';
-  const rawSenderPhone = order.sender?.contactPhone || order.sender?.phone || '';
-  const rawSenderName = order.sender?.contactName || 'Gönderici';
-  const maskedSenderName = maskName(rawSenderName);
-  const maskedSenderPhone = maskPhone(rawSenderPhone);
-  const senderContact = `${maskedSenderName} - ${maskedSenderPhone}`;
+  const senderAddr = order.sender?.addressDetail || order.sender?.address || 'Adres belirtilmedi';
+  const rawSenderPhone = order.sender?.contactPhone || order.sender?.phone || 'Telefon belirtilmedi';
+  const rawSenderName = order.sender?.contactName || 'Müşteri';
 
   const receiverDist = order.receiver?.district || 'Antalya';
   const receiverNeighborhood = order.receiver?.neighborhood ? ` (${order.receiver.neighborhood})` : '';
-  const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || '';
-  const rawReceiverPhone = order.receiver?.contactPhone || order.receiver?.phone || '';
+  const receiverAddr = order.receiver?.addressDetail || order.receiver?.address || 'Adres belirtilmedi';
+  const rawReceiverPhone = order.receiver?.contactPhone || order.receiver?.phone || 'Telefon belirtilmedi';
   const rawReceiverName = order.receiver?.contactName || 'Alıcı';
-  const maskedReceiverName = maskName(rawReceiverName);
-  const maskedReceiverPhone = maskPhone(rawReceiverPhone);
-  const receiverContact = `${maskedReceiverName} - ${maskedReceiverPhone}`;
 
-  const price = order.price || 0;
-  const courierEarnings = order.courierEarnings || Math.round(price * 0.85);
-  const pkgName = order.packageName || 'Paket / Koli';
-  const paymentMethod = order.paymentMethod || 'gonderici_odemeli';
-  const isAliciOdemeli = paymentMethod === 'alici_odemeli';
-  const urgency = order.urgency === 'vip' ? 'VIP Hızlı Teslimat' : order.urgency === 'fast' ? 'Hızlı Teslimat' : 'Standart Teslimat';
+  const packageName = order.packageName || order.packageType || 'Standart Paket';
+  const price = Number(order.price) || 0;
+  const courierEarnings = Number(order.courierEarnings) || Math.round(price * 0.85);
 
-  const subject = `[YENİ SİPARİŞ] #${trackingCode} | ${senderDist} -> ${receiverDist} | ${price} TL (${isAliciOdemeli ? 'ALICI ÖDEMELİ' : 'GÖNDERİCİ ÖDEMELİ'})`;
-  const poolUrl = 'https://www.antalyateslimat.com/#pakettalebi';
+  let paymentMethodLabel = 'Alıcı Ödemeli (Kapıda Nakit / Havale)';
+  if (order.paymentMethod === 'sender_paid' || order.paymentMethod === 'gonderici_odemeli') {
+    paymentMethodLabel = 'Gönderici Ödemeli (Alırken Tahsil Edilecek)';
+  } else if (order.paymentMethod === 'online_credit_card' || order.isPaid) {
+    paymentMethodLabel = 'Online Ödendi (Kredi Kartı)';
+  } else if (order.paymentMethod === 'card_on_delivery') {
+    paymentMethodLabel = 'Kapıda Kredi Kartı';
+  }
+
+  const urgencyLabel =
+    order.urgency === 'vip' ? 'VIP Acil (30-45 dk)' : order.urgency === 'express' ? 'Ekspres (45-60 dk)' : 'Standart (90-120 dk)';
+
+  const formattedDate = new Date().toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const subjectPrefix = isTest ? '[TEST BİLDİRİMİ / YÖNETİCİ]' : '[YENİ MÜŞTERİ TALEBİ]';
+  const subject = `${subjectPrefix} #${trackingCode} | ${senderDist} ➔ ${receiverDist} | ${price} TL (${paymentMethodLabel})`;
 
   const textContent = `
-YENİ SİPARİŞ BİLDİRİMİ (#${trackingCode})
-==================================================
-Sipariş Takip Kodu : #${trackingCode}
-Paket İçeriği      : ${pkgName}
-Teslimat Önceliği  : ${urgency}
-Toplam Tutar       : ${price} TL
-Net Kurye Kazancı  : +${courierEarnings} TL
-Ödeme Türü         : ${isAliciOdemeli ? 'ALICI ÖDEMELİ (Teslimatta tahsil edilecek)' : 'GÖNDERİCİ ÖDEMELİ (Teslim alırken kontrol ediniz)'}
+========================================
+ANTALYA ŞEHİR İÇİ MOTO KURYE - YENİ TALEP
+========================================
+Takip Kodu : #${trackingCode}
+Talep Zamanı: ${formattedDate}
+Durum      : Kurye Havuzunda Bekliyor
+Ücret      : ${price} TL
+Kurye Hakedişi: ${courierEarnings} TL
+Ödeme Türü : ${paymentMethodLabel}
+Öncelik    : ${urgencyLabel}
+Paket      : ${packageName}
 
-1. ALIŞ NOKTASI (GÖNDERİCİ):
-İlçe    : ${senderDist}${senderNeighborhood}
-Adres   : ${senderAddr}
-İletişim: ${senderContact}
+--- GÖNDERİCİ BİLGİLERİ ---
+İsim       : ${rawSenderName}
+Telefon    : ${rawSenderPhone}
+İlçe/Mah.  : ${senderDist}${senderNeighborhood}
+Açık Adres : ${senderAddr}
 
-2. TESLİMAT NOKTASI (ALICI):
-İlçe    : ${receiverDist}${receiverNeighborhood}
-Adres   : ${receiverAddr}
-İletişim: ${receiverContact}
+--- TESLİMAT (ALICI) BİLGİLERİ ---
+İsim       : ${rawReceiverName}
+Telefon    : ${rawReceiverPhone}
+İlçe/Mah.  : ${receiverDist}${receiverNeighborhood}
+Açık Adres : ${receiverAddr}
 
-HAVUZDAN İŞİ ALMAK İÇİN TIKLAYINIZ:
-${poolUrl}
-==================================================
-Antalya Şehir İçi Teslimat 7/24
-  `.trim();
+--- KURYE NOTU ---
+${order.noteForCourier ? order.noteForCourier : 'Özel bir not belirtilmedi.'}
+
+Paneli Aç: https://www.antalyateslimat.com/#admin
+Kurye Havuzu: https://www.antalyateslimat.com/#pakettalebi
+Takip Sayfası: https://www.antalyateslimat.com/#tracker
+========================================
+${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmiştir. Kuryelere bildirim iletilmez.' : ''}
+`.trim();
 
   const htmlContent = `
-<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827; white-space: pre-wrap; margin: 0; padding: 14px; background: #ffffff;">${textContent}</div>
-  `.trim();
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 16px; background-color: #03140e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
+  <div style="max-width: 600px; margin: 0 auto; background: #022017; border: 1px solid #059669; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #047857 0%, #065f46 100%); padding: 20px 24px; text-align: left;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: rgba(0,0,0,0.25); color: #a7f3d0; padding: 4px 10px; border-radius: 8px;">
+          ${isTest ? '🧪 TEST / DOĞRULAMA' : '⚡ YENİ MÜŞTERİ TALEBİ'}
+        </span>
+        <span style="color: #d1fae5; font-size: 12px;">${formattedDate}</span>
+      </div>
+      <h1 style="margin: 12px 0 4px 0; font-size: 24px; font-weight: 900; color: #ffffff;">
+        Takip No: #${trackingCode}
+      </h1>
+      <p style="margin: 0; font-size: 14px; color: #ecfdf5; font-weight: 600;">
+        ${senderDist} ➔ ${receiverDist} | <span style="color: #fde047; font-weight: 800;">${price} TL</span>
+      </p>
+    </div>
+
+    <!-- Summary Badges -->
+    <div style="padding: 16px 24px; background: #021a13; border-bottom: 1px solid rgba(16,185,129,0.2); display: flex; flex-wrap: wrap; gap: 8px;">
+      <div style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; padding: 8px 12px; margin: 4px;">
+        <div style="font-size: 10px; color: #6ee7b7; font-weight: 700; text-transform: uppercase;">Ödeme Türü</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 700;">${paymentMethodLabel}</div>
+      </div>
+      <div style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); border-radius: 8px; padding: 8px 12px; margin: 4px;">
+        <div style="font-size: 10px; color: #fcd34d; font-weight: 700; text-transform: uppercase;">Öncelik</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 700;">${urgencyLabel}</div>
+      </div>
+      <div style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; padding: 8px 12px; margin: 4px;">
+        <div style="font-size: 10px; color: #93c5fd; font-weight: 700; text-transform: uppercase;">Paket</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 700;">${packageName}</div>
+      </div>
+    </div>
+
+    <!-- Details Body -->
+    <div style="padding: 24px;">
+
+      <!-- Sender Card -->
+      <div style="background: #032d20; border: 1px solid rgba(16,185,129,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+        <div style="color: #34d399; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+          📍 ALINACAK YER (GÖNDERİCİ)
+        </div>
+        <div style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 4px;">
+          ${rawSenderName}
+        </div>
+        <div style="font-size: 14px; margin-bottom: 8px;">
+          <a href="tel:${rawSenderPhone.replace(/\s+/g, '')}" style="color: #6ee7b7; font-weight: 700; text-decoration: none;">
+            📞 ${rawSenderPhone} (Aramak İçin Tıklayın)
+          </a>
+        </div>
+        <div style="font-size: 13px; color: #a7f3d0; line-height: 1.4;">
+          <strong>${senderDist}${senderNeighborhood}</strong><br>
+          ${senderAddr}
+        </div>
+      </div>
+
+      <!-- Receiver Card -->
+      <div style="background: #032d20; border: 1px solid rgba(16,185,129,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+        <div style="color: #f59e0b; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+          🎯 TESLİMAT YERİ (ALICI)
+        </div>
+        <div style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 4px;">
+          ${rawReceiverName}
+        </div>
+        <div style="font-size: 14px; margin-bottom: 8px;">
+          <a href="tel:${rawReceiverPhone.replace(/\s+/g, '')}" style="color: #fcd34d; font-weight: 700; text-decoration: none;">
+            📞 ${rawReceiverPhone} (Aramak İçin Tıklayın)
+          </a>
+        </div>
+        <div style="font-size: 13px; color: #a7f3d0; line-height: 1.4;">
+          <strong>${receiverDist}${receiverNeighborhood}</strong><br>
+          ${receiverAddr}
+        </div>
+      </div>
+
+      <!-- Customer Note -->
+      ${
+        order.noteForCourier
+          ? `
+      <div style="background: rgba(245,158,11,0.1); border: 1px dashed rgba(245,158,11,0.5); border-radius: 10px; padding: 12px; margin-bottom: 20px;">
+        <div style="color: #fcd34d; font-size: 11px; font-weight: 800; margin-bottom: 4px;">💬 MÜŞTERİ NOTU:</div>
+        <div style="color: #ffffff; font-size: 13px; font-style: italic;">"${order.noteForCourier}"</div>
+      </div>
+      `
+          : ''
+      }
+
+      <!-- Action Buttons -->
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://www.antalyateslimat.com/#admin" style="display: inline-block; background: #059669; color: #ffffff; font-weight: 800; font-size: 14px; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin: 6px;">
+          Yönetim Panelinde Aç
+        </a>
+        <a href="https://www.antalyateslimat.com/#pakettalebi" style="display: inline-block; background: #d97706; color: #ffffff; font-weight: 800; font-size: 14px; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin: 6px;">
+          Kurye Havuzunda Gör
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #01150f; padding: 14px 24px; text-align: center; border-top: 1px solid rgba(16,185,129,0.2); font-size: 11px; color: #6ee7b7;">
+      Antalya Şehir İçi Moto Kurye & Teslimat Ağı 7/24 • Bu e-posta sipariş yönetim bildirim sistemi tarafından otomatik oluşturulmuştur.
+    </div>
+
+  </div>
+</body>
+</html>
+`.trim();
 
   const job: EmailJob = {
     id: `job-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     orderId,
     trackingCode,
-    specificRecipient,
+    isTest,
     recipients,
     subject,
     textContent,
     htmlContent,
     status: 'pending',
     attempts: 0,
-    maxAttempts: 2,
+    maxAttempts: 3,
     createdAt: new Date().toISOString(),
   };
 
@@ -858,12 +998,12 @@ function initFirestoreSync() {
             newOrUpdatedCount++;
           }
 
-          // Check if email needs to be dispatched (if not marked dispatched)
-          const isPendingPool = fullOrder.status === 'pending_pool' || !fullOrder.status;
-          const needsEmail = !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
+          // Check if email needs to be dispatched (if not marked dispatched and not test/fake)
+          const isTest = isTestOrFakeOrder(fullOrder);
+          const needsEmail = !isTest && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
 
-          if (needsEmail && isPendingPool) {
-            console.log(`[FIRESTORE SYNC] 📦 New order from Firestore detected: #${trackingCode} (${docId}). Triggering instant email queue...`);
+          if (needsEmail) {
+            console.log(`[FIRESTORE SYNC] 📦 New real customer order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
             enqueueNewOrderEmail(fullOrder, undefined, false);
           }
         });
@@ -927,26 +1067,12 @@ initFirestoreSync();
 setInterval(() => {
   if (Array.isArray(dbState.requests)) {
     dbState.requests.forEach((r) => {
-      const isTestOrder =
-        !r ||
-        !r.id ||
-        String(r.id).startsWith('req-sample-') ||
-        String(r.id).startsWith('req-test-') ||
-        String(r.id).startsWith('req-live-test') ||
-        String(r.id).startsWith('test-') ||
-        r.trackingCode === 'ANT-3333' ||
-        r.trackingCode === 'ANT-5892' ||
-        r.trackingCode === 'ANT-9999';
-
-      if (isTestOrder) return;
+      if (isTestOrFakeOrder(r)) return;
 
       const isUnsent = !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
-        const isPendingPool = r.status === 'pending_pool' || !r.status;
-        if (isPendingPool) {
-          console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed order #${r.trackingCode} (${r.id})...`);
-          enqueueNewOrderEmail(r, undefined, false);
-        }
+        console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed real customer order #${r.trackingCode} (${r.id})...`);
+        enqueueNewOrderEmail(r, undefined, false);
       }
     });
   }
@@ -1395,35 +1521,53 @@ app.post('/api/smtp-config', async (req, res) => {
   }
 });
 
-// Test Email Dispatch Endpoint (Supports single or ALL registered couriers)
+// Test Email Dispatch Endpoint - STRICTLY ADMIN ONLY, NEVER TO COURIERS!
 app.post('/api/notifications/test-email', async (req, res) => {
   try {
     const { targetEmail } = req.body || {};
-    const effectiveTarget = (targetEmail && targetEmail !== 'all' && targetEmail.includes('@')) ? targetEmail.trim() : undefined;
+    let effectiveTarget = 'kuryeantalyam@gmail.com';
+
+    if (targetEmail && targetEmail !== 'all' && targetEmail.includes('@')) {
+      const cleanTarget = targetEmail.trim().toLowerCase();
+      // Safeguard: Check if this address belongs to a registered courier
+      const isRegisteredCourier = (dbState.users || []).some(
+        (u) => u.role === 'courier' && u.email && u.email.toLowerCase() === cleanTarget && cleanTarget !== 'kuryeantalyam@gmail.com'
+      );
+      if (isRegisteredCourier) {
+        console.warn(`[SAFETY] Prevented test email to courier ${cleanTarget}. Redirecting to admin email.`);
+        effectiveTarget = 'kuryeantalyam@gmail.com';
+      } else {
+        effectiveTarget = cleanTarget;
+      }
+    }
 
     const sampleOrder = {
       id: `req-test-${Date.now()}`,
-      trackingCode: `ANT-${Math.floor(1000 + Math.random() * 9000)}`,
-      packageName: 'Örnek Test Paketi (Elektronik & Belge)',
+      trackingCode: `ANT-TEST`,
+      isTest: true,
+      packageName: 'Örnek Test Paketi (Sistem Doğrulama)',
       price: 250,
       courierEarnings: 215,
       paymentMethod: 'alici_odemeli',
       sender: {
         district: 'Muratpaşa',
-        address: 'Işıklar Cad. No:45/B',
+        neighborhood: 'Şirinyalı',
+        addressDetail: 'İsmet Gökşen Cad. No:45/B',
         contactName: 'Antalya Test Gönderici',
-        phone: '0532 000 11 22',
+        contactPhone: '0532 000 11 22',
       },
       receiver: {
         district: 'Konyaaltı',
-        address: 'Gürsu Mah. 304. Sok. No:12',
+        neighborhood: 'Gürsu',
+        addressDetail: 'Gürsu Mah. 304. Sok. No:12',
         contactName: 'Antalya Test Alıcı',
-        phone: '0544 333 44 55',
+        contactPhone: '0544 333 44 55',
       },
+      noteForCourier: 'Bu bir sistem kontrol ve doğrulama e-postasıdır. Kuryelere bildirim iletilmez.',
     };
 
     const result = enqueueNewOrderEmail(sampleOrder, effectiveTarget, true);
-    res.json({ success: true, result });
+    res.json({ success: true, result, target: effectiveTarget });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

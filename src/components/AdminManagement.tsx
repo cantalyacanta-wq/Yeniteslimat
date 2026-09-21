@@ -338,7 +338,7 @@ export const AdminManagement: React.FC = () => {
 
   const handleSendTestEmail = async (targetOverride?: string) => {
     setTestEmailStatus('E-posta gönderiliyor...');
-    const target = targetOverride || testTargetEmail || 'all';
+    const target = targetOverride || testTargetEmail || 'kuryeantalyam@gmail.com';
     try {
       const res = await fetch('/api/notifications/test-email', {
         method: 'POST',
@@ -1858,18 +1858,23 @@ export const AdminManagement: React.FC = () => {
 
             {/* Test Input & Buttons */}
             <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/60 space-y-3">
-              <span className="text-xs font-bold text-emerald-300 block">
-                🧪 Test Bildirimi Gönderme Paneli
-              </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <span>🧪 Sistem Doğrulama & Test Paneli</span>
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-400/90 bg-emerald-900/40 px-2.5 py-1 rounded-full border border-emerald-700/50">
+                  🛡️ Kuryelere Sahte/Test Maili Gitmez
+                </span>
+              </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => handleSendTestEmail('all')}
-                  className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => handleSendTestEmail('kuryeantalyam@gmail.com')}
+                  className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4 text-emerald-200" />
-                  <span>⚡ TÜM Kuryelere Test E-postası Gönder ({emailRecipients.length} Alıcı)</span>
+                  <span>Yöneticiye Test Gönder (kuryeantalyam@gmail.com)</span>
                 </button>
 
                 <div className="flex items-center gap-2">
@@ -1879,7 +1884,7 @@ export const AdminManagement: React.FC = () => {
                       type="email"
                       value={testTargetEmail}
                       onChange={(e) => setTestTargetEmail(e.target.value)}
-                      placeholder="Tekil test adresi (örn: ahmet@gmail.com)"
+                      placeholder="Özel test e-posta adresi"
                       className="w-full bg-[#021d17] border border-emerald-700/60 rounded-xl pl-8 pr-2 py-2 text-white text-xs focus:outline-none focus:border-emerald-400"
                     />
                   </div>
