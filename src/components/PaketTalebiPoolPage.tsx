@@ -116,6 +116,12 @@ export const PaketTalebiPoolPage: React.FC = () => {
       return;
     }
 
+    // ENFORCE ACTIVE ORDER LOCK: Üzerinde aktif siparişi olan kurye yeni sipariş alamaz!
+    if (activeUserDeliveries.length > 0) {
+      alert(`Üzerinizde henüz teslimatı yapılmamış aktif bir sipariş bulunmaktadır (#${activeUserDeliveries[0].trackingCode}). Teslimatı gerçekleştirene kadar havuzdan yeni sipariş kabul edemezsiniz.`);
+      return;
+    }
+
     setAcceptingOrderId(order.id);
     try {
       playAcceptSound();
@@ -542,16 +548,27 @@ export const PaketTalebiPoolPage: React.FC = () => {
                   {/* TALEBİ KABUL ET BUTONU (MAIN CTA) */}
                   <div className="pt-2">
                     {isCourier ? (
-                      <button
-                        type="button"
-                        disabled={acceptingOrderId === req.id}
-                        onClick={() => handleAcceptJob(req)}
-                        className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
-                      >
-                        <Bike className="w-5 h-5" />
-                        <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </button>
+                      activeUserDeliveries.length > 0 ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full py-4 bg-emerald-950/60 border border-emerald-800/40 text-emerald-400/60 font-bold text-sm rounded-2xl cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          <Lock className="w-4 h-4 text-amber-400" />
+                          <span>Önce Aktif Siparişinizi Teslim Ediniz</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={acceptingOrderId === req.id}
+                          onClick={() => handleAcceptJob(req)}
+                          className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
+                        >
+                          <Bike className="w-5 h-5" />
+                          <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
+                          <ArrowRight className="w-5 h-5" />
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"

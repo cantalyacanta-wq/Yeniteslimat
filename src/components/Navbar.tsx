@@ -6,6 +6,7 @@ import {
   Package,
   History,
   User,
+  Lock,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -17,19 +18,37 @@ export const Navbar: React.FC = () => {
     currentUser,
     logout,
     openAuthModal,
+    activeCourierDeliveries,
   } = useDelivery();
+
+  const hasActiveCourierDelivery =
+    currentUser.role === 'courier' &&
+    Array.isArray(activeCourierDeliveries) &&
+    activeCourierDeliveries.length > 0;
 
   interface NavItem {
     id: 'home' | 'customer' | 'courier' | 'tracker' | 'admin' | 'history';
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    badge?: number | null;
+    badge?: number | string | null;
     badgeColor?: string;
   }
 
   // Dynamic Navigation Items tailored by Role
   const navItems: NavItem[] = React.useMemo(() => {
     if (currentUser.role === 'courier') {
+      if (hasActiveCourierDelivery) {
+        const currentActiveOrder = activeCourierDeliveries[0];
+        return [
+          {
+            id: 'courier',
+            label: `Aktif Siparişim (#${currentActiveOrder?.trackingCode || 'Görev'})`,
+            icon: Lock,
+            badge: 'Kilitli',
+            badgeColor: 'bg-amber-400 text-slate-950 font-black animate-pulse',
+          },
+        ];
+      }
       return [
         {
           id: 'courier',

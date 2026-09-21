@@ -1464,6 +1464,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               status: 'courier_assigned' as const,
               assignedCourier: courierObj,
               courier: courierObj,
+              acceptedAt: req.acceptedAt || now,
               updatedAt: now,
             };
           }
@@ -1499,6 +1500,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         status: 'courier_assigned',
         assignedCourier: courierObj,
         courier: courierObj,
+        acceptedAt: targetReq?.acceptedAt || now,
         updatedAt: now,
       }).catch(() => {});
 

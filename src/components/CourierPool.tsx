@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Bike, 
   MapPin, 
@@ -18,12 +18,14 @@ import {
   Check,
   Volume2,
   Sparkles,
-  Vibrate
+  Vibrate,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
-import { triggerHapticVibration, requestNotificationPermission } from '../services/notificationService';
-import { playNewOrderSound } from '../utils/audio';
+import { triggerHapticVibration, requestNotificationPermission, sendBrowserNotification, emitInAppNotification } from '../services/notificationService';
+import { playNewOrderSound, playStatusChime, playSuccessSound } from '../utils/audio';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 
 export const CourierPool: React.FC = () => {
@@ -50,6 +52,78 @@ export const CourierPool: React.FC = () => {
   const [confirmPickupOrder, setConfirmPickupOrder] = useState<DeliveryRequest | null>(null);
   const [confirmDeliverOrder, setConfirmDeliverOrder] = useState<DeliveryRequest | null>(null);
   const [confirmReleaseOrder, setConfirmReleaseOrder] = useState<DeliveryRequest | null>(null);
+
+  // Active delivery enforcement & 30-minute delivery check
+  const hasActiveDelivery = Array.isArray(activeCourierDeliveries) && activeCourierDeliveries.length > 0;
+  const [lockedTabNotice, setLockedTabNotice] = useState<string | null>(null);
+  const [deliveryCheckModalOrder, setDeliveryCheckModalOrder] = useState<DeliveryRequest | null>(null);
+  const [snoozed30Reminders, setSnoozed30Reminders] = useState<{ [orderId: string]: number }>({});
+  const [notified30Orders, setNotified30Orders] = useState<{ [orderId: string]: boolean }>({});
+
+  // If courier has an active delivery in progress, lock them to the active tab!
+  useEffect(() => {
+    if (hasActiveDelivery && activeTab !== 'active') {
+      setActiveTab('active');
+    }
+  }, [hasActiveDelivery, activeTab]);
+
+  // Helper: calculate elapsed minutes since acceptance
+  const getElapsedMinutes = (order: DeliveryRequest): number => {
+    const timestamp = order.acceptedAt || order.updatedAt || order.createdAt;
+    if (!timestamp) return 0;
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    return Math.max(0, Math.floor(diffMs / (60 * 1000)));
+  };
+
+  // 30-minute delivery reminder monitor
+  useEffect(() => {
+    if (!hasActiveDelivery) return;
+
+    const check30MinuteRule = () => {
+      const now = Date.now();
+      activeCourierDeliveries.forEach((order) => {
+        const elapsedMins = getElapsedMinutes(order);
+
+        // If 30 or more minutes passed since courier accepted the order
+        if (elapsedMins >= 30) {
+          const isSnoozed = snoozed30Reminders[order.id] && now < snoozed30Reminders[order.id];
+          if (!isSnoozed && deliveryCheckModalOrder?.id !== order.id) {
+            setDeliveryCheckModalOrder(order);
+
+            // Play warning sound & vibration
+            try {
+              playStatusChime();
+              triggerHapticVibration([400, 200, 400, 200, 500]);
+            } catch {}
+
+            // Send browser native notification (even if tab is in background)
+            sendBrowserNotification(`⏰ Siparişi Teslim Ettin mi? (#${order.trackingCode})`, {
+              body: `Sayın ${currentUser.name}, #${order.trackingCode} numaralı siparişi kabul etmenizin üzerinden 30 dakika geçti. Teslimat tamamlandıysa lütfen onaylayınız.`,
+              tag: `remind-30m-${order.id}`,
+            });
+
+            // Trigger in-app notification once per active order
+            if (!notified30Orders[order.id]) {
+              emitInAppNotification({
+                id: `remind-30m-${order.id}`,
+                title: '⏰ 30 Dakika Uyarısı: Siparişi Teslim Ettin mi?',
+                body: `#${order.trackingCode} numaralı siparişi kabul etmenizin üzerinden 30 dakika geçti. Teslimat tamamlandıysa lütfen onaylayınız.`,
+                type: 'warning',
+                orderId: order.id,
+                trackingCode: order.trackingCode,
+                timestamp: new Date().toISOString(),
+              });
+              setNotified30Orders((prev) => ({ ...prev, [order.id]: true }));
+            }
+          }
+        }
+      });
+    };
+
+    check30MinuteRule();
+    const intervalId = setInterval(check30MinuteRule, 6000);
+    return () => clearInterval(intervalId);
+  }, [hasActiveDelivery, activeCourierDeliveries, snoozed30Reminders, deliveryCheckModalOrder, notified30Orders, currentUser.name]);
 
   const handleFinishDelivery = (reqId: string) => {
     updateStatus(reqId, 'delivered');
@@ -144,19 +218,68 @@ export const CourierPool: React.FC = () => {
         </div>
       </div>
 
+      {/* ACTIVE COURIER DELIVERY LOCK BANNER */}
+      {hasActiveDelivery && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/95 via-[#032a21] to-amber-950/95 border-2 border-amber-500/90 text-white shadow-2xl flex items-start gap-3.5 animate-in fade-in duration-200">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+            <Lock className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-sm font-black text-amber-300">
+                Aktif Teslimat Kilidi Devrede
+              </h4>
+              <span className="px-2 py-0.5 bg-amber-500/30 text-amber-200 text-[10px] font-black rounded-md border border-amber-400/40 uppercase tracking-wide">
+                Diğer Menüler Kilitli
+              </span>
+            </div>
+            <p className="text-xs text-amber-100/90 leading-relaxed">
+              Üzerinizde aktif bir teslimat görevi bulunmaktadır (<strong className="text-white font-mono">#{activeCourierDeliveries[0]?.trackingCode}</strong>). Teslimatı gerçekleştirip siparişi tamamlayana kadar talep havuzuna ve kurye panelindeki diğer menülere giriş kilitlenmiştir.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Locked Tab Notification Toast */}
+      {lockedTabNotice && (
+        <div className="p-3 bg-rose-950/95 border-2 border-rose-500/90 rounded-2xl text-rose-200 text-xs font-bold flex items-center gap-2.5 shadow-xl animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <span>{lockedTabNotice}</span>
+        </div>
+      )}
+
       {/* Tabs Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           type="button"
-          onClick={() => setActiveTab('pool')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
-            activeTab === 'pool'
-              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
-              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          onClick={() => {
+            if (hasActiveDelivery) {
+              setLockedTabNotice('🔒 Üzerinizde aktif teslimat görevi bulunmaktadır. Teslimatı gerçekleştirene kadar talep havuzuna geçiş yapamazsınız. Lütfen önce mevcut paketinizi teslim ediniz.');
+              setTimeout(() => setLockedTabNotice(null), 5000);
+              return;
+            }
+            setActiveTab('pool');
+          }}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 ${
+            hasActiveDelivery
+              ? 'bg-emerald-950/20 text-emerald-500/40 border-emerald-900/30 cursor-not-allowed opacity-60'
+              : activeTab === 'pool'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md cursor-pointer'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d] cursor-pointer'
           }`}
+          title={hasActiveDelivery ? 'Aktif sipariş teslim edilene kadar kilitlidir' : ''}
         >
-          <Radio className="w-3.5 h-3.5 animate-pulse" />
+          {hasActiveDelivery ? (
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+          ) : (
+            <Radio className="w-3.5 h-3.5 animate-pulse" />
+          )}
           <span>Bekleyen Talep Havuzu ({poolRequests.length})</span>
+          {hasActiveDelivery && (
+            <span className="ml-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+              Kilitli
+            </span>
+          )}
         </button>
 
         <button
@@ -170,19 +293,43 @@ export const CourierPool: React.FC = () => {
         >
           <Bike className="w-3.5 h-3.5" />
           <span>Üzerimdeki Aktif Görevler ({activeCourierDeliveries.length})</span>
+          {hasActiveDelivery && (
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black animate-pulse">
+              Aktif
+            </span>
+          )}
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab('completed')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
-            activeTab === 'completed'
-              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
-              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          onClick={() => {
+            if (hasActiveDelivery) {
+              setLockedTabNotice('🔒 Üzerinizde aktif teslimat görevi bulunmaktadır. Geçmiş siparişler menüsüne girebilmek için lütfen önce mevcut siparişinizi teslim ediniz.');
+              setTimeout(() => setLockedTabNotice(null), 5000);
+              return;
+            }
+            setActiveTab('completed');
+          }}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 ${
+            hasActiveDelivery
+              ? 'bg-emerald-950/20 text-emerald-500/40 border-emerald-900/30 cursor-not-allowed opacity-60'
+              : activeTab === 'completed'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md cursor-pointer'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d] cursor-pointer'
           }`}
+          title={hasActiveDelivery ? 'Aktif sipariş teslim edilene kadar kilitlidir' : ''}
         >
-          <CheckCircle2 className="w-3.5 h-3.5" />
+          {hasActiveDelivery ? (
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+          ) : (
+            <CheckCircle2 className="w-3.5 h-3.5" />
+          )}
           <span>Tamamlananlar ({completedDeliveries.length})</span>
+          {hasActiveDelivery && (
+            <span className="ml-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+              Kilitli
+            </span>
+          )}
         </button>
       </div>
 
@@ -384,13 +531,17 @@ export const CourierPool: React.FC = () => {
                   className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border-2 border-emerald-500 shadow-2xl p-5 sm:p-6 space-y-4 text-white"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-800/50 pb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs font-black bg-[#011410] text-amber-400 px-2.5 py-1 rounded-lg border border-emerald-800/60">
                         {req.trackingCode}
                       </span>
                       <span className="text-xs font-bold text-white">{req.packageName}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-950/80 text-amber-300 border border-amber-600/50">
                         {req.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1 bg-[#011812] px-2 py-0.5 rounded-md border border-emerald-800/40">
+                        <Clock className="w-3 h-3 text-emerald-400" />
+                        <span>{getElapsedMinutes(req)} dk önce kabul edildi</span>
                       </span>
                     </div>
 
@@ -399,6 +550,55 @@ export const CourierPool: React.FC = () => {
                       <span className="text-base font-extrabold text-amber-400">{req.courierEarnings} ₺</span>
                     </div>
                   </div>
+
+                  {/* 30-MINUTE DELIVERY REMINDER ALERT BANNER (If accepted >= 30 mins ago) */}
+                  {getElapsedMinutes(req) >= 30 && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950 via-rose-950 to-amber-950 border-2 border-amber-400 shadow-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/30 border border-amber-400 flex items-center justify-center text-amber-300 shrink-0">
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider">
+                              30 Dk Geçti
+                            </span>
+                            <span className="font-extrabold text-sm text-amber-200">
+                              Siparişi Teslim Ettiniz mi?
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-100/90 mt-0.5">
+                            Kabul zamanından bu yana <strong>{getElapsedMinutes(req)} dakika</strong> geçti. Teslimatı gerçekleştirdiyseniz lütfen aşağıdaki butondan onaylayınız.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateStatus(req.id, 'delivered');
+                            playSuccessSound();
+                          }}
+                          className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Evet, Teslim Ettim</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSnoozed30Reminders((prev) => ({
+                              ...prev,
+                              [req.id]: Date.now() + 10 * 60 * 1000,
+                            }));
+                          }}
+                          className="px-3 py-2 bg-amber-900/60 hover:bg-amber-900 text-amber-200 text-xs font-bold rounded-xl transition border border-amber-500/50 cursor-pointer"
+                        >
+                          <span>Henüz Yoldayım</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Route & Contact */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#011410] p-4 rounded-2xl border border-emerald-800/40 text-xs">
@@ -812,6 +1012,84 @@ export const CourierPool: React.FC = () => {
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer transition shadow-md"
               >
                 Evet, Teslimatı Tamamla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 30-MINUTE DELIVERY REMINDER MODAL DIALOG */}
+      {deliveryCheckModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-gradient-to-b from-[#03261f] to-[#011713] rounded-3xl max-w-lg w-full p-6 shadow-2xl border-2 border-amber-400 space-y-5 text-white">
+            
+            <div className="flex items-center gap-3.5 border-b border-emerald-800/60 pb-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-300 shrink-0 shadow-lg">
+                <Clock className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider">
+                    30 Dakika Uyarısı
+                  </span>
+                  <span className="font-mono text-xs font-bold text-amber-300">
+                    #{deliveryCheckModalOrder.trackingCode}
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-white">
+                  Siparişi Teslim Ettin mi?
+                </h3>
+              </div>
+            </div>
+
+            <div className="space-y-3 bg-[#011410] p-4 rounded-2xl border border-emerald-800/50 text-xs">
+              <p className="text-amber-100 text-sm leading-relaxed">
+                Sayın <strong className="text-amber-300">{currentUser.name}</strong>, bu siparişi kabul etmenizin üzerinden <strong className="text-amber-300 font-bold">{getElapsedMinutes(deliveryCheckModalOrder)} dakika</strong> geçti.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-900/60 text-emerald-200/90">
+                <div>
+                  <span className="text-[10px] text-emerald-400 block font-bold">Paket İçeriği:</span>
+                  <span className="font-bold text-white">{deliveryCheckModalOrder.packageName}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-teal-400 block font-bold">Teslimat Adresi:</span>
+                  <span className="font-bold text-white">{deliveryCheckModalOrder.receiver.district}</span>
+                </div>
+              </div>
+
+              <div className="pt-1 text-[11px] text-amber-200/80 bg-amber-950/40 p-2.5 rounded-xl border border-amber-500/30">
+                Teslimat tamamlandıysa lütfen <strong>'Evet, Teslim Ettim'</strong> butonuna basınız. Böylece kurye panelindeki diğer menülerin kilidi açılacaktır.
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  // Snooze reminder for 10 minutes
+                  setSnoozed30Reminders((prev) => ({
+                    ...prev,
+                    [deliveryCheckModalOrder.id]: Date.now() + 10 * 60 * 1000,
+                  }));
+                  setDeliveryCheckModalOrder(null);
+                }}
+                className="px-4 py-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-emerald-800/60 text-emerald-300 font-bold text-xs cursor-pointer transition text-center"
+              >
+                Henüz Teslim Etmedim (Yoldayım)
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  updateStatus(deliveryCheckModalOrder.id, 'delivered');
+                  setDeliveryCheckModalOrder(null);
+                  playSuccessSound();
+                }}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm cursor-pointer transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Evet, Siparişi Teslim Ettim</span>
               </button>
             </div>
           </div>

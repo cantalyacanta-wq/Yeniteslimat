@@ -1784,12 +1784,14 @@ app.post('/api/requests/:id/accept', (req, res) => {
       return;
     }
 
+    const nowIso = new Date().toISOString();
     const updated = {
       ...dbState.requests[reqIndex],
       status: 'courier_assigned',
       assignedCourier: courier,
       courier: courier,
-      updatedAt: new Date().toISOString(),
+      acceptedAt: dbState.requests[reqIndex].acceptedAt || nowIso,
+      updatedAt: nowIso,
     };
 
     dbState.requests[reqIndex] = updated;

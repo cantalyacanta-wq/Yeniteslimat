@@ -121,6 +121,8 @@ export interface DeliveryRequest {
   status: DeliveryStatus;
   assignedCourier?: CourierInfo;
   courier?: CourierInfo;
+  acceptedAt?: string; // Timestamp when courier accepted the order
+  deliveryReminderSentAt?: string; // Timestamp when 30min delivery reminder was sent/displayed
   pickupTime?: string;
   deliveryTime?: string;
   deliveryCode?: string; // Optional confirmation code

@@ -24,7 +24,19 @@ const checkIsAdminRoute = (): boolean => {
 };
 
 const MainContent: React.FC = () => {
-  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser } = useDelivery();
+  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries } = useDelivery();
+
+  // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
+  React.useEffect(() => {
+    if (
+      currentUser.role === 'courier' &&
+      activeCourierDeliveries &&
+      activeCourierDeliveries.length > 0 &&
+      currentView !== 'courier'
+    ) {
+      setCurrentView('courier');
+    }
+  }, [currentUser.role, activeCourierDeliveries, currentView, setCurrentView]);
 
   return (
     <div className="w-full max-w-full overflow-hidden">
