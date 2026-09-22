@@ -1003,7 +1003,7 @@ export const HeroIntro: React.FC = () => {
 
           <div className="pt-4 border-t border-emerald-800/40">
             <p className="text-xs text-emerald-400/70">
-              © 2026 Antalya Şehir İçi Teslimat 7/24 — Muratpaşa • Kepez • Konyaaltı • Lara • Döşemealtı • Aksu
+              © 2026 Antalya Şehir İçi Teslimat 7/24 — Muratpaşa • Kepez • Konyaaltı • Lara
             </p>
           </div>
 
@@ -1140,7 +1140,7 @@ export const HeroIntro: React.FC = () => {
             <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
               <h4 className="font-bold text-emerald-300">📍 Hangi ilçelere kurye ve paket gönderimi yapılıyor?</h4>
               <p className="text-slate-300 leading-relaxed">
-                Muratpaşa, Konyaaltı, Kepez başta olmak üzere Lara, Döşemealtı, Aksu, Serik, Kemer, Alanya ve Manavgat ilçelerine kesintisiz hizmet verilmektedir.
+                Muratpaşa, Kepez, Konyaaltı ve Lara bölgelerine kesintisiz 7/24 moto kurye ve hızlı teslimat hizmeti verilmektedir.
               </p>
             </div>
           </div>

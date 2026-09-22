@@ -67,10 +67,10 @@ export const CustomerRequestForm: React.FC = () => {
       const saved = localStorage.getItem(SENDER_LOCKED_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.district) return parsed.district;
+        if (parsed.district && parsed.district in ANTALYA_DISTRICTS) return parsed.district;
       }
     } catch {}
-    return currentUser.district || 'Muratpaşa';
+    return (currentUser.district && currentUser.district in ANTALYA_DISTRICTS) ? currentUser.district : 'Muratpaşa';
   });
 
   const [senderAddress, setSenderAddress] = useState<string>(() => {
@@ -112,7 +112,7 @@ export const CustomerRequestForm: React.FC = () => {
       const saved = localStorage.getItem(RECEIVER_LOCKED_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.district) return parsed.district;
+        if (parsed.district && parsed.district in ANTALYA_DISTRICTS) return parsed.district;
       }
     } catch {}
     return 'Konyaaltı';

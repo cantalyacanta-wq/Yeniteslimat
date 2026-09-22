@@ -2,13 +2,7 @@ export type DistrictName =
   | 'Muratpaşa'
   | 'Konyaaltı'
   | 'Kepez'
-  | 'Lara (Muratpaşa)'
-  | 'Döşemealtı'
-  | 'Aksu'
-  | 'Kemer'
-  | 'Serik'
-  | 'Manavgat'
-  | 'Alanya';
+  | 'Lara (Muratpaşa)';
 
 export type PackageType =
   | 'food'

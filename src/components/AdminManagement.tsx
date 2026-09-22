@@ -496,7 +496,7 @@ export const AdminManagement: React.FC = () => {
     setEditCustPhone(cust.phone);
     setEditCustEmail(cust.email);
     setEditCustPassword(cust.password || '');
-    setEditCustDistrict(cust.district || 'Muratpaşa');
+    setEditCustDistrict((cust.district && cust.district in ANTALYA_DISTRICTS) ? cust.district : 'Muratpaşa');
     setEditCustCompany(cust.companyName || '');
     setEditCustSuccess(null);
   };
@@ -529,7 +529,7 @@ export const AdminManagement: React.FC = () => {
     setEditCourPhone(cour.phone);
     setEditCourEmail(cour.email);
     setEditCourPassword(cour.password || '');
-    setEditCourDistrict(cour.district || 'Muratpaşa');
+    setEditCourDistrict((cour.district && cour.district in ANTALYA_DISTRICTS) ? cour.district : 'Muratpaşa');
     setEditCourSuccess(null);
   };
 

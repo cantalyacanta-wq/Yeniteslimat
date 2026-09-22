@@ -1677,7 +1677,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Add realistic demo request to test pool
   const addDemoRequest = useCallback(() => {
-    const districts: DistrictName[] = ['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)', 'Döşemealtı', 'Aksu'];
+    const districts: DistrictName[] = ['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'];
     const from = districts[Math.floor(Math.random() * districts.length)];
     let to = districts[Math.floor(Math.random() * districts.length)];
     if (to === from) to = districts[(districts.indexOf(from) + 1) % districts.length];
