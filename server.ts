@@ -324,7 +324,7 @@ if (Array.isArray(dbState.requests)) {
 // ==========================================
 
 export function isTestOrFakeOrder(order: any): boolean {
-  if (!order) return true;
+  if (!order || typeof order !== 'object') return false;
   const id = String(order.id || '').toLowerCase().trim();
   const tracking = String(order.trackingCode || '').toUpperCase().trim();
   const senderName = String(order.sender?.contactName || '').toLowerCase().trim();
@@ -359,14 +359,66 @@ export function isTestOrFakeOrder(order: any): boolean {
   return false;
 }
 
+// ==========================================
+// EMAIL PRIVACY MASKING UTILITIES (KVKK / Privacy Protected)
+// ==========================================
+
+export function maskEmailCustomerName(name?: string): string {
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return 'M***';
+  }
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'M***';
+
+  return parts
+    .map((part) => {
+      const firstChar = part.charAt(0).toUpperCase();
+      return `${firstChar}***`;
+    })
+    .join(' ');
+}
+
+export function maskEmailPhoneNumber(phone?: string): string {
+  if (!phone || typeof phone !== 'string' || !phone.trim() || phone === 'Telefon belirtilmedi') {
+    return '05** *** ** **';
+  }
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('90') && digits.length === 12) {
+    digits = '0' + digits.slice(2);
+  } else if (!digits.startsWith('0') && digits.length === 10) {
+    digits = '0' + digits;
+  }
+  if (digits.length >= 7) {
+    const p1 = digits.slice(0, 4); // 0507
+    const p2 = digits.slice(4, 7); // 754
+    return `${p1} ${p2} ** **`;
+  }
+  return '05** *** ** **';
+}
+
+export function maskEmailAddress(addr?: string): string {
+  if (!addr || typeof addr !== 'string' || !addr.trim() || addr === 'Adres belirtilmedi') {
+    return 'Adres detayı gizlenmiştir (Kurye görevi kabul edince açılır)';
+  }
+  const clean = addr.trim();
+  if (clean.length <= 12) {
+    return `${clean.slice(0, 4)}*** (Kabul edince açılır)`;
+  }
+  // Keep first 14-18 chars or approx 35% of length, mask door/building/apartment specifics
+  const visibleLen = Math.min(18, Math.max(8, Math.floor(clean.length * 0.35)));
+  return `${clean.slice(0, visibleLen)}... (Açık Adres & Kapı No Gizli - Talebi kabul edince açılır)`;
+}
+
 export function getOrderNotificationRecipients(orderOrIsTest?: any): string[] {
-  const isTest = typeof orderOrIsTest === 'boolean' ? orderOrIsTest : isTestOrFakeOrder(orderOrIsTest);
+  const isTest = typeof orderOrIsTest === 'boolean'
+    ? orderOrIsTest
+    : (orderOrIsTest ? isTestOrFakeOrder(orderOrIsTest) : false);
   const recipients = new Set<string>();
 
   // 1. Primary business & dispatch management email - ALWAYS guaranteed kuryeantalyam@gmail.com
   recipients.add('kuryeantalyam@gmail.com');
   const adminEmail = (dbState.smtpConfig?.user || 'kuryeantalyam@gmail.com').trim().toLowerCase();
-  if (adminEmail && adminEmail.includes('@')) {
+  if (adminEmail && adminEmail.includes('@') && adminEmail.includes('.')) {
     recipients.add(adminEmail);
   }
 
@@ -376,16 +428,47 @@ export function getOrderNotificationRecipients(orderOrIsTest?: any): string[] {
     return Array.from(recipients);
   }
 
-  // 2. Extra courier/dispatch emails explicitly configured by admin in Admin Panel
-  if (Array.isArray(dbState.extraCourierEmails)) {
-    dbState.extraCourierEmails
-      .filter((em) => em && em.includes('@') && !em.toLowerCase().endsWith('@antalyakurye.com'))
-      .forEach((em) => recipients.add(em.trim().toLowerCase()));
+  // Helper to validate and add legitimate courier email
+  const addCourierEmail = (raw?: string) => {
+    if (!raw || typeof raw !== 'string') return;
+    const clean = raw.trim().toLowerCase();
+    if (
+      clean.length > 5 &&
+      clean.includes('@') &&
+      clean.includes('.') &&
+      !clean.endsWith('@antalyakurye.com') &&
+      !clean.endsWith('@example.com') &&
+      !clean.includes('example.com') &&
+      !clean.includes('deneme')
+    ) {
+      recipients.add(clean);
+    }
+  };
+
+  // 2. All registered courier user accounts (dbState.users where role === 'courier')
+  if (Array.isArray(dbState.users)) {
+    dbState.users.forEach((u) => {
+      if (u && (u.role === 'courier' || u.isCourier === true)) {
+        addCourierEmail(u.email);
+      }
+    });
   }
 
-  // NOTE: We strictly DO NOT blast to all registered courier user accounts (dbState.users).
-  // Couriers view and claim orders directly via the live pool in the app (#pakettalebi).
-  // This prevents fake/test orders reaching couriers and eliminates Gmail SMTP quota/throttling blocks.
+  // 3. All couriers in courier pool (dbState.couriers)
+  if (Array.isArray(dbState.couriers)) {
+    dbState.couriers.forEach((c) => {
+      if (c) {
+        addCourierEmail(c.email);
+      }
+    });
+  }
+
+  // 4. Extra courier/dispatch emails explicitly configured in Admin Panel
+  if (Array.isArray(dbState.extraCourierEmails)) {
+    dbState.extraCourierEmails.forEach((em) => {
+      addCourierEmail(em);
+    });
+  }
 
   return Array.from(recipients);
 }
@@ -669,6 +752,15 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const rawReceiverPhone = order.receiver?.contactPhone || order.receiver?.phone || 'Telefon belirtilmedi';
   const rawReceiverName = order.receiver?.contactName || 'Alıcı';
 
+  // Apply privacy masking for broadcast email (full details available only after claiming in pool)
+  const maskedSenderName = maskEmailCustomerName(rawSenderName);
+  const maskedSenderPhone = maskEmailPhoneNumber(rawSenderPhone);
+  const maskedSenderAddr = maskEmailAddress(senderAddr);
+
+  const maskedReceiverName = maskEmailCustomerName(rawReceiverName);
+  const maskedReceiverPhone = maskEmailPhoneNumber(rawReceiverPhone);
+  const maskedReceiverAddr = maskEmailAddress(receiverAddr);
+
   const packageName = order.packageName || order.packageType || 'Standart Paket';
   const price = Number(order.price) || 0;
   const courierEarnings = Number(order.courierEarnings) || Math.round(price * 0.85);
@@ -711,22 +803,21 @@ Kurye Hakedişi: ${courierEarnings} TL
 Paket      : ${packageName}
 
 --- GÖNDERİCİ BİLGİLERİ ---
-İsim       : ${rawSenderName}
-Telefon    : ${rawSenderPhone}
+İsim       : ${maskedSenderName}
+Telefon    : ${maskedSenderPhone} (Talebi kabul edince açılır)
 İlçe/Mah.  : ${senderDist}${senderNeighborhood}
-Açık Adres : ${senderAddr}
+Açık Adres : ${maskedSenderAddr}
 
 --- TESLİMAT (ALICI) BİLGİLERİ ---
-İsim       : ${rawReceiverName}
-Telefon    : ${rawReceiverPhone}
+İsim       : ${maskedReceiverName}
+Telefon    : ${maskedReceiverPhone} (Talebi kabul edince açılır)
 İlçe/Mah.  : ${receiverDist}${receiverNeighborhood}
-Açık Adres : ${receiverAddr}
+Açık Adres : ${maskedReceiverAddr}
 
 --- KURYE NOTU ---
 ${order.noteForCourier ? order.noteForCourier : 'Özel bir not belirtilmedi.'}
 
-Paneli Aç: https://www.antalyateslimat.com/#admin
-Kurye Havuzu: https://www.antalyateslimat.com/#pakettalebi
+Kurye Havuzu : https://www.antalyateslimat.com/#pakettalebi
 Takip Sayfası: https://www.antalyateslimat.com/#tracker
 ========================================
 ${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmiştir. Kuryelere bildirim iletilmez.' : ''}
@@ -784,16 +875,14 @@ ${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmi
           📍 ALINACAK YER (GÖNDERİCİ)
         </div>
         <div style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 4px;">
-          ${rawSenderName}
+          ${maskedSenderName}
         </div>
-        <div style="font-size: 14px; margin-bottom: 8px;">
-          <a href="tel:${rawSenderPhone.replace(/\s+/g, '')}" style="color: #6ee7b7; font-weight: 700; text-decoration: none;">
-            📞 ${rawSenderPhone} (Aramak İçin Tıklayın)
-          </a>
+        <div style="font-size: 13px; color: #6ee7b7; font-weight: 700; margin-bottom: 8px;">
+          📞 ${maskedSenderPhone} <span style="font-size: 11px; color: #a7f3d0; font-weight: normal;">(Talebi kabul edince açılır)</span>
         </div>
         <div style="font-size: 13px; color: #a7f3d0; line-height: 1.4;">
-          <strong>${senderDist}${senderNeighborhood}</strong><br>
-          ${senderAddr}
+          <strong style="color: #ffffff;">${senderDist}${senderNeighborhood}</strong><br>
+          <span style="color: #6ee7b7;">${maskedSenderAddr}</span>
         </div>
       </div>
 
@@ -803,16 +892,14 @@ ${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmi
           🎯 TESLİMAT YERİ (ALICI)
         </div>
         <div style="font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 4px;">
-          ${rawReceiverName}
+          ${maskedReceiverName}
         </div>
-        <div style="font-size: 14px; margin-bottom: 8px;">
-          <a href="tel:${rawReceiverPhone.replace(/\s+/g, '')}" style="color: #fcd34d; font-weight: 700; text-decoration: none;">
-            📞 ${rawReceiverPhone} (Aramak İçin Tıklayın)
-          </a>
+        <div style="font-size: 13px; color: #fcd34d; font-weight: 700; margin-bottom: 8px;">
+          📞 ${maskedReceiverPhone} <span style="font-size: 11px; color: #fde68a; font-weight: normal;">(Talebi kabul edince açılır)</span>
         </div>
         <div style="font-size: 13px; color: #a7f3d0; line-height: 1.4;">
-          <strong>${receiverDist}${receiverNeighborhood}</strong><br>
-          ${receiverAddr}
+          <strong style="color: #ffffff;">${receiverDist}${receiverNeighborhood}</strong><br>
+          <span style="color: #fcd34d;">${maskedReceiverAddr}</span>
         </div>
       </div>
 
@@ -828,13 +915,10 @@ ${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmi
           : ''
       }
 
-      <!-- Action Buttons -->
+      <!-- Action Button -->
       <div style="text-align: center; margin-top: 24px;">
-        <a href="https://www.antalyateslimat.com/#admin" style="display: inline-block; background: #059669; color: #ffffff; font-weight: 800; font-size: 14px; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin: 6px;">
-          Yönetim Panelinde Aç
-        </a>
-        <a href="https://www.antalyateslimat.com/#pakettalebi" style="display: inline-block; background: #d97706; color: #ffffff; font-weight: 800; font-size: 14px; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin: 6px;">
-          Kurye Havuzunda Gör
+        <a href="https://www.antalyateslimat.com/#pakettalebi" style="display: inline-block; background: #059669; color: #ffffff; font-weight: 800; font-size: 15px; padding: 14px 28px; border-radius: 12px; text-decoration: none; box-shadow: 0 4px 14px rgba(5,150,105,0.45);">
+          🛵 Kurye Havuzunda Gör & Talebi Kabul Et
         </a>
       </div>
 
@@ -1810,7 +1894,7 @@ app.post('/api/requests/:id/accept', (req, res) => {
 app.post('/api/requests/:id/release', (req, res) => {
   try {
     const { id } = req.params;
-    const reqIndex = dbState.requests.findIndex((r) => r.id === id);
+    const reqIndex = dbState.requests.findIndex((r) => r.id === id || r.trackingCode === id);
 
     if (reqIndex === -1) {
       res.status(404).json({ error: 'Talep bulunamadı' });
@@ -1821,11 +1905,15 @@ app.post('/api/requests/:id/release', (req, res) => {
       ...dbState.requests[reqIndex],
       status: 'pending_pool',
       assignedCourier: undefined,
+      courier: undefined,
       updatedAt: new Date().toISOString(),
     };
 
     dbState.requests[reqIndex] = updated;
     saveDatabase();
+    if (serverFirestoreDb && updated.id) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
+    }
     res.json({ success: true, request: updated });
   } catch (err: any) {
     console.error('Error releasing request:', err);
@@ -1833,11 +1921,11 @@ app.post('/api/requests/:id/release', (req, res) => {
   }
 });
 
-// Cancel request
+// Cancel request (by id or trackingCode)
 app.post('/api/requests/:id/cancel', (req, res) => {
   try {
     const { id } = req.params;
-    const reqIndex = dbState.requests.findIndex((r) => r.id === id);
+    const reqIndex = dbState.requests.findIndex((r) => r.id === id || r.trackingCode === id);
 
     if (reqIndex === -1) {
       res.status(404).json({ error: 'Talep bulunamadı' });
@@ -1852,9 +1940,36 @@ app.post('/api/requests/:id/cancel', (req, res) => {
 
     dbState.requests[reqIndex] = updated;
     saveDatabase();
+    if (serverFirestoreDb && updated.id) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
+    }
     res.json({ success: true, request: updated });
   } catch (err: any) {
     console.error('Error cancelling request:', err);
+    res.status(500).json({ error: err.message || 'Sunucu hatası' });
+  }
+});
+
+// Delete request (by id or trackingCode)
+app.delete('/api/requests/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const reqIndex = dbState.requests.findIndex((r) => r.id === id || r.trackingCode === id);
+
+    if (reqIndex === -1) {
+      res.status(404).json({ error: 'Talep bulunamadı' });
+      return;
+    }
+
+    const removed = dbState.requests.splice(reqIndex, 1)[0];
+    saveDatabase();
+    if (serverFirestoreDb && removed.id) {
+      // Set to cancelled in firestore so clients know it is cancelled/deleted
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', removed.id), { status: 'cancelled', isDeleted: true, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+    }
+    res.json({ success: true, removed });
+  } catch (err: any) {
+    console.error('Error deleting request:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası' });
   }
 });
