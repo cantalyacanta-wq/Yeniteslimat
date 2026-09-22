@@ -25,12 +25,10 @@ import {
   Coins,
   Sparkles,
   BookmarkCheck,
-  Map as MapIcon,
 } from 'lucide-react';
 import { DistrictName, PackageType, PaymentMethod, UrgencyType, DeliveryRequest } from '../types';
 import { ANTALYA_DISTRICTS, DISTRICT_DISTANCE_MATRIX, calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { useDelivery } from '../context/DeliveryContext';
-import { MapLocationPickerModal, LocationSelectedResult } from './MapLocationPickerModal';
 
 const SENDER_LOCKED_STORAGE_KEY = 'antalya_kurye_locked_sender_address_v6';
 const RECEIVER_LOCKED_STORAGE_KEY = 'antalya_kurye_locked_receiver_address_v6';
@@ -152,13 +150,6 @@ export const CustomerRequestForm: React.FC = () => {
     } catch {}
     return '';
   });
-
-  // Coordinates from Google Maps Pin Picker
-  const [senderCoords, setSenderCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [receiverCoords, setReceiverCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Map Picker Modal State
-  const [mapPickerTarget, setMapPickerTarget] = useState<'sender' | 'receiver' | null>(null);
 
   // Package info
   const [packageType, setPackageType] = useState<PackageType>('food');
@@ -295,8 +286,8 @@ export const CustomerRequestForm: React.FC = () => {
           addressDetail: senderAddress.trim(),
           contactName: senderName.trim(),
           contactPhone: senderPhone.trim(),
-          lat: senderCoords?.lat || ANTALYA_DISTRICTS[senderDistrict]?.centerCoordinates.lat || 36.8841,
-          lng: senderCoords?.lng || ANTALYA_DISTRICTS[senderDistrict]?.centerCoordinates.lng || 30.7056,
+          lat: ANTALYA_DISTRICTS[senderDistrict]?.centerCoordinates.lat || 36.8841,
+          lng: ANTALYA_DISTRICTS[senderDistrict]?.centerCoordinates.lng || 30.7056,
         },
         receiver: {
           district: receiverDistrict,
@@ -304,8 +295,8 @@ export const CustomerRequestForm: React.FC = () => {
           addressDetail: receiverAddress.trim(),
           contactName: receiverName.trim(),
           contactPhone: receiverPhone.trim(),
-          lat: receiverCoords?.lat || ANTALYA_DISTRICTS[receiverDistrict]?.centerCoordinates.lat || 36.8625,
-          lng: receiverCoords?.lng || ANTALYA_DISTRICTS[receiverDistrict]?.centerCoordinates.lng || 30.6375,
+          lat: ANTALYA_DISTRICTS[receiverDistrict]?.centerCoordinates.lat || 36.8625,
+          lng: ANTALYA_DISTRICTS[receiverDistrict]?.centerCoordinates.lng || 30.6375,
         },
         packageType,
         packageName: packageName.trim() || (packageType === 'food' ? 'Sıcak Yemek Siparişi' : 'Standart Paket'),
@@ -524,72 +515,39 @@ export const CustomerRequestForm: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
                 <label className="block text-xs font-semibold text-emerald-200">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Google Maps Pin Picker Button */}
+                {currentUser.address && (
                   <button
                     type="button"
-                    onClick={() => setMapPickerTarget('sender')}
-                    className="px-2.5 py-1 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs border border-emerald-400/50 active:scale-95"
-                    title="Google Maps haritası üzerinden alış noktasını pin ile seçin"
+                    onClick={() => {
+                      setSenderAddress(currentUser.address || '');
+                      if (currentUser.district) {
+                        setSenderDistrict(currentUser.district);
+                      }
+                      if (currentUser.name && !senderName) {
+                        setSenderName(currentUser.name);
+                      }
+                      if (currentUser.phone && !senderPhone) {
+                        setSenderPhone(currentUser.phone);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      senderAddress === currentUser.address
+                        ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
+                        : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
+                    }`}
+                    title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
                   >
-                    <MapIcon className="w-3.5 h-3.5" />
-                    <span>📍 Haritadan Pin Bırakarak Seç</span>
+                    <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span>{senderAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
                   </button>
-
-                  {currentUser.address && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSenderAddress(currentUser.address || '');
-                        if (currentUser.district) {
-                          setSenderDistrict(currentUser.district);
-                        }
-                        if (currentUser.name && !senderName) {
-                          setSenderName(currentUser.name);
-                        }
-                        if (currentUser.phone && !senderPhone) {
-                          setSenderPhone(currentUser.phone);
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                        senderAddress === currentUser.address
-                          ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
-                          : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
-                      }`}
-                      title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
-                    >
-                      <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                      <span>{senderAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-
-              {senderCoords && (
-                <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-600/60 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-emerald-300">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="font-semibold">Haritadan Alış Noktası Belirlendi:</span>
-                    <span className="font-mono text-[11px] text-emerald-200">
-                      ({senderCoords.lat.toFixed(5)}, {senderCoords.lng.toFixed(5)})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMapPickerTarget('sender')}
-                    className="text-[11px] text-emerald-400 hover:text-white underline cursor-pointer"
-                  >
-                    Pini Değiştir
-                  </button>
-                </div>
-              )}
-
               <input
                 type="text"
                 required
                 value={senderAddress}
                 onChange={(e) => setSenderAddress(e.target.value)}
-                placeholder="Örn: İsmet Gökşen Cad. No: 48 Daire: 2 (veya yukarıdaki butondan harita pini bırakınız)"
+                placeholder="Örn: İsmet Gökşen Cad. No: 48 Daire: 2"
                 className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
               />
             </div>
@@ -673,72 +631,39 @@ export const CustomerRequestForm: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
                 <label className="block text-xs font-semibold text-emerald-200">Açık Adres (Cadde, Sokak, Bina No, Daire) *</label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Google Maps Pin Picker Button for Receiver */}
+                {currentUser.address && (
                   <button
                     type="button"
-                    onClick={() => setMapPickerTarget('receiver')}
-                    className="px-2.5 py-1 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white shadow-xs border border-sky-400/50 active:scale-95"
-                    title="Google Maps haritası üzerinden teslimat noktasını pin ile seçin"
+                    onClick={() => {
+                      setReceiverAddress(currentUser.address || '');
+                      if (currentUser.district) {
+                        setReceiverDistrict(currentUser.district);
+                      }
+                      if (currentUser.name && !receiverName) {
+                        setReceiverName(currentUser.name);
+                      }
+                      if (currentUser.phone && !receiverPhone) {
+                        setReceiverPhone(currentUser.phone);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                      receiverAddress === currentUser.address
+                        ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
+                        : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
+                    }`}
+                    title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
                   >
-                    <MapIcon className="w-3.5 h-3.5" />
-                    <span>📍 Haritadan Pin Bırakarak Seç</span>
+                    <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <span>{receiverAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
                   </button>
-
-                  {currentUser.address && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReceiverAddress(currentUser.address || '');
-                        if (currentUser.district) {
-                          setReceiverDistrict(currentUser.district);
-                        }
-                        if (currentUser.name && !receiverName) {
-                          setReceiverName(currentUser.name);
-                        }
-                        if (currentUser.phone && !receiverPhone) {
-                          setReceiverPhone(currentUser.phone);
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                        receiverAddress === currentUser.address
-                          ? 'bg-orange-500/25 border-orange-400 text-orange-300 shadow-2xs'
-                          : 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60 hover:text-white'
-                      }`}
-                      title={`Kayıtlı adresiniz: ${currentUser.address || ''}`}
-                    >
-                      <BookmarkCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                      <span>{receiverAddress === currentUser.address ? '✓ Kayıtlı Adresim Seçili' : 'Kayıtlı Adresimden Kullanacağım'}</span>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-
-              {receiverCoords && (
-                <div className="mb-2 px-3 py-1.5 rounded-xl bg-sky-950/70 border border-sky-600/60 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-sky-300">
-                    <Check className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="font-semibold">Haritadan Teslimat Noktası Belirlendi:</span>
-                    <span className="font-mono text-[11px] text-sky-200">
-                      ({receiverCoords.lat.toFixed(5)}, {receiverCoords.lng.toFixed(5)})
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMapPickerTarget('receiver')}
-                    className="text-[11px] text-sky-400 hover:text-white underline cursor-pointer"
-                  >
-                    Pini Değiştir
-                  </button>
-                </div>
-              )}
-
               <input
                 type="text"
                 required
                 value={receiverAddress}
                 onChange={(e) => setReceiverAddress(e.target.value)}
-                placeholder="Örn: Atatürk Bulvarı No: 120 Daire: 4 (veya yukarıdaki butondan harita pini bırakınız)"
+                placeholder="Örn: Atatürk Bulvarı No: 120 Daire: 4"
                 className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-emerald-700/60 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition font-medium"
               />
             </div>
@@ -1021,29 +946,6 @@ export const CustomerRequestForm: React.FC = () => {
           </div>
         </form>
       </div>
-
-      {/* Map Location Picker Modal (Google Maps) */}
-      <MapLocationPickerModal
-        isOpen={mapPickerTarget !== null}
-        onClose={() => setMapPickerTarget(null)}
-        title={mapPickerTarget === 'sender' ? 'Alış Noktasını Haritadan Seç' : 'Teslimat Noktasını Haritadan Seç'}
-        type={mapPickerTarget || 'sender'}
-        initialDistrict={mapPickerTarget === 'sender' ? senderDistrict : receiverDistrict}
-        initialAddress={mapPickerTarget === 'sender' ? senderAddress : receiverAddress}
-        initialLat={mapPickerTarget === 'sender' ? senderCoords?.lat : receiverCoords?.lat}
-        initialLng={mapPickerTarget === 'sender' ? senderCoords?.lng : receiverCoords?.lng}
-        onConfirmLocation={(result: LocationSelectedResult) => {
-          if (mapPickerTarget === 'sender') {
-            setSenderAddress(result.address);
-            setSenderDistrict(result.district);
-            setSenderCoords({ lat: result.lat, lng: result.lng });
-          } else if (mapPickerTarget === 'receiver') {
-            setReceiverAddress(result.address);
-            setReceiverDistrict(result.district);
-            setReceiverCoords({ lat: result.lat, lng: result.lng });
-          }
-        }}
-      />
 
       {/* Confirmation Modal for Request Form */}
       {cancelModalOrder && (
