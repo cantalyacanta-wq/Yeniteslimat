@@ -137,7 +137,7 @@ export const HeroIntro: React.FC = () => {
     }
   };
 
-  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && currentUser.role === 'customer' && Boolean(currentUser.email);
+  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && currentUser.role === 'customer';
 
   // Filter history items for logged-in customer
   const filteredDeliveredOrders = deliveredOrders.filter((req) => {
@@ -153,10 +153,10 @@ export const HeroIntro: React.FC = () => {
   });
 
   // =========================================================================
-  // SCENARIO 1: CUSTOMER HAS ACTIVE ORDER(S)
+  // SCENARIO 1: GUEST USER HAS ACTIVE ORDER(S)
   // Clean, focused single view with ONLY active order radar & "+ Yeni Paket" button
   // =========================================================================
-  if (activeCustomerOrder) {
+  if (!isUserLoggedIn && activeCustomerOrder) {
     return (
       <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
         
@@ -510,173 +510,226 @@ export const HeroIntro: React.FC = () => {
   // =========================================================================
   if (isUserLoggedIn) {
     return (
-      <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
+      <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
         
-        {/* Animated "Siparişiniz Teslim Edildi" Celebration Section */}
-        {deliveredOrderToCelebrate && !hideDeliveredCard && (
-          <div className="w-full bg-gradient-to-br from-[#023125] via-[#044434] to-[#011d15] rounded-3xl border-2 border-emerald-400 p-6 sm:p-8 shadow-2xl text-white space-y-5 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="flex items-start justify-between relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 shrink-0 animate-bounce">
-                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 text-[11px] font-black uppercase tracking-wider">
-                      Teslimat Tamamlandı
-                    </span>
-                    <span className="font-mono text-xs text-amber-300 font-bold">
-                      {deliveredOrderToCelebrate.trackingCode}
-                    </span>
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
-                    🎉 Siparişiniz Başarıyla Teslim Edildi!
-                  </h3>
-                  <p className="text-xs sm:text-sm text-emerald-200/90 mt-0.5">
-                    Paketiniz kuryemiz tarafından alıcıya güvenle teslim edilmiştir.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setHideDeliveredCard(true)}
-                className="p-1.5 text-emerald-400 hover:text-white transition cursor-pointer"
-                title="Kapat"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* Just Cancelled Feedback Banner */}
+        {justCancelledCode && (
+          <div className="p-4 bg-rose-950/90 border border-rose-600/70 rounded-2xl text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+              <span><strong>#{justCancelledCode}</strong> takip kodlu siparişiniz başarıyla iptal edildi. Kurye görev havuzundan kaldırıldı.</span>
             </div>
-
-            {/* Delivered Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#011611]/90 rounded-2xl border border-emerald-700/60 text-xs">
-              <div>
-                <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Eden Kurye:</span>
-                <span className="text-white font-extrabold text-sm flex items-center gap-1.5 mt-0.5">
-                  <Bike className="w-4 h-4 text-emerald-400" />
-                  {deliveredOrderToCelebrate.assignedCourier?.name || 'Ahmet Yılmaz (Kurye)'}
-                </span>
-              </div>
-              <div>
-                <span className="text-emerald-400/80 font-semibold block text-[11px]">Teslim Adresi:</span>
-                <span className="text-white font-bold block mt-0.5">
-                  {deliveredOrderToCelebrate.receiver.district} - {deliveredOrderToCelebrate.receiver.contactName}
-                </span>
-              </div>
-              <div>
-                <span className="text-emerald-400/80 font-semibold block text-[11px]">Paket Bilgisi:</span>
-                <span className="text-amber-300 font-bold block mt-0.5">
-                  📦 {deliveredOrderToCelebrate.packageName} ({deliveredOrderToCelebrate.price} ₺)
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Rating Bar & New Order Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1 border-t border-emerald-800/60">
-              <div className="w-full sm:w-auto">
-                {ratingSubmitted ? (
-                  <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs bg-emerald-950/90 px-4 py-2 rounded-xl border border-emerald-700/60">
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Kurye değerlendirmeniz kaydedildi. Teşekkür ederiz!</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-emerald-200 font-bold">Kuryeyi Puanla:</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => {
-                            setRatingVal(star);
-                            rateDelivery(deliveredOrderToCelebrate.id, star, 'Müşteri ana sayfa puanı');
-                            setRatingSubmitted(true);
-                          }}
-                          className={`p-1 transition cursor-pointer hover:scale-125 ${
-                            star <= ratingVal ? 'text-amber-400' : 'text-slate-600'
-                          }`}
-                          title={`${star} Yıldız`}
-                        >
-                          <Star className="w-5 h-5 fill-current" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCurrentView('customer')}
-                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Yeni Paket</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setJustCancelledCode(null)}
+              className="p-1 hover:text-white text-rose-400 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
-        {/* Customer Dashboard Action Bar */}
-        <div className="bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 shadow-xl text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600/80 border border-emerald-400/40 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
+        {/* Customer Dashboard Action Card (EXACT MATCH TO USER SCREENSHOT) */}
+        <div className="bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-5 sm:p-6 rounded-3xl border border-emerald-800/60 shadow-xl text-white space-y-4">
+          {/* Header Info */}
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600/90 border border-emerald-400/40 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-extrabold text-white">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white">
                 Müşteri Paneli
               </h1>
-              <p className="text-xs text-emerald-300/80 mt-0.5">
-                Sayın <span className="text-white font-bold">{currentUser.name}</span>, yeni bir kurye çağırabilir veya geçmiş siparişlerinizi inceleyebilirsiniz.
+              <p className="text-xs sm:text-sm text-emerald-300/80 mt-1 leading-relaxed">
+                Sayın <strong className="text-white font-bold">{currentUser.name}</strong>, yeni bir kurye çağırabilir veya geçmiş siparişlerinizi inceleyebilirsiniz.
               </p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 flex-wrap self-end sm:self-center">
-            {/* Past Deliveries Button */}
+          {/* Full-width "Geçmiş Teslimatlarım" Button */}
+          <button
+            type="button"
+            id="customer-past-deliveries-button"
+            onClick={() => {
+              const el = document.getElementById('customer-past-deliveries-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+            className="w-full py-3.5 px-4 bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-600/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            title="Geçmiş Teslimatları Görüntüle"
+          >
+            <History className="w-4 h-4 text-emerald-400" />
+            <span>Geçmiş Teslimatlarım ({deliveredOrders.length})</span>
+          </button>
+
+          {/* Two-Button Row: Oturumu Kapat & + Yeni Paket */}
+          <div className="grid grid-cols-2 gap-3 w-full">
             <button
               type="button"
-              id="customer-past-deliveries-button"
-              onClick={() => {
-                const el = document.getElementById('customer-past-deliveries-section');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                  setCurrentView('history');
-                }
-              }}
-              className="px-4 py-3.5 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-600/70 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md shrink-0"
-              title="Geçmiş Teslimatları Görüntüle"
+              onClick={logout}
+              className="w-full py-3.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md"
+              title="Müşteri Oturumunu Kapat"
             >
-              <History className="w-4 h-4 text-emerald-400" />
-              <span>Geçmiş Teslimatlarım ({deliveredOrders.length})</span>
+              <LogOut className="w-4 h-4 text-rose-400" />
+              <span>Oturumu Kapat</span>
             </button>
 
-            {isUserLoggedIn && (
-              <button
-                type="button"
-                onClick={logout}
-                className="px-4 py-3.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md"
-                title="Müşteri Oturumunu Kapat"
-              >
-                <LogOut className="w-4 h-4 text-rose-400" />
-                <span>Oturumu Kapat</span>
-              </button>
-            )}
             <button
               type="button"
               onClick={() => setCurrentView('customer')}
-              className="px-6 py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-sm rounded-2xl transition shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98 shrink-0"
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <Plus className="w-5 h-5" />
-              <span>Yeni Paket</span>
+              <span>+ Yeni Paket</span>
             </button>
           </div>
         </div>
+
+        {/* ACTIVE ORDER LIVE TRACKING RADAR (if customer has active in-progress orders) */}
+        {activeCustomerOrder && (
+          <div className="space-y-4">
+            {activeOrders.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                {activeOrders.map((ord, idx) => (
+                  <button
+                    key={ord.id}
+                    type="button"
+                    onClick={() => setSelectedActiveOrderId(ord.id)}
+                    className={`px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer border ${
+                      activeCustomerOrder.id === ord.id
+                        ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+                        : 'bg-[#021813] text-emerald-300/80 border-emerald-800/60 hover:bg-[#03241d]'
+                    }`}
+                  >
+                    <span>Paket #{idx + 1}</span>
+                    <span className="font-mono text-[11px] opacity-80">({ord.trackingCode})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-gradient-to-br from-[#021f19] via-[#032920] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-6 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/60 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-600/80 text-emerald-200 border border-emerald-400/40 flex items-center justify-center font-extrabold text-base shadow-md">
+                    <Bike className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-emerald-400/80 font-bold uppercase tracking-wider">Aktif Takip:</span>
+                      <span className="font-mono font-extrabold text-amber-400 text-sm">{activeCustomerOrder.trackingCode}</span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
+                      {activeCustomerOrder.sender.district} ➔ {activeCustomerOrder.receiver.district}
+                    </h3>
+                  </div>
+                </div>
+
+                <div>
+                  {activeCustomerOrder.status === 'pending_pool' && (
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-amber-950/80 text-amber-300 border border-amber-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                      <span>Kurye Havuzunda Aranıyor</span>
+                    </div>
+                  )}
+                  {activeCustomerOrder.status === 'courier_assigned' && (
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-950/80 text-blue-300 border border-blue-600/60 rounded-xl text-xs font-extrabold shadow-sm">
+                      <Bike className="w-4 h-4 text-blue-400" />
+                      <span>Kurye Paketi Almaya Geliyor</span>
+                    </div>
+                  )}
+                  {activeCustomerOrder.status === 'picked_up' && (
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-teal-950/80 text-teal-300 border border-teal-600/60 rounded-xl text-xs font-extrabold shadow-sm">
+                      <Package className="w-4 h-4 text-teal-400" />
+                      <span>Paket Alındı, Teslimata Yolda</span>
+                    </div>
+                  )}
+                  {activeCustomerOrder.status === 'near_destination' && (
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-purple-950/80 text-purple-300 border border-purple-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-bounce">
+                      <Navigation className="w-4 h-4 text-purple-400" />
+                      <span>Kurye Teslimat Noktasına Ulaştı</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {activeCustomerOrder.assignedCourier ? (
+                <div className="bg-[#022e23] border border-emerald-700/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-md">
+                      {activeCustomerOrder.assignedCourier.name.split(' ')[0][0]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-white">{activeCustomerOrder.assignedCourier.name}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[10px] font-bold">
+                          ⭐ {activeCustomerOrder.assignedCourier.rating.toFixed(1)}
+                        </span>
+                      </div>
+                      <p className="text-emerald-300/90 text-[11px] font-medium">
+                        🏍️ Moto Kurye • {activeCustomerOrder.assignedCourier.phone}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    {activeCustomerOrder.assignedCourier.phone && (
+                      <a
+                        href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5" />
+                        <span>Kuryeyi Ara</span>
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                      className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      title="Siparişinizi iptal edebilirsiniz"
+                    >
+                      <X className="w-3.5 h-3.5 text-rose-400" />
+                      <span>İptal Et</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-amber-950/40 border border-amber-600/40 rounded-2xl p-3.5 text-xs text-amber-200 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Radio className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                    <span>Talebiniz kurye havuzunda yayınlandı. Kuryelerden onay bekleniyor.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                    className="px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5 text-rose-400" />
+                    <span>İptal Et</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Progress bar */}
+              <div className="w-full bg-emerald-950 h-2.5 rounded-full overflow-hidden border border-emerald-800/40">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
+                  style={{
+                    width:
+                      activeCustomerOrder.status === 'pending_pool'
+                        ? '25%'
+                        : activeCustomerOrder.status === 'courier_assigned'
+                        ? '50%'
+                        : activeCustomerOrder.status === 'picked_up' || activeCustomerOrder.status === 'near_destination'
+                        ? '75%'
+                        : '100%',
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Past Deliveries List Section (Geçmiş Teslimatlar) */}
         <div id="customer-past-deliveries-section" className="bg-gradient-to-br from-[#021f19] via-[#032a21] to-[#011813] rounded-3xl border border-emerald-800/60 p-5 sm:p-7 shadow-2xl space-y-5 text-white">

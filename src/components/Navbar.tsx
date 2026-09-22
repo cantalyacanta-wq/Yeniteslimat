@@ -7,6 +7,8 @@ import {
   History,
   User,
   Lock,
+  LayoutDashboard,
+  Plus,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -63,9 +65,16 @@ export const Navbar: React.FC = () => {
     if (currentUser.role === 'customer') {
       return [
         {
+          id: 'home',
+          label: 'Müşteri Paneli',
+          icon: LayoutDashboard,
+          badge: null,
+          badgeColor: '',
+        },
+        {
           id: 'customer',
-          label: 'Kurye Çağır',
-          icon: Package,
+          label: '+ Yeni Paket',
+          icon: Plus,
           badge: null,
           badgeColor: '',
         },

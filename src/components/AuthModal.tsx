@@ -165,7 +165,7 @@ export const AuthModal: React.FC = () => {
         if (res.user?.role === 'courier') {
           setCurrentView('courier');
         } else {
-          setCurrentView('customer');
+          setCurrentView('home');
         }
         closeAuthModal();
         setLoginSuccess(null);
@@ -222,7 +222,7 @@ export const AuthModal: React.FC = () => {
 
       setCustomerSuccess('Müşteri kaydınız başarıyla oluşturuldu ve oturum açıldı!');
       setTimeout(() => {
-        setCurrentView('customer');
+        setCurrentView('home');
         closeAuthModal();
         setCustomerSuccess(null);
       }, 800);
