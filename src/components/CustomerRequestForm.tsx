@@ -231,6 +231,36 @@ export const CustomerRequestForm: React.FC = () => {
     return calculateDeliveryEstimate(senderDistrict, receiverDistrict, packageType, urgency);
   }, [senderDistrict, receiverDistrict, packageType, urgency]);
 
+  const [cancelModalOrder, setCancelModalOrder] = useState<DeliveryRequest | null>(null);
+
+  // Check if customer has any active in-progress order
+  const activeOrder = useMemo(() => {
+    const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
+    const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
+    const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
+
+    const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
+    const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
+    const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
+
+    return requests.find((r) => {
+      if (!r || r.status === 'delivered' || r.status === 'cancelled') return false;
+      if (currentUser.id !== 'user-guest-01') {
+        if (r.senderUserId && r.senderUserId === currentUser.id) return true;
+        if (uPhone && uPhone.length >= 7) {
+          const sPhone = r.sender?.contactPhone ? r.sender.contactPhone.replace(/\D/g, '').slice(-10) : '';
+          if (sPhone && sPhone === uPhone) return true;
+        }
+        if (uEmail && (r as any).senderEmail && (r as any).senderEmail.trim().toLowerCase() === uEmail) return true;
+        if (uName && uName !== 'yeni müşteri' && uName !== 'müşteri' && r.sender?.contactName?.trim().toLowerCase() === uName) return true;
+      }
+      return (
+        (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
+        (Boolean(pPhone) && r.sender?.contactPhone && r.sender.contactPhone.replace(/\D/g, '').slice(-10) === pPhone)
+      );
+    });
+  }, [requests, currentUser]);
+
   // Submit request to courier pool and seamlessly route to tracking view
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,6 +393,57 @@ export const CustomerRequestForm: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Active In-Progress Order Notification with Quick Cancel Button */}
+      {activeOrder && (
+        <div className="w-full max-w-4xl mx-auto bg-gradient-to-r from-[#03251e] via-[#043328] to-[#021c15] border-2 border-amber-500/60 rounded-3xl p-4 sm:p-5 shadow-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/50 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
+              <Bike className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono font-extrabold text-amber-300 text-sm">#{activeOrder.trackingCode}</span>
+                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                  activeOrder.assignedCourier
+                    ? 'bg-blue-950 text-blue-300 border-blue-500/60'
+                    : 'bg-amber-950 text-amber-300 border-amber-600/60'
+                }`}>
+                  {activeOrder.assignedCourier
+                    ? `🏍️ Kurye Atandı: ${activeOrder.assignedCourier.name}`
+                    : '⏳ Kurye Havuzunda Aranıyor'}
+                </span>
+              </div>
+              <p className="text-xs text-emerald-200/90 mt-0.5">
+                {activeOrder.sender.district} ➔ {activeOrder.receiver.district} ({activeOrder.receiver.contactName})
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTrackingId(activeOrder.id);
+                setCurrentView('home');
+              }}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              <span>Canlı Takip</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancelModalOrder(activeOrder)}
+              className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Kurye atanmış olsa bile talebi iptal edebilirsiniz"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+              <span>Talebi İptal Et</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Form Layout */}
       <div className="w-full max-w-4xl mx-auto bg-gradient-to-br from-[#0c1f19] via-[#091a14] to-[#040e0b] rounded-3xl border border-emerald-700/60 p-5 sm:p-8 shadow-2xl text-white">
@@ -865,6 +946,62 @@ export const CustomerRequestForm: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal for Request Form */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-[#022019] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-700/60 space-y-4 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-900/60 text-rose-300 border border-rose-600/50 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white">Siparişi İptal Et</h3>
+                <p className="text-xs text-rose-200/80">#{cancelModalOrder.trackingCode} numaralı sipariş</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-[#011410] rounded-xl border border-emerald-800/60 text-xs text-emerald-200 space-y-1.5">
+              <p><strong>Güzergah:</strong> {cancelModalOrder.sender.district} ➔ {cancelModalOrder.receiver.district}</p>
+              <p><strong>Alıcı:</strong> {cancelModalOrder.receiver.contactName}</p>
+              {cancelModalOrder.assignedCourier ? (
+                <div className="p-2.5 bg-amber-950/60 border border-amber-600/50 rounded-lg text-amber-200 text-xs mt-2">
+                  <p className="font-bold text-amber-300 flex items-center gap-1">
+                    <span>⚠️ Kurye Atanmış Durumda:</span> {cancelModalOrder.assignedCourier.name}
+                  </p>
+                  <p className="text-[11px] text-amber-200/90 mt-0.5">
+                    Kurye atanmış olsa bile siparişinizi iptal edebilirsiniz. Atanan kuryeye anında iptal bildirimi iletilecek ve görev iptal edilecektir.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-emerald-300/80 mt-1">
+                  Sipariş kurye havuzundan kaldırılacaktır.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalOrder(null)}
+                className="px-4 py-2.5 rounded-xl text-emerald-300 hover:bg-emerald-900/40 font-bold text-xs cursor-pointer transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelRequest(cancelModalOrder.id);
+                  setCancelModalOrder(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-md"
+              >
+                Evet, İptal Et
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

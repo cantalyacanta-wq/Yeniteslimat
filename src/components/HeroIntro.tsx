@@ -24,6 +24,7 @@ import {
   Clock,
   ShieldCheck,
   AlertTriangle,
+  AlertCircle,
   Star,
   Sparkles,
   Search,
@@ -63,6 +64,7 @@ export const HeroIntro: React.FC = () => {
   const [hideDeliveredCard, setHideDeliveredCard] = useState(false);
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [justCancelledCode, setJustCancelledCode] = useState<string | null>(null);
 
   // Restore last customer order ID & contact phone from persistent storage
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
@@ -158,6 +160,23 @@ export const HeroIntro: React.FC = () => {
     return (
       <div className="w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
         
+        {/* Just Cancelled Feedback Banner */}
+        {justCancelledCode && (
+          <div className="p-4 bg-rose-950/90 border border-rose-600/70 rounded-2xl text-rose-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+              <span><strong>#{justCancelledCode}</strong> takip kodlu siparişiniz başarıyla iptal edildi. Kurye görev havuzundan kaldırıldı.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setJustCancelledCode(null)}
+              className="p-1 hover:text-white text-rose-400 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Top Action Bar with "+ Yeni Paket" Button */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gradient-to-r from-[#02231c] via-[#043328] to-[#021f18] p-4 sm:p-5 rounded-3xl border border-emerald-800/60 shadow-xl text-white">
           <div className="flex items-center gap-3">
@@ -299,15 +318,27 @@ export const HeroIntro: React.FC = () => {
                 </div>
               </div>
 
-              {activeCustomerOrder.assignedCourier.phone && (
-                <a
-                  href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md self-start sm:self-auto"
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                {activeCustomerOrder.assignedCourier.phone && (
+                  <a
+                    href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    <span>Kuryeyi Ara</span>
+                  </a>
+                )}
+                {/* Cancel Button Even When Courier is Assigned */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancelModal(activeCustomerOrder)}
+                  className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  title="Kurye atanmış olsa bile siparişinizi iptal edebilirsiniz"
                 >
-                  <PhoneCall className="w-3.5 h-3.5" />
-                  <span>Kuryeyi Ara</span>
-                </a>
-              )}
+                  <X className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Talebi İptal Et</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-amber-950/40 border border-amber-600/40 rounded-2xl p-3.5 text-xs text-amber-200 flex items-center gap-2.5">
@@ -393,14 +424,16 @@ export const HeroIntro: React.FC = () => {
             </div>
 
             {/* Cancel Order Button */}
-            {activeCustomerOrder.status === 'pending_pool' && (
+            {activeCustomerOrder.status !== 'delivered' && activeCustomerOrder.status !== 'cancelled' && (
               <button
                 type="button"
                 onClick={() => setConfirmCancelModal(activeCustomerOrder)}
-                className="px-4 py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-auto"
+                className="px-4 py-2.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-700/60 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-auto shadow-xs"
               >
                 <X className="w-4 h-4" />
-                <span>Talebi İptal Et</span>
+                <span>
+                  {activeCustomerOrder.assignedCourier ? 'Talebi İptal Et (Kurye Atanmış)' : 'Talebi İptal Et'}
+                </span>
               </button>
             )}
           </div>
@@ -420,9 +453,24 @@ export const HeroIntro: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 bg-[#011410] rounded-xl border border-emerald-800/60 text-xs text-emerald-200">
+              <div className="p-3.5 bg-[#011410] rounded-xl border border-emerald-800/60 text-xs text-emerald-200 space-y-1.5">
                 <p><strong>Takip No:</strong> {confirmCancelModal.trackingCode}</p>
-                <p><strong>Alıcı:</strong> {confirmCancelModal.receiver.contactName} ({confirmCancelModal.receiver.district})</p>
+                <p><strong>Güzergah:</strong> {confirmCancelModal.sender.district} ➔ {confirmCancelModal.receiver.district}</p>
+                <p><strong>Alıcı:</strong> {confirmCancelModal.receiver.contactName}</p>
+                {confirmCancelModal.assignedCourier ? (
+                  <div className="p-2.5 bg-amber-950/60 border border-amber-600/50 rounded-lg text-amber-200 text-xs mt-2">
+                    <p className="font-bold text-amber-300 flex items-center gap-1">
+                      <span>⚠️ Kurye Atanmış Durumda:</span> {confirmCancelModal.assignedCourier.name}
+                    </p>
+                    <p className="text-[11px] text-amber-200/90 mt-0.5">
+                      Kurye atanmış olsa bile siparişinizi iptal edebilirsiniz. Atanan kuryeye anında iptal bildirimi iletilecek ve teslimat görevi iptal edilecektir.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-emerald-300/80 mt-1">
+                    Sipariş havuzdan kaldırılacak ve kuryelere kapatılacaktır.
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -437,6 +485,7 @@ export const HeroIntro: React.FC = () => {
                   type="button"
                   onClick={() => {
                     cancelRequest(confirmCancelModal.id);
+                    setJustCancelledCode(confirmCancelModal.trackingCode);
                     setConfirmCancelModal(null);
                   }}
                   className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-md"
@@ -721,7 +770,18 @@ export const HeroIntro: React.FC = () => {
                   </div>
 
                   {/* Receipt & Details Button */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                    {ord.status !== 'delivered' && ord.status !== 'cancelled' && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancelModal(ord)}
+                        className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-700/60 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                        title="Talebi İptal Et"
+                      >
+                        <X className="w-3.5 h-3.5 text-rose-400" />
+                        <span>İptal Et</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setSelectedReceiptOrder(ord)}
@@ -744,6 +804,64 @@ export const HeroIntro: React.FC = () => {
             order={selectedReceiptOrder}
             onClose={() => setSelectedReceiptOrder(null)}
           />
+        )}
+
+        {/* Cancellation Confirmation Modal for Scenario 2 */}
+        {confirmCancelModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-[#022019] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-700/60 space-y-4 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-900/60 text-rose-300 border border-rose-600/50 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Siparişi İptal Et</h3>
+                  <p className="text-xs text-rose-200/80">Bu kurye talebini iptal etmek istediğinize emin misiniz?</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-[#011410] rounded-xl border border-emerald-800/60 text-xs text-emerald-200 space-y-1.5">
+                <p><strong>Takip No:</strong> {confirmCancelModal.trackingCode}</p>
+                <p><strong>Güzergah:</strong> {confirmCancelModal.sender.district} ➔ {confirmCancelModal.receiver.district}</p>
+                <p><strong>Alıcı:</strong> {confirmCancelModal.receiver.contactName}</p>
+                {confirmCancelModal.assignedCourier ? (
+                  <div className="p-2.5 bg-amber-950/60 border border-amber-600/50 rounded-lg text-amber-200 text-xs mt-2">
+                    <p className="font-bold text-amber-300 flex items-center gap-1">
+                      <span>⚠️ Kurye Atanmış Durumda:</span> {confirmCancelModal.assignedCourier.name}
+                    </p>
+                    <p className="text-[11px] text-amber-200/90 mt-0.5">
+                      Kurye atanmış olsa bile siparişinizi iptal edebilirsiniz. Atanan kuryeye anında iptal bildirimi iletilecek ve teslimat görevi sistem tarafından iptal edilecektir.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-emerald-300/80 mt-1">
+                    Sipariş havuzdan kaldırılacak ve kuryelere kapatılacaktır.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancelModal(null)}
+                  className="px-4 py-2.5 rounded-xl text-emerald-300 hover:bg-emerald-900/40 font-bold text-xs cursor-pointer transition"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelRequest(confirmCancelModal.id);
+                    setJustCancelledCode(confirmCancelModal.trackingCode);
+                    setConfirmCancelModal(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-md"
+                >
+                  Evet, İptal Et
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

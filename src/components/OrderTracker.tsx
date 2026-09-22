@@ -405,6 +405,18 @@ export const OrderTracker: React.FC = () => {
                       WhatsApp
                     </a>
                   </div>
+
+                  {/* Prominent Cancel Button when Courier is Assigned */}
+                  {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmCancelOpen(true)}
+                      className="w-full py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Kurye Atanmış Talebi İptal Et</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="py-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl p-4">
@@ -515,7 +527,7 @@ export const OrderTracker: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Bu siparişi iptal etmek istediğinizden emin misiniz? Sipariş sistemden kaldırılacak ve atanmış kurye bilgilendirilecektir.
+              Bu siparişi iptal etmek istediğinizden emin misiniz? {currentOrder.assignedCourier ? `Kurye atanmış olsa bile talebinizi iptal edebilirsiniz. Atanan kurye (${currentOrder.assignedCourier.name}) bilgilendirilecek ve görev iptal edilecektir.` : 'Sipariş sistemden kaldırılacak ve kurye havuzu güncellenecektir.'}
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">

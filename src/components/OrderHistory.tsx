@@ -12,17 +12,19 @@ import {
   AlertCircle,
   Bike,
   Plus,
-  Package
+  Package,
+  X
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
 import { ReceiptModal } from './ReceiptModal';
 
 export const OrderHistory: React.FC = () => {
-  const { requests, currentUser, setSelectedTrackingId, setCurrentView } = useDelivery();
+  const { requests, currentUser, setSelectedTrackingId, setCurrentView, cancelRequest } = useDelivery();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
+  const [confirmCancelOrder, setConfirmCancelOrder] = useState<DeliveryRequest | null>(null);
 
   // Restore last customer order ID & contact phone for guest sessions
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
@@ -227,7 +229,7 @@ export const OrderHistory: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     <button
                       onClick={() => {
                         setSelectedTrackingId(req.id);
@@ -246,6 +248,18 @@ export const OrderHistory: React.FC = () => {
                       <FileText className="w-3.5 h-3.5" />
                       Fiş
                     </button>
+
+                    {req.status !== 'delivered' && req.status !== 'cancelled' && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancelOrder(req)}
+                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1"
+                        title="Talebi İptal Et"
+                      >
+                        <X className="w-3.5 h-3.5 text-rose-600" />
+                        <span>İptal Et</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -260,6 +274,47 @@ export const OrderHistory: React.FC = () => {
           order={selectedReceiptOrder}
           onClose={() => setSelectedReceiptOrder(null)}
         />
+      )}
+
+      {/* Cancellation Confirmation Modal */}
+      {confirmCancelOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-slate-900">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Siparişi İptal Et</h3>
+                <p className="text-xs text-slate-500">#{confirmCancelOrder.trackingCode} numaralı sipariş</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Bu siparişi iptal etmek istediğinizden emin misiniz? {confirmCancelOrder.assignedCourier ? `Kurye atanmış olsa bile talebinizi iptal edebilirsiniz. Atanan kurye (${confirmCancelOrder.assignedCourier.name}) bilgilendirilecek ve görev iptal edilecektir.` : 'Sipariş kurye havuzundan kaldırılacaktır.'}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCancelOrder(null)}
+                className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer transition"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelRequest(confirmCancelOrder.id);
+                  setConfirmCancelOrder(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs cursor-pointer transition shadow-sm"
+              >
+                Evet, İptal Et
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
