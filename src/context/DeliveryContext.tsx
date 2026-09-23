@@ -43,6 +43,8 @@ interface DeliveryContextType {
   addCustomer: (data: { name: string; phone: string; email: string; password?: string; district?: DistrictName; address?: string; companyName?: string }) => UserAccount;
   deleteCustomer: (customerId: string) => void;
   updateCustomer: (customerId: string, data: Partial<UserAccount>) => void;
+  isImpersonating: boolean;
+  returnToAdmin: () => void;
 
   // Auth Modal Controls
   isAuthModalOpen: boolean;
@@ -264,6 +266,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0] || INITIAL_USERS[0];
+
+  // Admin impersonation state (when admin previews as courier or customer)
+  const [adminImpersonatorId, setAdminImpersonatorId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('admin_impersonator_id') || null;
+    } catch {
+      return null;
+    }
+  });
 
   // 3. Persistent Orders
   const [requests, setRequests] = useState<DeliveryRequest[]>(loadPersistentOrders);
@@ -698,13 +709,42 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const switchUser = useCallback((userId: string) => {
     const target = users.find((u) => u.id === userId);
     if (target) {
+      if (currentUser.role === 'admin' && target.role !== 'admin') {
+        setAdminImpersonatorId(currentUser.id);
+        try {
+          sessionStorage.setItem('admin_impersonator_id', currentUser.id);
+        } catch {}
+      } else if (target.role === 'admin') {
+        setAdminImpersonatorId(null);
+        try {
+          sessionStorage.removeItem('admin_impersonator_id');
+        } catch {}
+      }
       setCurrentUserId(target.id);
       if (target.role === 'courier') {
         setActiveCourierId(target.id);
       }
       playAcceptSound();
     }
-  }, [users]);
+  }, [users, currentUser.role, currentUser.id]);
+
+  // Return to admin from impersonation mode
+  const returnToAdmin = useCallback(() => {
+    const adminUser =
+      (adminImpersonatorId ? users.find((u) => u.id === adminImpersonatorId) : null) ||
+      users.find((u) => u.role === 'admin') ||
+      INITIAL_USERS[1];
+    if (adminUser) {
+      setCurrentUserId(adminUser.id);
+      setAdminImpersonatorId(null);
+      try {
+        sessionStorage.removeItem('admin_impersonator_id');
+      } catch {}
+      playAcceptSound();
+    }
+  }, [users, adminImpersonatorId]);
+
+  const isImpersonating = Boolean(adminImpersonatorId && currentUser.role !== 'admin');
 
   // Helper to set current user directly
   const setCurrentUser = useCallback((user: UserAccount) => {
@@ -1253,9 +1293,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setUsers((prev) => [guestUser, ...prev]);
     }
     setCurrentUserId(guestUser.id);
+    setAdminImpersonatorId(null);
     try {
       localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, guestUser.id);
       sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, guestUser.id);
+      sessionStorage.removeItem('admin_impersonator_id');
       localStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
       sessionStorage.setItem(STORAGE_CURRENT_VIEW_KEY, 'home');
     } catch (e) {
@@ -1912,6 +1954,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addCustomer,
         deleteCustomer,
         updateCustomer,
+        isImpersonating,
+        returnToAdmin,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalTab,

@@ -154,6 +154,16 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               <span>KVKK Aydınlatma Metni</span>
             </button>
             <span className="text-emerald-800">•</span>
+            <button
+              type="button"
+              onClick={() => setCurrentView('admin')}
+              className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
+              title="Yönetim Paneli Girişi"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Yönetim</span>
+            </button>
+            <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>30-45 Dk Moto Kurye</span>
@@ -165,7 +175,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
 };
 
 const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
-  const { setCurrentView, recordSiteVisit } = useDelivery();
+  const { setCurrentView, recordSiteVisit, isImpersonating, returnToAdmin, currentUser } = useDelivery();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
   const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
@@ -200,6 +210,29 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
         </div>
       ) : (
         <>
+          {/* Admin Impersonation Banner */}
+          {isImpersonating && (
+            <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-600 text-white text-xs py-2 px-3 sm:px-6 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-amber-400/50">
+              <div className="flex items-center gap-2 font-medium min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-200 animate-ping shrink-0" />
+                <span className="truncate">
+                  <strong>Yönetici Önizleme Modu:</strong> Şu anda <span className="font-bold underline text-amber-100">{currentUser.name}</span> ({currentUser.role === 'courier' ? 'Moto Kurye' : 'Müşteri'}) hesabı olarak görüntülüyorsunuz.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  returnToAdmin();
+                  setCurrentView('admin');
+                }}
+                className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-950 font-extrabold text-[11px] sm:text-xs rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 shrink-0 ml-2 active:scale-95"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                <span>Yönetim Paneline Dön</span>
+              </button>
+            </div>
+          )}
+
           {/* Responsive Navbar */}
           <Navbar />
 

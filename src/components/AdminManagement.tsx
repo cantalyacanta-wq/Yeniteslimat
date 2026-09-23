@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
+  UserCheck,
   Trash2,
   Phone,
   Mail,
@@ -1011,35 +1012,53 @@ export const AdminManagement: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Actions: View Orders, Edit, Delete */}
-                    <div className="pt-3 border-t border-emerald-800/50 flex items-center gap-2">
+                    {/* Actions: Switch to Customer, Edit, Delete & View Orders */}
+                    <div className="pt-3 border-t border-emerald-800/50 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Switch to Customer Button (Müşteri Olarak Gör) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            switchUser(cust.id);
+                            setCurrentView('home');
+                          }}
+                          className="px-3 py-2 bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer flex-1 justify-center shadow-xs"
+                          title={`${cust.name} hesabı olarak müşteri panelini aç`}
+                        >
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Müşteri Olarak Gör</span>
+                        </button>
+
+                        {/* Edit Customer Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCustomer(cust)}
+                          title="Müşteri Bilgilerini Düzenle"
+                          className="p-2 bg-teal-950/70 hover:bg-teal-900 text-teal-300 border border-teal-800/60 rounded-xl transition cursor-pointer shrink-0"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+
+                        {/* Delete Customer Button */}
+                        <button
+                          type="button"
+                          onClick={() => setDeletingCustomer(cust)}
+                          title="Müşteriyi Sistemden Sil"
+                          className="p-2 bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Orders History Button */}
                       <button
                         type="button"
                         onClick={() => setSelectedCustomerForOrders(cust)}
-                        className="px-3 py-2 bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer flex-1 justify-center"
+                        className="w-full py-1.5 px-3 bg-[#011a14] hover:bg-[#022b22] text-emerald-300 hover:text-white border border-emerald-800/60 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        title="Müşterinin geçmiş teslimat taleplerini listele"
                       >
                         <Package className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Sipariş Geçmişi ({customerOrders.length})</span>
-                      </button>
-
-                      {/* Edit Customer Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditCustomer(cust)}
-                        title="Müşteri Bilgilerini Düzenle"
-                        className="p-2 bg-teal-950/70 hover:bg-teal-900 text-teal-300 border border-teal-800/60 rounded-xl transition cursor-pointer shrink-0"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-
-                      {/* Delete Customer Button */}
-                      <button
-                        type="button"
-                        onClick={() => setDeletingCustomer(cust)}
-                        title="Müşteriyi Sistemden Sil"
-                        className="p-2 bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition cursor-pointer shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -2689,22 +2708,39 @@ export const AdminManagement: React.FC = () => {
             </button>
 
             {/* Header */}
-            <div className="flex items-center gap-3 border-b border-emerald-800/50 pb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-600/40 shrink-0">
-                <Package className="w-6 h-6" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/50 pb-4 pr-10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-600/40 shrink-0">
+                  <Package className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
+                    <span>{selectedCustomerForOrders.name}</span>
+                    <span className="text-xs px-2 py-0.5 bg-teal-950 border border-teal-500/50 text-teal-300 rounded-md font-medium">
+                      Sipariş Geçmişi
+                    </span>
+                  </h3>
+                  <p className="text-xs text-emerald-300/80">
+                    {selectedCustomerForOrders.phone} • {selectedCustomerForOrders.email}
+                    {selectedCustomerForOrders.companyName && ` • ${selectedCustomerForOrders.companyName}`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
-                  <span>{selectedCustomerForOrders.name}</span>
-                  <span className="text-xs px-2 py-0.5 bg-teal-950 border border-teal-500/50 text-teal-300 rounded-md font-medium">
-                    Sipariş Geçmişi
-                  </span>
-                </h3>
-                <p className="text-xs text-emerald-300/80">
-                  {selectedCustomerForOrders.phone} • {selectedCustomerForOrders.email}
-                  {selectedCustomerForOrders.companyName && ` • ${selectedCustomerForOrders.companyName}`}
-                </p>
-              </div>
+
+              {/* Müşteri Olarak Gör Quick Action */}
+              <button
+                type="button"
+                onClick={() => {
+                  switchUser(selectedCustomerForOrders.id);
+                  setSelectedCustomerForOrders(null);
+                  setCurrentView('home');
+                }}
+                className="px-3.5 py-1.5 bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white border border-emerald-700/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-center shrink-0"
+                title={`${selectedCustomerForOrders.name} hesabı olarak müşteri panelini aç`}
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Müşteri Olarak Gör</span>
+              </button>
             </div>
 
             {/* Orders list */}
