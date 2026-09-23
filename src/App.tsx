@@ -25,7 +25,7 @@ const checkIsAdminRoute = (): boolean => {
 };
 
 const MainContent: React.FC = () => {
-  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries } = useDelivery();
+  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries, openQuickCourierModal } = useDelivery();
 
   // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
   React.useEffect(() => {
@@ -38,6 +38,18 @@ const MainContent: React.FC = () => {
       setCurrentView('courier');
     }
   }, [currentUser.role, activeCourierDeliveries, currentView, setCurrentView]);
+
+  // If customer view is triggered anywhere, directly open the quick courier modal
+  React.useEffect(() => {
+    if (currentView === 'customer') {
+      if (currentUser.role === 'courier') {
+        setCurrentView('courier');
+      } else {
+        openQuickCourierModal();
+        setCurrentView('home');
+      }
+    }
+  }, [currentView, currentUser.role, openQuickCourierModal, setCurrentView]);
 
   return (
     <div className="w-full max-w-full overflow-hidden">
@@ -52,7 +64,7 @@ const MainContent: React.FC = () => {
       {currentView !== 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
           {currentView === 'customer' && (
-            currentUser.role === 'courier' ? <CourierPool /> : <CustomerRequestForm />
+            currentUser.role === 'courier' ? <CourierPool /> : <HeroIntro />
           )}
           {currentView === 'courier' && (
             currentUser.role === 'courier' || currentUser.role === 'admin' ? (

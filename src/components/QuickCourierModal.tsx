@@ -22,10 +22,14 @@ import {
   RotateCcw,
   Heart,
   Coins,
+  Loader2,
+  Map as MapIcon,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, PackageType, PaymentMethod } from '../types';
 import { ANTALYA_DISTRICTS, calculateDeliveryEstimate } from '../data/antalyaDistricts';
+import { measureRealDistance } from '../utils/distanceService';
+import { MapLocationPickerModal, LocationSelectedResult } from './MapLocationPickerModal';
 
 export const QUICK_PACKAGE_OPTIONS: {
   id: PackageType;
@@ -71,12 +75,26 @@ export const QuickCourierModal: React.FC = () => {
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [isEditingPickupAddress, setIsEditingPickupAddress] = useState<boolean>(false);
   const [savePickupAddressToProfile, setSavePickupAddressToProfile] = useState<boolean>(true);
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
   // Destination Address state (User specifies where package will go)
   const [destDistrict, setDestDistrict] = useState<DistrictName>('Konyaaltı');
   const [destAddress, setDestAddress] = useState<string>('');
+  const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
+  // Receiver info state - optional & can be notified later
   const [receiverName, setReceiverName] = useState<string>('');
   const [receiverPhone, setReceiverPhone] = useState<string>('');
+  const [notifyReceiverLater, setNotifyReceiverLater] = useState<boolean>(false);
+
+  // Map Picker Modal state
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
+  const [mapPickerType, setMapPickerType] = useState<'sender' | 'receiver'>('receiver');
+
+  // Real Driving Distance measurement state
+  const [measuredDistanceKm, setMeasuredDistanceKm] = useState<number | null>(null);
+  const [measuredDurationMins, setMeasuredDurationMins] = useState<number | null>(null);
+  const [isMeasuringDistance, setIsMeasuringDistance] = useState<boolean>(false);
 
   // Package details - all package types supported
   const [packageType, setPackageType] = useState<PackageType>('food');
@@ -126,8 +144,11 @@ export const QuickCourierModal: React.FC = () => {
       }
 
       setDestAddress('');
+      setDestCoords(undefined);
+      setPickupCoords(undefined);
       setReceiverName('');
       setReceiverPhone('');
+      setNotifyReceiverLater(false);
       setPackageType('food');
       setPackageName('');
       setPackageNote('');
@@ -135,17 +156,85 @@ export const QuickCourierModal: React.FC = () => {
       setSelectedTip(0);
       setIsCustomTip(false);
       setCustomTipInput('');
+      setMeasuredDistanceKm(null);
+      setMeasuredDurationMins(null);
+      setIsMeasuringDistance(false);
     }
   }, [isQuickCourierOpen, currentUser, lastCustomerOrder]);
+
+  // Real road distance live measurement (debounced on typing address or changing district/map)
+  useEffect(() => {
+    if (!isQuickCourierOpen) return;
+
+    const cleanDest = destAddress.trim();
+    const cleanPickup = pickupAddress.trim();
+
+    if (!cleanDest && !destCoords) {
+      setMeasuredDistanceKm(null);
+      setMeasuredDurationMins(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsMeasuringDistance(true);
+      try {
+        const result = await measureRealDistance({
+          pickupAddress: cleanPickup,
+          pickupDistrict,
+          destAddress: cleanDest,
+          destDistrict,
+          pickupCoords,
+          destCoords,
+        });
+
+        if (result && typeof result.distanceKm === 'number' && result.distanceKm > 0) {
+          setMeasuredDistanceKm(result.distanceKm);
+          setMeasuredDurationMins(result.durationMins);
+        }
+      } catch (err) {
+        console.warn('Real road distance calculation fallback:', err);
+      } finally {
+        setIsMeasuringDistance(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [
+    isQuickCourierOpen,
+    destAddress,
+    destDistrict,
+    destCoords,
+    pickupAddress,
+    pickupDistrict,
+    pickupCoords,
+  ]);
 
   // Live price & time calculation
   const estimate = useMemo(() => {
     return calculateDeliveryEstimate(pickupDistrict, destDistrict, packageType, 'express_vip');
   }, [pickupDistrict, destDistrict, packageType]);
 
+  // Real measured distance taking priority over rough matrix
+  const activeDistanceKm = measuredDistanceKm !== null ? measuredDistanceKm : estimate.distanceKm;
+  const activeDurationMins = measuredDurationMins !== null ? measuredDurationMins : estimate.durationMins;
+
   const grandTotal = estimate.price + tipAmount;
 
   if (!isQuickCourierOpen) return null;
+
+  const handleLocationConfirmed = (res: LocationSelectedResult) => {
+    if (mapPickerType === 'sender') {
+      setPickupDistrict(res.district);
+      setPickupAddress(res.address);
+      setPickupCoords({ lat: res.lat, lng: res.lng });
+      setIsEditingPickupAddress(true);
+    } else {
+      setDestDistrict(res.district);
+      setDestAddress(res.address);
+      setDestCoords({ lat: res.lat, lng: res.lng });
+    }
+    setIsMapPickerOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +250,7 @@ export const QuickCourierModal: React.FC = () => {
 
     // Validate Destination Address
     const cleanDestAddr = destAddress.trim();
-    if (!cleanDestAddr || cleanDestAddr.length < 5) {
+    if (!cleanDestAddr || cleanDestAddr.length < 3) {
       setFormError('Lütfen paketin nereye teslim edileceğini (Cadde, bina no, firma vs.) yazınız.');
       return;
     }
@@ -182,6 +271,23 @@ export const QuickCourierModal: React.FC = () => {
       const defaultLabel = selectedOption ? `${selectedOption.icon} ${selectedOption.title}` : 'Acil Kurye Paketi';
       const finalPkgName = packageName.trim() || defaultLabel;
 
+      // Receiver details: optional and not required
+      const finalReceiverName = notifyReceiverLater
+        ? 'Kuryeye Daha Sonra Bildirilecek'
+        : (receiverName.trim() || 'Kuryeye Bildirilecek');
+
+      const finalReceiverPhone = notifyReceiverLater
+        ? (currentUser.phone || 'Daha Sonra Bildirilecek')
+        : (receiverPhone.trim() || currentUser.phone || '0500 000 00 00');
+
+      let courierNotes = packageNote.trim()
+        ? `[Acil Hızlı Çağrı] ${packageNote.trim()}`
+        : '[Acil Hızlı Çağrı] 30-45 dk ekspres teslimat';
+
+      if (notifyReceiverLater) {
+        courierNotes += ' (Not: Alıcı iletişim bilgileri kuryeye daha sonra iletilecektir)';
+      }
+
       const newRequest = createNewRequest({
         senderUserId: currentUser.id,
         sender: {
@@ -191,18 +297,18 @@ export const QuickCourierModal: React.FC = () => {
           contactName: currentUser.name || 'Müşteri',
           contactPhone: currentUser.phone || '0500 000 00 00',
           contactEmail: currentUser.email,
-          lat: ANTALYA_DISTRICTS[pickupDistrict]?.centerCoordinates.lat || 36.886,
-          lng: ANTALYA_DISTRICTS[pickupDistrict]?.centerCoordinates.lng || 30.7065,
+          lat: pickupCoords?.lat || ANTALYA_DISTRICTS[pickupDistrict]?.centerCoordinates.lat || 36.886,
+          lng: pickupCoords?.lng || ANTALYA_DISTRICTS[pickupDistrict]?.centerCoordinates.lng || 30.7065,
         },
         receiver: {
           district: destDistrict,
           neighborhood: '',
           addressDetail: cleanDestAddr,
-          contactName: receiverName.trim() || 'Alıcı / Yetkili',
-          contactPhone: receiverPhone.trim() || currentUser.phone || '0500 000 00 00',
+          contactName: finalReceiverName,
+          contactPhone: finalReceiverPhone,
           contactEmail: '',
-          lat: ANTALYA_DISTRICTS[destDistrict]?.centerCoordinates.lat || 36.8732,
-          lng: ANTALYA_DISTRICTS[destDistrict]?.centerCoordinates.lng || 30.6384,
+          lat: destCoords?.lat || ANTALYA_DISTRICTS[destDistrict]?.centerCoordinates.lat || 36.8732,
+          lng: destCoords?.lng || ANTALYA_DISTRICTS[destDistrict]?.centerCoordinates.lng || 30.6384,
         },
         packageType,
         packageName: finalPkgName,
@@ -211,9 +317,9 @@ export const QuickCourierModal: React.FC = () => {
         paymentMethod,
         isPaid: false,
         tipAmount: tipAmount > 0 ? tipAmount : undefined,
-        noteForCourier: packageNote.trim()
-          ? `[Acil Hızlı Çağrı] ${packageNote.trim()}`
-          : '[Acil Hızlı Çağrı] 30-45 dk ekspres teslimat',
+        estimatedDistanceKm: activeDistanceKm,
+        estimatedDurationMins: activeDurationMins,
+        noteForCourier: courierNotes,
       });
 
       // 3. Close modal & navigate to home radar
@@ -368,9 +474,22 @@ export const QuickCourierModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-emerald-300 mb-1">
-                      Açık Alış Adresi (Cadde, Sokak, Bina No, Kapı) *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-emerald-300">
+                        Açık Alış Adresi (Cadde, Sokak, Bina No, Kapı) *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMapPickerType('sender');
+                          setIsMapPickerOpen(true);
+                        }}
+                        className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer bg-emerald-950/70 hover:bg-emerald-900/80 px-2 py-0.5 rounded border border-emerald-700/50 transition"
+                      >
+                        <MapIcon className="w-3 h-3" />
+                        <span>Haritadan Seç</span>
+                      </button>
+                    </div>
                     <textarea
                       rows={2}
                       value={pickupAddress}
@@ -430,9 +549,22 @@ export const QuickCourierModal: React.FC = () => {
 
               {/* Destination Detailed Address Input */}
               <div>
-                <label className="block text-[11px] font-bold text-teal-300 mb-1">
-                  Teslimat Açık Adresi (Bina, No, Daire, Firma vb.) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-teal-300">
+                    Teslimat Açık Adresi (Bina, No, Daire, Firma vb.) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMapPickerType('receiver');
+                      setIsMapPickerOpen(true);
+                    }}
+                    className="text-[11px] text-teal-300 hover:text-teal-200 font-bold flex items-center gap-1 cursor-pointer bg-teal-950/80 hover:bg-teal-900 px-2 py-0.5 rounded border border-teal-700/60 transition"
+                  >
+                    <MapIcon className="w-3 h-3" />
+                    <span>Haritadan Seç</span>
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={destAddress}
@@ -442,34 +574,86 @@ export const QuickCourierModal: React.FC = () => {
                   autoFocus
                   className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition resize-none font-medium"
                 />
+                <div className="flex items-center justify-between text-[11px] text-teal-300/90 pt-1">
+                  <span className="flex items-center gap-1 font-semibold">
+                    {isMeasuringDistance ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                        <span className="text-amber-300 font-medium">Gerçek sürüş mesafesi hesaplanıyor...</span>
+                      </>
+                    ) : measuredDistanceKm ? (
+                      <>
+                        <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-300 font-bold">
+                          Ölçülen Karayolu Mesafesi: <span className="text-white font-extrabold underline decoration-emerald-400">~{measuredDistanceKm} km</span>
+                        </span>
+                      </>
+                    ) : (
+                      <span>Tahmini Mesafe: ~{estimate.distanceKm} km</span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-teal-400/80 font-mono">({pickupDistrict} ➔ {destDistrict})</span>
+                </div>
               </div>
 
-              {/* Receiver Contact Name & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-teal-300 mb-1">
-                    Alıcı Adı Soyadı
-                  </label>
+              {/* Receiver Info: Optional & Notify Later option */}
+              <div className="pt-2 border-t border-teal-800/40 space-y-2">
+                <label className="flex items-start gap-2.5 p-2.5 bg-[#011410] border border-teal-700/60 rounded-xl cursor-pointer select-none hover:bg-teal-950/50 transition">
                   <input
-                    type="text"
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    placeholder="Örn: Mehmet Bey / Şirket"
-                    className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition font-medium"
+                    type="checkbox"
+                    checked={notifyReceiverLater}
+                    onChange={(e) => {
+                      setNotifyReceiverLater(e.target.checked);
+                      if (e.target.checked) {
+                        setReceiverName('');
+                        setReceiverPhone('');
+                      }
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded border-teal-600 text-teal-500 focus:ring-0 bg-[#011a14] cursor-pointer"
                   />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-teal-300 mb-1">
-                    Alıcı Telefonu
-                  </label>
-                  <input
-                    type="tel"
-                    value={receiverPhone}
-                    onChange={(e) => setReceiverPhone(e.target.value)}
-                    placeholder="05XX XXX XX XX"
-                    className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition font-mono font-medium"
-                  />
-                </div>
+                  <div className="text-xs">
+                    <span className="font-extrabold text-teal-200">
+                      Alıcı bilgilerini kuryeye daha sonra bildireceğim
+                    </span>
+                    <p className="text-[10px] text-teal-400/70 mt-0.5">
+                      Alıcı adı ve telefonunu şimdi girmek zorunda değilsiniz. Kurye paketi aldığında veya varışta iletebilirsiniz.
+                    </p>
+                  </div>
+                </label>
+
+                {!notifyReceiverLater ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-teal-300 mb-1">
+                        Alıcı Adı Soyadı <span className="text-teal-400/60 font-normal">(Opsiyonel)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={receiverName}
+                        onChange={(e) => setReceiverName(e.target.value)}
+                        placeholder="Örn: Mehmet Bey / Şirket (Opsiyonel)"
+                        className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-teal-300 mb-1">
+                        Alıcı Telefonu <span className="text-teal-400/60 font-normal">(Opsiyonel)</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={receiverPhone}
+                        onChange={(e) => setReceiverPhone(e.target.value)}
+                        placeholder="05XX XXX XX XX (Opsiyonel)"
+                        className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition font-mono font-medium"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-teal-950/70 border border-teal-700/50 text-[11px] text-teal-300 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Alıcı bilgisi kuryeye <strong>"Daha Sonra Bildirilecek"</strong> olarak kaydedilecek.</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -699,9 +883,12 @@ export const QuickCourierModal: React.FC = () => {
               <div>
                 <div className="text-[11px] text-emerald-300 flex items-center gap-1.5 font-bold flex-wrap">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Tahmini Varış: <strong>{estimate.durationMins} Dakika</strong></span>
+                  <span>Tahmini Varış: <strong>{activeDurationMins} Dakika</strong></span>
                   <span className="text-emerald-600">•</span>
-                  <span className="text-emerald-300 font-extrabold">📍 Yaklaşık Mesafe: ~{estimate.distanceKm} km</span>
+                  <span className="text-emerald-300 font-extrabold flex items-center gap-1">
+                    📍 Yaklaşık Mesafe: <span className="text-amber-300 font-black">~{activeDistanceKm} km</span>
+                    {isMeasuringDistance && <Loader2 className="w-3 h-3 animate-spin text-amber-400 ml-1" />}
+                  </span>
                 </div>
                 <p className="text-[11px] text-emerald-400/80 mt-0.5">
                   {pickupDistrict} ➔ {destDistrict}
@@ -734,6 +921,23 @@ export const QuickCourierModal: React.FC = () => {
           </form>
         )}
       </div>
+
+      {/* Map Location Picker Modal */}
+      {isMapPickerOpen && (
+        <MapLocationPickerModal
+          isOpen={isMapPickerOpen}
+          onClose={() => setIsMapPickerOpen(false)}
+          title={
+            mapPickerType === 'sender'
+              ? 'Paketin Alınacağı Konumu Haritadan Seç'
+              : 'Paketin Teslim Edileceği Konumu Haritadan Seç'
+          }
+          type={mapPickerType}
+          initialDistrict={mapPickerType === 'sender' ? pickupDistrict : destDistrict}
+          initialAddress={mapPickerType === 'sender' ? pickupAddress : destAddress}
+          onConfirmLocation={handleLocationConfirmed}
+        />
+      )}
     </div>
   );
 };

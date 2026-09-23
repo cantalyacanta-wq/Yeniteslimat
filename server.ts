@@ -1319,6 +1319,142 @@ app.get('/api/requests', (req, res) => {
   res.json(dbState.requests || []);
 });
 
+// In-memory geocode and distance caches
+const geocodeCache = new Map<string, { lat: number; lng: number }>();
+const routeDistanceCache = new Map<string, { distanceKm: number; durationMins: number }>();
+
+const ANTALYA_DISTRICT_CENTERS: Record<string, { lat: number; lng: number }> = {
+  'Muratpaşa': { lat: 36.8860, lng: 30.7065 },
+  'Konyaaltı': { lat: 36.8732, lng: 30.6384 },
+  'Kepez': { lat: 36.9250, lng: 30.6870 },
+  'Lara (Muratpaşa)': { lat: 36.8520, lng: 30.7650 },
+  'Lara': { lat: 36.8520, lng: 30.7650 },
+};
+
+function calculateHaversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+async function resolveAntalyaCoords(
+  address: string,
+  district: string,
+  fallbackCoords?: { lat?: number; lng?: number }
+): Promise<{ lat: number; lng: number }> {
+  if (
+    fallbackCoords &&
+    typeof fallbackCoords.lat === 'number' &&
+    typeof fallbackCoords.lng === 'number' &&
+    fallbackCoords.lat > 35 &&
+    fallbackCoords.lat < 38
+  ) {
+    return { lat: fallbackCoords.lat, lng: fallbackCoords.lng };
+  }
+
+  const cleanAddr = (address || '').trim();
+  const cleanDist = (district || '').trim();
+  const cacheKey = `${cleanAddr.toLowerCase()}_${cleanDist.toLowerCase()}`;
+  if (geocodeCache.has(cacheKey)) {
+    return geocodeCache.get(cacheKey)!;
+  }
+
+  const queries: string[] = [];
+  if (cleanAddr) {
+    queries.push(`${cleanAddr}, ${cleanDist}, Antalya`);
+    const firstWord = cleanAddr.split(/[,;\s]/)[0];
+    if (firstWord && firstWord.length > 3) {
+      queries.push(`${firstWord}, ${cleanDist}, Antalya`);
+    }
+  }
+  if (cleanDist) {
+    queries.push(`${cleanDist}, Antalya`);
+  }
+
+  for (const q of queries) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=tr&limit=1`,
+        {
+          headers: { 'User-Agent': 'AntalyaKuryeTeslimat/1.0 (kuryeantalyam@gmail.com)' },
+          signal: AbortSignal.timeout(3000),
+        }
+      );
+      if (res.ok) {
+        const data: any = await res.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+          const pos = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+          geocodeCache.set(cacheKey, pos);
+          return pos;
+        }
+      }
+    } catch {}
+  }
+
+  const center = ANTALYA_DISTRICT_CENTERS[cleanDist] || ANTALYA_DISTRICT_CENTERS['Muratpaşa'];
+  geocodeCache.set(cacheKey, center);
+  return center;
+}
+
+// Real-time Road Distance Measurement Endpoint
+app.post('/api/distance/measure', async (req, res) => {
+  try {
+    const { pickupAddress, pickupDistrict, destAddress, destDistrict, pickupCoords, destCoords } = req.body;
+
+    const p1 = await resolveAntalyaCoords(pickupAddress, pickupDistrict, pickupCoords);
+    const p2 = await resolveAntalyaCoords(destAddress, destDistrict, destCoords);
+
+    const cacheKey = `${p1.lat.toFixed(4)},${p1.lng.toFixed(4)}_${p2.lat.toFixed(4)},${p2.lng.toFixed(4)}`;
+    if (routeDistanceCache.has(cacheKey)) {
+      const cached = routeDistanceCache.get(cacheKey)!;
+      res.json({ success: true, ...cached, pickupCoords: p1, destCoords: p2, source: 'cached' });
+      return;
+    }
+
+    let distanceKm = 0;
+    let durationMins = 0;
+    let source = 'osrm';
+
+    try {
+      const osrmRes = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=false`,
+        { signal: AbortSignal.timeout(3000) }
+      );
+      if (osrmRes.ok) {
+        const data: any = await osrmRes.json();
+        if (data?.routes?.[0]?.distance) {
+          const meters = Number(data.routes[0].distance);
+          const seconds = Number(data.routes[0].duration);
+          distanceKm = Math.round((meters / 1000) * 10) / 10;
+          durationMins = Math.max(15, Math.round(seconds / 60));
+        }
+      }
+    } catch {}
+
+    if (!distanceKm || distanceKm <= 0) {
+      source = 'haversine_road_grid';
+      const straight = calculateHaversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
+      distanceKm = Math.max(2.0, Math.round(straight * 1.32 * 10) / 10);
+      durationMins = Math.max(15, Math.round(9 + distanceKm * 1.5));
+    }
+
+    const payload = { distanceKm, durationMins, pickupCoords: p1, destCoords: p2 };
+    routeDistanceCache.set(cacheKey, { distanceKm, durationMins });
+
+    res.json({ success: true, ...payload, source });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Mesafe hesaplanamadı', message: err?.message });
+  }
+});
+
 // Create new customer delivery request - Non-blocking asynchronous queue push
 app.post('/api/requests', (req, res) => {
   try {

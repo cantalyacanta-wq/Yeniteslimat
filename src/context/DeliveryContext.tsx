@@ -84,7 +84,24 @@ interface DeliveryContextType {
   setSelectedTrackingId: (id: string | null) => void;
   
   // Actions
-  createNewRequest: (params: Omit<DeliveryRequest, 'id' | 'trackingCode' | 'createdAt' | 'updatedAt' | 'status' | 'deliveryCode' | 'estimatedDistanceKm' | 'estimatedDurationMins' | 'price' | 'courierEarnings'>) => DeliveryRequest;
+  createNewRequest: (
+    params: Omit<
+      DeliveryRequest,
+      | 'id'
+      | 'trackingCode'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'status'
+      | 'deliveryCode'
+      | 'estimatedDistanceKm'
+      | 'estimatedDurationMins'
+      | 'price'
+      | 'courierEarnings'
+    > & {
+      estimatedDistanceKm?: number;
+      estimatedDurationMins?: number;
+    }
+  ) => DeliveryRequest;
   acceptRequest: (requestId: string, courierOverride?: CourierInfo | string) => void;
   updateStatus: (requestId: string, nextStatus: DeliveryStatus) => { success: boolean; message?: string };
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
@@ -1339,7 +1356,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         | 'estimatedDurationMins'
         | 'price'
         | 'courierEarnings'
-      >
+      > & {
+        estimatedDistanceKm?: number;
+        estimatedDurationMins?: number;
+      }
     ): DeliveryRequest => {
       const estimate = calculateDeliveryEstimate(
         params.sender.district,
@@ -1347,6 +1367,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         params.packageType,
         params.urgency
       );
+
+      const finalDistanceKm =
+        typeof params.estimatedDistanceKm === 'number' && params.estimatedDistanceKm > 0
+          ? Math.round(params.estimatedDistanceKm * 10) / 10
+          : estimate.distanceKm;
+
+      const finalDurationMins =
+        typeof params.estimatedDurationMins === 'number' && params.estimatedDurationMins > 0
+          ? Math.round(params.estimatedDurationMins)
+          : estimate.durationMins;
 
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const trackingCode = `ANT-${randomNum}`;
@@ -1393,8 +1423,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updatedAt: new Date().toISOString(),
         senderUserId: effectiveUserId,
         status: 'pending_pool', // ALWAYS starts in pool waiting for courier
-        estimatedDistanceKm: estimate.distanceKm,
-        estimatedDurationMins: estimate.durationMins,
+        estimatedDistanceKm: finalDistanceKm,
+        estimatedDurationMins: finalDurationMins,
         tipAmount: tip,
         price: totalPrice,
         courierEarnings: totalCourierEarnings,

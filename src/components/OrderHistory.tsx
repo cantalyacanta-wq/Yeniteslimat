@@ -20,7 +20,7 @@ import { useDelivery } from '../context/DeliveryContext';
 import { ReceiptModal } from './ReceiptModal';
 
 export const OrderHistory: React.FC = () => {
-  const { requests, currentUser, setSelectedTrackingId, setCurrentView, cancelRequest } = useDelivery();
+  const { requests, currentUser, setSelectedTrackingId, setCurrentView, cancelRequest, openQuickCourierModal } = useDelivery();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
@@ -147,7 +147,7 @@ export const OrderHistory: React.FC = () => {
           {currentUser.role === 'customer' && (
             <button
               type="button"
-              onClick={() => setCurrentView('customer')}
+              onClick={() => openQuickCourierModal()}
               className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />

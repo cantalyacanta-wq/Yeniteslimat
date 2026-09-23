@@ -214,7 +214,7 @@ export const HeroIntro: React.FC = () => {
             )}
             <button
               type="button"
-              onClick={() => setCurrentView('customer')}
+              onClick={openQuickCourierModal}
               className="px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
             >
               <Plus className="w-4 h-4" />
@@ -569,8 +569,8 @@ export const HeroIntro: React.FC = () => {
             <span>Geçmiş Teslimatlarım ({deliveredOrders.length})</span>
           </button>
 
-          {/* Two-Button Row: Oturumu Kapat & + Detaylı Form */}
-          <div className="grid grid-cols-2 gap-3 w-full">
+          {/* Oturumu Kapat Butonu */}
+          <div className="w-full">
             <button
               type="button"
               onClick={logout}
@@ -579,16 +579,6 @@ export const HeroIntro: React.FC = () => {
             >
               <LogOut className="w-4 h-4 text-rose-400" />
               <span>Oturumu Kapat</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentView('customer')}
-              className="w-full py-3 bg-[#022b22] hover:bg-[#033b2e] text-emerald-200 border border-emerald-700/60 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-              title="Ayrıntılı paket talebi formu doldur"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Detaylı Form</span>
             </button>
           </div>
         </div>
@@ -755,7 +745,7 @@ export const HeroIntro: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setCurrentView('customer')}
+                onClick={openQuickCourierModal}
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-md inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
@@ -946,7 +936,7 @@ export const HeroIntro: React.FC = () => {
               type="button"
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
-                  setCurrentView('customer');
+                  openQuickCourierModal();
                 } else {
                   openAuthModal('login', 'Paket göndermek ve kurye çağırmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
                 }
@@ -964,7 +954,7 @@ export const HeroIntro: React.FC = () => {
             <div 
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
-                  setCurrentView('customer');
+                  openQuickCourierModal();
                 } else {
                   openAuthModal('login', 'Paket göndermek için lütfen müşteri girişi yapınız.');
                 }
@@ -983,7 +973,7 @@ export const HeroIntro: React.FC = () => {
             <div 
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
-                  setCurrentView('customer');
+                  openQuickCourierModal();
                 } else {
                   openAuthModal('login', 'Kurye çağırmak için lütfen müşteri girişi yapınız.');
                 }
@@ -1002,7 +992,7 @@ export const HeroIntro: React.FC = () => {
             <div 
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
-                  setCurrentView('customer');
+                  openQuickCourierModal();
                 } else {
                   openAuthModal('login', 'Acil paket göndermek için lütfen müşteri girişi yapınız.');
                 }
