@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bike,
   Shield,
@@ -6,8 +6,16 @@ import {
   Package,
   User,
   Lock,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
+import {
+  isSoundAlertsEnabled,
+  setSoundAlertsEnabled,
+  playNewOrderSound,
+  unlockAudioContext,
+} from '../utils/audio';
 
 export const Navbar: React.FC = () => {
   const {
@@ -19,6 +27,30 @@ export const Navbar: React.FC = () => {
     openAuthModal,
     activeCourierDeliveries,
   } = useDelivery();
+
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(isSoundAlertsEnabled);
+  const [soundFeedback, setSoundFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleSync = () => setSoundEnabled(isSoundAlertsEnabled());
+    window.addEventListener('antalya_sound_toggle', handleSync);
+    return () => window.removeEventListener('antalya_sound_toggle', handleSync);
+  }, []);
+
+  const handleTestOrToggleSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    unlockAudioContext();
+    if (!soundEnabled) {
+      setSoundAlertsEnabled(true);
+      setSoundEnabled(true);
+      playNewOrderSound();
+      setSoundFeedback('Ses Açıldı!');
+    } else {
+      playNewOrderSound();
+      setSoundFeedback('Ses Test!');
+    }
+    setTimeout(() => setSoundFeedback(null), 2000);
+  };
 
   const hasActiveCourierDelivery =
     currentUser.role === 'courier' &&
@@ -146,7 +178,30 @@ export const Navbar: React.FC = () => {
 
           {/* Right Section: Compact Button or Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            
+            {/* Audio Alert Status & Test Button */}
+            <button
+              type="button"
+              onClick={handleTestOrToggleSound}
+              title={soundEnabled ? 'Bildirim sesi aktif. Sesi test etmek için tıklayın.' : 'Bildirim sesi kapalı. Açmak için tıklayın.'}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition cursor-pointer select-none border active:scale-95 shadow-xs ${
+                soundEnabled
+                  ? 'bg-emerald-950/70 hover:bg-emerald-900/80 border-emerald-600/60 text-emerald-300'
+                  : 'bg-rose-950/50 hover:bg-rose-900/60 border-rose-700/50 text-rose-300'
+              }`}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              )}
+              <span className="hidden sm:inline text-[11px] whitespace-nowrap">
+                {soundFeedback || (soundEnabled ? 'Sesli Bildirim' : 'Sessiz')}
+              </span>
+              {soundEnabled && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0 hidden sm:inline" />
+              )}
+            </button>
+
             {/* If logged in with active account */}
             {currentUser.id !== 'user-guest-01' && currentUser.email ? (
               <>

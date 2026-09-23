@@ -25,7 +25,7 @@ import {
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
 import { triggerHapticVibration, requestNotificationPermission, sendBrowserNotification, emitInAppNotification } from '../services/notificationService';
-import { playNewOrderSound, playStatusChime, playSuccessSound } from '../utils/audio';
+import { playNewOrderSound, playStatusChime, playSuccessSound, unlockAudioContext } from '../utils/audio';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 
 export const CourierPool: React.FC = () => {
@@ -353,6 +353,7 @@ export const CourierPool: React.FC = () => {
             <button
               type="button"
               onClick={async () => {
+                unlockAudioContext();
                 await requestNotificationPermission();
                 playNewOrderSound();
                 triggerHapticVibration([180, 80, 220, 80, 180]);

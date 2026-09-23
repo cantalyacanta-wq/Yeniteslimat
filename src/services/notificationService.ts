@@ -1,5 +1,11 @@
 import { DeliveryRequest, DeliveryStatus, UserRole } from '../types';
-import { playAcceptSound, playNewOrderSound, playSuccessSound, playStatusChime } from '../utils/audio';
+import {
+  playAcceptSound,
+  playNewOrderSound,
+  playSuccessSound,
+  playStatusChime,
+  playCourierAssignedSound,
+} from '../utils/audio';
 
 export interface AppNotification {
   id: string;
@@ -151,8 +157,26 @@ export function dispatchOrderStatusNotification(params: {
   // Don't notify if status didn't change
   if (previousStatus && previousStatus === newStatus) return;
 
-  const isCustomerOwner = currentUserId ? (order.senderUserId === currentUserId || currentUserId === 'user-guest-01') : false;
-  const isAssignedCourier = currentUserId && order.assignedCourier?.id === currentUserId;
+  let isCustomerOwner = false;
+  if (typeof window !== 'undefined') {
+    try {
+      const savedOrderId = localStorage.getItem('ant_last_customer_order_id');
+      const savedPhone = localStorage.getItem('ant_last_customer_phone');
+      if (currentUserId && order.senderUserId === currentUserId) {
+        isCustomerOwner = true;
+      } else if (savedOrderId && savedOrderId === order.id) {
+        isCustomerOwner = true;
+      } else if (savedPhone && order.sender?.contactPhone && savedPhone === order.sender?.contactPhone) {
+        isCustomerOwner = true;
+      } else if (userRole === 'customer') {
+        isCustomerOwner = true;
+      }
+    } catch {}
+  } else if (currentUserId && order.senderUserId === currentUserId) {
+    isCustomerOwner = true;
+  }
+
+  const isAssignedCourier = currentUserId && (order.assignedCourier?.id === currentUserId || order.courier?.id === currentUserId);
   const isCourierRole = userRole === 'courier';
   const isAdminRole = userRole === 'admin';
 
@@ -162,7 +186,7 @@ export function dispatchOrderStatusNotification(params: {
   let vibratePattern: number[] = [150, 100, 150];
   let isCourierJob = false;
 
-  const courierName = order.assignedCourier?.name || 'Moto Kurye';
+  const courierName = order.assignedCourier?.name || order.courier?.name || 'Moto Kurye';
   const trackingCode = order.trackingCode || 'Sipariş';
   const receiverDistrict = order.receiver?.district || 'Antalya';
   const senderDistrict = order.sender?.district || 'Antalya';
@@ -180,13 +204,13 @@ export function dispatchOrderStatusNotification(params: {
         type = 'alert';
         isCourierJob = true;
         // Strong pulsating vibration pattern for couriers
-        vibratePattern = [180, 80, 220, 80, 180];
+        vibratePattern = [200, 100, 200, 100, 250];
         playNewOrderSound();
       } else if (isCustomerOwner) {
         title = '🛵 Siparişiniz Havuzda!';
         body = `[${trackingCode}] Talebiniz alındı (${senderDistrict} ➔ ${receiverDistrict}). En yakın moto kurye bekleniyor.`;
         type = 'info';
-        vibratePattern = [100, 50, 100];
+        vibratePattern = [120, 80, 120];
         playNewOrderSound();
       } else {
         title = '⚡ YENİ PAKET TALEBİ GELDİ!';
@@ -202,18 +226,30 @@ export function dispatchOrderStatusNotification(params: {
         title = `🛵 Kuryeniz Atandı: ${courierName}`;
         body = `[${trackingCode}] Kuryeniz paketi teslim almak üzere ${senderDistrict} adresinize yöneldi.`;
         type = 'info';
-        vibratePattern = [150, 100, 150];
-        playAcceptSound();
+        vibratePattern = [160, 90, 160];
+        playCourierAssignedSound();
       } else if (isAssignedCourier) {
         title = `✅ Görev Üzerinize Atandı!`;
         body = `[${trackingCode}] ${senderDistrict} adresinden teslim alıp ${receiverDistrict} adresine ulaştıracaksınız.`;
         type = 'success';
-        vibratePattern = [150, 100, 150];
-        playAcceptSound();
+        vibratePattern = [180, 100, 180];
+        playCourierAssignedSound();
+      } else if (isCourierRole) {
+        title = `🛵 Kurye Göreve Başladı`;
+        body = `[${trackingCode}] ${courierName} siparişi havuzdan kabul etti.`;
+        type = 'info';
+        playCourierAssignedSound();
       } else if (isAdminRole) {
         title = `🛵 Kurye Göreve Başladı`;
         body = `[${trackingCode}] ${courierName} siparişi teslim almak için yola çıktı.`;
         type = 'info';
+        playCourierAssignedSound();
+      } else {
+        // General customer notification
+        title = `🛵 Kuryeniz Atandı: ${courierName}`;
+        body = `[${trackingCode}] Kurye yola çıktı.`;
+        type = 'info';
+        playCourierAssignedSound();
       }
       break;
 

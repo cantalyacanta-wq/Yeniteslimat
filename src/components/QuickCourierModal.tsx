@@ -22,14 +22,11 @@ import {
   RotateCcw,
   Heart,
   Coins,
-  Loader2,
-  Map as MapIcon,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, PackageType, PaymentMethod } from '../types';
 import { ANTALYA_DISTRICTS, calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { measureRealDistance } from '../utils/distanceService';
-import { MapLocationPickerModal, LocationSelectedResult } from './MapLocationPickerModal';
 
 export const QUICK_PACKAGE_OPTIONS: {
   id: PackageType;
@@ -86,10 +83,6 @@ export const QuickCourierModal: React.FC = () => {
   const [receiverName, setReceiverName] = useState<string>('');
   const [receiverPhone, setReceiverPhone] = useState<string>('');
   const [notifyReceiverLater, setNotifyReceiverLater] = useState<boolean>(false);
-
-  // Map Picker Modal state
-  const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
-  const [mapPickerType, setMapPickerType] = useState<'sender' | 'receiver'>('receiver');
 
   // Real Driving Distance measurement state
   const [measuredDistanceKm, setMeasuredDistanceKm] = useState<number | null>(null);
@@ -221,20 +214,6 @@ export const QuickCourierModal: React.FC = () => {
   const grandTotal = estimate.price + tipAmount;
 
   if (!isQuickCourierOpen) return null;
-
-  const handleLocationConfirmed = (res: LocationSelectedResult) => {
-    if (mapPickerType === 'sender') {
-      setPickupDistrict(res.district);
-      setPickupAddress(res.address);
-      setPickupCoords({ lat: res.lat, lng: res.lng });
-      setIsEditingPickupAddress(true);
-    } else {
-      setDestDistrict(res.district);
-      setDestAddress(res.address);
-      setDestCoords({ lat: res.lat, lng: res.lng });
-    }
-    setIsMapPickerOpen(false);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -474,22 +453,9 @@ export const QuickCourierModal: React.FC = () => {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-bold text-emerald-300">
-                        Açık Alış Adresi (Cadde, Sokak, Bina No, Kapı) *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMapPickerType('sender');
-                          setIsMapPickerOpen(true);
-                        }}
-                        className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer bg-emerald-950/70 hover:bg-emerald-900/80 px-2 py-0.5 rounded border border-emerald-700/50 transition"
-                      >
-                        <MapIcon className="w-3 h-3" />
-                        <span>Haritadan Seç</span>
-                      </button>
-                    </div>
+                    <label className="block text-[11px] font-bold text-emerald-300 mb-1">
+                      Açık Alış Adresi (Cadde, Sokak, Bina No, Kapı) *
+                    </label>
                     <textarea
                       rows={2}
                       value={pickupAddress}
@@ -549,22 +515,9 @@ export const QuickCourierModal: React.FC = () => {
 
               {/* Destination Detailed Address Input */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-bold text-teal-300">
-                    Teslimat Açık Adresi (Bina, No, Daire, Firma vb.) *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMapPickerType('receiver');
-                      setIsMapPickerOpen(true);
-                    }}
-                    className="text-[11px] text-teal-300 hover:text-teal-200 font-bold flex items-center gap-1 cursor-pointer bg-teal-950/80 hover:bg-teal-900 px-2 py-0.5 rounded border border-teal-700/60 transition"
-                  >
-                    <MapIcon className="w-3 h-3" />
-                    <span>Haritadan Seç</span>
-                  </button>
-                </div>
+                <label className="block text-[11px] font-bold text-teal-300 mb-1">
+                  Teslimat Açık Adresi (Bina, No, Daire, Firma vb.) *
+                </label>
                 <textarea
                   rows={2}
                   value={destAddress}
@@ -574,26 +527,6 @@ export const QuickCourierModal: React.FC = () => {
                   autoFocus
                   className="w-full bg-[#011410] border border-teal-700/60 focus:border-teal-400 rounded-xl px-3 py-2 text-xs text-white placeholder-teal-700 focus:outline-none transition resize-none font-medium"
                 />
-                <div className="flex items-center justify-between text-[11px] text-teal-300/90 pt-1">
-                  <span className="flex items-center gap-1 font-semibold">
-                    {isMeasuringDistance ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
-                        <span className="text-amber-300 font-medium">Gerçek sürüş mesafesi hesaplanıyor...</span>
-                      </>
-                    ) : measuredDistanceKm ? (
-                      <>
-                        <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-300 font-bold">
-                          Ölçülen Karayolu Mesafesi: <span className="text-white font-extrabold underline decoration-emerald-400">~{measuredDistanceKm} km</span>
-                        </span>
-                      </>
-                    ) : (
-                      <span>Tahmini Mesafe: ~{estimate.distanceKm} km</span>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-teal-400/80 font-mono">({pickupDistrict} ➔ {destDistrict})</span>
-                </div>
               </div>
 
               {/* Receiver Info: Optional & Notify Later option */}
@@ -672,8 +605,8 @@ export const QuickCourierModal: React.FC = () => {
                 <span className="text-[11px] text-emerald-400/80 font-medium">5 Farklı Kategori</span>
               </div>
 
-              {/* Grid of all 5 package types mirroring the detailed form */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {/* Grid of all 5 package types - Compact */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
                 {QUICK_PACKAGE_OPTIONS.map((pkg) => {
                   const isSelected = packageType === pkg.id;
                   return (
@@ -681,25 +614,29 @@ export const QuickCourierModal: React.FC = () => {
                       key={pkg.id}
                       type="button"
                       onClick={() => setPackageType(pkg.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
                         isSelected
-                          ? 'border-emerald-400 bg-emerald-900/80 text-white shadow-md ring-2 ring-emerald-400/40'
+                          ? 'border-emerald-400 bg-emerald-800/90 text-white shadow-xs ring-1 ring-emerald-400'
                           : 'border-emerald-800/60 bg-[#011410] text-emerald-200/90 hover:bg-emerald-950/70 hover:border-emerald-700'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl">{pkg.icon}</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          isSelected ? 'bg-amber-400 text-slate-950' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
-                        }`}>
-                          Taban {pkg.basePrice} ₺
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-base">{pkg.icon}</span>
+                        <span
+                          className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                            isSelected
+                              ? 'bg-amber-400 text-slate-950'
+                              : 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                          }`}
+                        >
+                          {pkg.basePrice} ₺
                         </span>
                       </div>
                       <div>
-                        <div className="text-xs font-extrabold text-white mt-1">
+                        <div className="text-[11px] font-extrabold text-white truncate leading-tight">
                           {pkg.title}
                         </div>
-                        <div className="text-[10px] text-emerald-300/70 leading-snug line-clamp-1">
+                        <div className="text-[9px] text-emerald-300/70 truncate leading-tight mt-0.5">
                           {pkg.desc}
                         </div>
                       </div>
@@ -885,9 +822,8 @@ export const QuickCourierModal: React.FC = () => {
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
                   <span>Tahmini Varış: <strong>{activeDurationMins} Dakika</strong></span>
                   <span className="text-emerald-600">•</span>
-                  <span className="text-emerald-300 font-extrabold flex items-center gap-1">
+                  <span className="text-emerald-300 font-extrabold">
                     📍 Yaklaşık Mesafe: <span className="text-amber-300 font-black">~{activeDistanceKm} km</span>
-                    {isMeasuringDistance && <Loader2 className="w-3 h-3 animate-spin text-amber-400 ml-1" />}
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-400/80 mt-0.5">
@@ -921,23 +857,6 @@ export const QuickCourierModal: React.FC = () => {
           </form>
         )}
       </div>
-
-      {/* Map Location Picker Modal */}
-      {isMapPickerOpen && (
-        <MapLocationPickerModal
-          isOpen={isMapPickerOpen}
-          onClose={() => setIsMapPickerOpen(false)}
-          title={
-            mapPickerType === 'sender'
-              ? 'Paketin Alınacağı Konumu Haritadan Seç'
-              : 'Paketin Teslim Edileceği Konumu Haritadan Seç'
-          }
-          type={mapPickerType}
-          initialDistrict={mapPickerType === 'sender' ? pickupDistrict : destDistrict}
-          initialAddress={mapPickerType === 'sender' ? pickupAddress : destAddress}
-          onConfirmLocation={handleLocationConfirmed}
-        />
-      )}
     </div>
   );
 };

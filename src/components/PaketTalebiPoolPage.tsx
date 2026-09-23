@@ -24,8 +24,9 @@ import {
   ChevronDown,
   ChevronUp,
   KeyRound,
+  Volume2,
 } from 'lucide-react';
-import { playAcceptSound, playNewOrderSound } from '../utils/audio';
+import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 import { TermsOfUseModal } from './TermsOfUseModal';
@@ -192,6 +193,20 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                unlockAudioContext();
+                playNewOrderSound();
+                triggerHapticVibration([200, 100, 200]);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-[11px] font-bold text-emerald-300 transition cursor-pointer active:scale-95 shadow-xs"
+              title="Kurye yeni sipariş bildirim sesini test edin"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Sesi Test Et</span>
+            </button>
+
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-[11px] font-bold text-emerald-300">
               <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
               <span>Canlı</span>
