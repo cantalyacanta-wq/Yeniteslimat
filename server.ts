@@ -786,21 +786,28 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
     minute: '2-digit',
   });
 
+  const rawDistKm = Number(order.estimatedDistanceKm) || 0;
+  const approximateDistanceText = rawDistKm > 0 
+    ? `~${rawDistKm} km`
+    : (senderDist === receiverDist ? '~5-8 km' : '~12-18 km');
+
   const subjectPrefix = isTest ? '[TEST BİLDİRİMİ / YÖNETİCİ]' : '[YENİ MÜŞTERİ TALEBİ]';
-  const subject = `${subjectPrefix} #${trackingCode} | ${senderDist} ➔ ${receiverDist} | ${price} TL (${paymentMethodLabel})`;
+  const subject = `${subjectPrefix} #${trackingCode} | ${senderDist} ➔ ${receiverDist} (${approximateDistanceText}) | ${price} TL (${paymentMethodLabel})`;
 
   const textContent = `
 ========================================
 ANTALYA ŞEHİR İÇİ MOTO KURYE - YENİ TALEP
 ========================================
-Takip Kodu : #${trackingCode}
-Talep Zamanı: ${formattedDate}
-Durum      : Kurye Havuzunda Bekliyor
-Ücret      : ${price} TL
-Kurye Hakedişi: ${courierEarnings} TL
-Ödeme Türü : ${paymentMethodLabel}
-Öncelik    : ${urgencyLabel}
-Paket      : ${packageName}
+Takip Kodu     : #${trackingCode}
+Talep Zamanı   : ${formattedDate}
+Durum          : Kurye Havuzunda Bekliyor
+Güzergah       : ${senderDist} ➔ ${receiverDist}
+Yaklaşık Mesafe: ${approximateDistanceText}
+Tahmini Süre   : ${urgencyLabel}
+Ücret          : ${price} TL
+Kurye Hakedişi : ${courierEarnings} TL
+Ödeme Türü     : ${paymentMethodLabel}
+Paket          : ${packageName}
 
 --- GÖNDERİCİ BİLGİLERİ ---
 İsim       : ${maskedSenderName}
@@ -846,12 +853,16 @@ ${isTest ? 'NOT: Bu e-posta yalnızca yönetici kutusuna test olarak gönderilmi
         Takip No: #${trackingCode}
       </h1>
       <p style="margin: 0; font-size: 14px; color: #ecfdf5; font-weight: 600;">
-        ${senderDist} ➔ ${receiverDist} | <span style="color: #fde047; font-weight: 800;">${price} TL</span>
+        ${senderDist} ➔ ${receiverDist} | <span style="color: #6ee7b7; font-weight: 700;">📍 Yaklaşık: ${approximateDistanceText}</span> | <span style="color: #fde047; font-weight: 800;">${price} TL</span>
       </p>
     </div>
 
     <!-- Summary Badges -->
     <div style="padding: 16px 24px; background: #021a13; border-bottom: 1px solid rgba(16,185,129,0.2); display: flex; flex-wrap: wrap; gap: 8px;">
+      <div style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; padding: 8px 12px; margin: 4px;">
+        <div style="font-size: 10px; color: #6ee7b7; font-weight: 700; text-transform: uppercase;">Yaklaşık Mesafe</div>
+        <div style="font-size: 13px; color: #ffffff; font-weight: 700;">${approximateDistanceText}</div>
+      </div>
       <div style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 8px; padding: 8px 12px; margin: 4px;">
         <div style="font-size: 10px; color: #6ee7b7; font-weight: 700; text-transform: uppercase;">Ödeme Türü</div>
         <div style="font-size: 13px; color: #ffffff; font-weight: 700;">${paymentMethodLabel}</div>

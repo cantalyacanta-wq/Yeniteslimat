@@ -423,9 +423,14 @@ export const CourierPool: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-600/50 px-2.5 py-0.5 rounded-full shrink-0">
-                        ~{req.estimatedDurationMins} dk
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-extrabold text-emerald-300 bg-emerald-950/80 border border-emerald-600/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                          📍 ~{req.estimatedDistanceKm || 5} km
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-600/50 px-2 py-0.5 rounded-full">
+                          ~{req.estimatedDurationMins} dk
+                        </span>
+                      </div>
                     </div>
 
                     {/* Route Details */}
@@ -456,11 +461,13 @@ export const CourierPool: React.FC = () => {
                     </div>
 
                     {/* Payment & Note */}
-                    <div className="flex items-center justify-between text-[11px] bg-[#011914] px-3 py-1.5 rounded-xl border border-emerald-800/30">
+                    <div className="flex items-center justify-between text-[11px] bg-[#011914] px-3 py-2 rounded-xl border border-emerald-800/40">
                       <span className="text-emerald-300">
                         Ödeme: <strong>{req.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'}</strong>
                       </span>
-                      <span className="text-emerald-400/80">Mesafe: {req.estimatedDistanceKm} km</span>
+                      <span className="text-emerald-200 font-extrabold flex items-center gap-1">
+                        📍 Yaklaşık Mesafe: <span className="text-emerald-400 font-black">~{req.estimatedDistanceKm || 5} km</span>
+                      </span>
                     </div>
                   </div>
 

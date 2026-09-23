@@ -20,10 +20,26 @@ import {
   DollarSign,
   Building,
   RotateCcw,
+  Heart,
+  Coins,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, PackageType, PaymentMethod } from '../types';
 import { ANTALYA_DISTRICTS, calculateDeliveryEstimate } from '../data/antalyaDistricts';
+
+export const QUICK_PACKAGE_OPTIONS: {
+  id: PackageType;
+  title: string;
+  desc: string;
+  icon: string;
+  basePrice: number;
+}[] = [
+  { id: 'food', title: 'Yemek & Restoran', desc: 'Restoran & Paket Sipariş', icon: '🍔', basePrice: 100 },
+  { id: 'petshop', title: 'Petshop Ürünleri', desc: 'Evcil Hayvan / Kedi-Köpek Maması', icon: '🐾', basePrice: 150 },
+  { id: 'market', title: 'Market & Bakkal', desc: 'Market Alışverişi & İhtiyaçlar', icon: '🛒', basePrice: 150 },
+  { id: 'flower', title: 'Çiçek & Hediye', desc: 'Buket, Çiçek & Sürpriz Hediye', icon: '💐', basePrice: 150 },
+  { id: 'other', title: 'Diğer (Evrak / Koli)', desc: 'Evrak, Dosya, Koli, Eşya', icon: '📦', basePrice: 150 },
+];
 
 export const QuickCourierModal: React.FC = () => {
   const {
@@ -62,10 +78,24 @@ export const QuickCourierModal: React.FC = () => {
   const [receiverName, setReceiverName] = useState<string>('');
   const [receiverPhone, setReceiverPhone] = useState<string>('');
 
-  // Package details
-  const [packageType, setPackageType] = useState<PackageType>('small_box');
+  // Package details - all package types supported
+  const [packageType, setPackageType] = useState<PackageType>('food');
+  const [packageName, setPackageName] = useState<string>('');
   const [packageNote, setPackageNote] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gonderici_odemeli');
+
+  // Tip / Bahşiş state
+  const [selectedTip, setSelectedTip] = useState<number>(0);
+  const [isCustomTip, setIsCustomTip] = useState<boolean>(false);
+  const [customTipInput, setCustomTipInput] = useState<string>('');
+
+  const tipAmount = useMemo(() => {
+    if (isCustomTip) {
+      const parsed = parseInt(customTipInput.replace(/\D/g, ''), 10);
+      return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    }
+    return selectedTip;
+  }, [isCustomTip, customTipInput, selectedTip]);
 
   // Form error & loading
   const [formError, setFormError] = useState<string | null>(null);
@@ -98,9 +128,13 @@ export const QuickCourierModal: React.FC = () => {
       setDestAddress('');
       setReceiverName('');
       setReceiverPhone('');
-      setPackageType('small_box');
+      setPackageType('food');
+      setPackageName('');
       setPackageNote('');
       setPaymentMethod('gonderici_odemeli');
+      setSelectedTip(0);
+      setIsCustomTip(false);
+      setCustomTipInput('');
     }
   }, [isQuickCourierOpen, currentUser, lastCustomerOrder]);
 
@@ -108,6 +142,8 @@ export const QuickCourierModal: React.FC = () => {
   const estimate = useMemo(() => {
     return calculateDeliveryEstimate(pickupDistrict, destDistrict, packageType, 'express_vip');
   }, [pickupDistrict, destDistrict, packageType]);
+
+  const grandTotal = estimate.price + tipAmount;
 
   if (!isQuickCourierOpen) return null;
 
@@ -142,14 +178,9 @@ export const QuickCourierModal: React.FC = () => {
       }
 
       // 2. Build and create delivery request
-      const pkgLabel =
-        packageType === 'document'
-          ? 'Acil Evrak / Dosya'
-          : packageType === 'food'
-          ? 'Sıcak Yemek / Sipariş'
-          : packageType === 'flower'
-          ? 'Çiçek / Hediye'
-          : 'Acil Kurye Paketi';
+      const selectedOption = QUICK_PACKAGE_OPTIONS.find((p) => p.id === packageType);
+      const defaultLabel = selectedOption ? `${selectedOption.icon} ${selectedOption.title}` : 'Acil Kurye Paketi';
+      const finalPkgName = packageName.trim() || defaultLabel;
 
       const newRequest = createNewRequest({
         senderUserId: currentUser.id,
@@ -174,11 +205,12 @@ export const QuickCourierModal: React.FC = () => {
           lng: ANTALYA_DISTRICTS[destDistrict]?.centerCoordinates.lng || 30.6384,
         },
         packageType,
-        packageName: pkgLabel,
+        packageName: finalPkgName,
         packageWeightKg: 1,
         urgency: 'express_vip',
         paymentMethod,
         isPaid: false,
+        tipAmount: tipAmount > 0 ? tipAmount : undefined,
         noteForCourier: packageNote.trim()
           ? `[Acil Hızlı Çağrı] ${packageNote.trim()}`
           : '[Acil Hızlı Çağrı] 30-45 dk ekspres teslimat',
@@ -441,95 +473,250 @@ export const QuickCourierModal: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. PAKET TİPİ VE ÖDEME SEÇİMİ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#011a14] rounded-2xl border border-emerald-800/60 p-3.5 text-xs">
-              {/* Package Type Chips */}
-              <div>
-                <label className="block text-[11px] font-bold text-emerald-300 mb-1.5">
-                  Paket Tipi
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { id: 'small_box', label: '📦 Paket / Kutu' },
-                    { id: 'document', label: '📄 Acil Evrak' },
-                    { id: 'food', label: '🍔 Yemek (100 ₺)' },
-                    { id: 'other', label: '🎁 Diğer' },
-                  ].map((pkg) => (
+            {/* 3. PAKET TİPİ SEÇİMİ (DETAYLI FORMDAKİ GİBİ HEPSİ) */}
+            <div className="bg-[#011a14] rounded-2xl border border-emerald-800/60 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xs font-bold">
+                    3
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-emerald-400" />
+                    Paket Tipi Seçimi
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-400/80 font-medium">5 Farklı Kategori</span>
+              </div>
+
+              {/* Grid of all 5 package types mirroring the detailed form */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {QUICK_PACKAGE_OPTIONS.map((pkg) => {
+                  const isSelected = packageType === pkg.id;
+                  return (
                     <button
                       key={pkg.id}
                       type="button"
-                      onClick={() => setPackageType(pkg.id as PackageType)}
-                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition cursor-pointer border text-center ${
-                        packageType === pkg.id
-                          ? 'bg-emerald-700 text-white border-emerald-400'
-                          : 'bg-[#011913] text-emerald-300/80 border-emerald-800/60 hover:bg-[#022b22]'
+                      onClick={() => setPackageType(pkg.id)}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        isSelected
+                          ? 'border-emerald-400 bg-emerald-900/80 text-white shadow-md ring-2 ring-emerald-400/40'
+                          : 'border-emerald-800/60 bg-[#011410] text-emerald-200/90 hover:bg-emerald-950/70 hover:border-emerald-700'
                       }`}
                     >
-                      {pkg.label}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xl">{pkg.icon}</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          isSelected ? 'bg-amber-400 text-slate-950' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                        }`}>
+                          Taban {pkg.basePrice} ₺
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold text-white mt-1">
+                          {pkg.title}
+                        </div>
+                        <div className="text-[10px] text-emerald-300/70 leading-snug line-clamp-1">
+                          {pkg.desc}
+                        </div>
+                      </div>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Payment Method Chips */}
-              <div>
+              {/* Optional Package Content Description */}
+              <div className="pt-1">
+                <label className="block text-[11px] font-bold text-emerald-300 mb-1">
+                  Paket İçerik Açıklaması (Opsiyonel)
+                </label>
+                <input
+                  type="text"
+                  value={packageName}
+                  onChange={(e) => setPackageName(e.target.value)}
+                  placeholder="Örn: 2 porsiyon yemek, evrak dosyası, kedi maması, hediye paketi vb."
+                  className="w-full bg-[#011410] border border-emerald-700/60 focus:border-emerald-400 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-700 focus:outline-none transition font-medium"
+                />
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="pt-1">
                 <label className="block text-[11px] font-bold text-emerald-300 mb-1.5">
                   Ödeme Yöntemi
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { id: 'gonderici_odemeli', label: 'Gönderici Öder (Ben)' },
-                    { id: 'alici_odemeli', label: 'Alıcı Öder (Varışta)' },
-                  ].map((pay) => (
-                    <button
-                      key={pay.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(pay.id as PaymentMethod)}
-                      className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition cursor-pointer border text-center ${
-                        paymentMethod === pay.id
-                          ? 'bg-amber-600 text-white border-amber-400'
-                          : 'bg-[#011913] text-amber-300/80 border-emerald-800/60 hover:bg-[#022b22]'
-                      }`}
-                    >
-                      {pay.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('gonderici_odemeli')}
+                    className={`p-3 rounded-xl border text-xs font-bold transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'gonderici_odemeli'
+                        ? 'border-emerald-400 bg-emerald-900/80 text-white ring-2 ring-emerald-400/40'
+                        : 'border-emerald-800/60 bg-[#011410] text-emerald-200 hover:bg-emerald-950/60'
+                    }`}
+                  >
+                    <span className="text-base">📤</span>
+                    <span className="font-extrabold text-xs">Gönderici Ödemeli</span>
+                    <span className="text-[10px] font-normal text-emerald-300/70">Ücret çıkışta ödenir</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('alici_odemeli')}
+                    className={`p-3 rounded-xl border text-xs font-bold transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'alici_odemeli'
+                        ? 'border-emerald-400 bg-emerald-900/80 text-white ring-2 ring-emerald-400/40'
+                        : 'border-emerald-800/60 bg-[#011410] text-emerald-200 hover:bg-emerald-950/60'
+                    }`}
+                  >
+                    <span className="text-base">📥</span>
+                    <span className="font-extrabold text-xs">Alıcı Ödemeli</span>
+                    <span className="text-[10px] font-normal text-emerald-300/70">Ücret teslimatta tahsil edilir</span>
+                  </button>
                 </div>
+              </div>
+
+              {/* Optional Note for Courier */}
+              <div className="pt-1">
+                <label className="block text-[11px] font-bold text-emerald-300 mb-1">
+                  Kuryeye Not (Opsiyonel)
+                </label>
+                <input
+                  type="text"
+                  value={packageNote}
+                  onChange={(e) => setPackageNote(e.target.value)}
+                  placeholder="Örn: Zile basmayın lütfen, güvenliğe teslim edilecek."
+                  className="w-full bg-[#011410] border border-emerald-800/60 focus:border-emerald-400 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-700 focus:outline-none transition font-medium"
+                />
               </div>
             </div>
 
-            {/* Note for Courier (Optional) */}
-            <div>
-              <label className="block text-[11px] font-bold text-emerald-300 mb-1">
-                Kuryeye Özel Not (Opsiyonel)
-              </label>
-              <input
-                type="text"
-                value={packageNote}
-                onChange={(e) => setPackageNote(e.target.value)}
-                placeholder="Örn: Zile basmayınız, lütfen acele ediniz."
-                className="w-full bg-[#011410] border border-emerald-800/60 focus:border-emerald-400 rounded-xl px-3 py-2 text-xs text-white placeholder-emerald-700 focus:outline-none transition font-medium"
-              />
+            {/* 4. KURYE BAHŞİŞ KISMI (AÇIKLAMASIYLA BERABER) */}
+            <div className="bg-[#011d17] border border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-md">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400 shrink-0">
+                    <Heart className="w-4 h-4 fill-amber-400/30" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-extrabold text-white tracking-wide">
+                        Kuryeye Bahşiş Ekleyin
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/50 px-2 py-0.5 rounded-full">
+                        Opsiyonel
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-300/80 leading-relaxed mt-0.5">
+                      Bahşişin %100'ü doğrudan kuryeye aktarılır. Bahşişli siparişler kurye havuzunda öne çıkar ve çok daha hızlı kabul edilir.
+                    </p>
+                  </div>
+                </div>
+
+                {tipAmount > 0 && (
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] text-amber-300/90 block font-medium">Eklenen Bahşiş</span>
+                    <span className="text-sm font-black text-amber-400">+{tipAmount} ₺</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bahşiş Seçenek Butonları */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {[
+                  { label: 'Yok', value: 0 },
+                  { label: '25 ₺', value: 25 },
+                  { label: '50 ₺', value: 50 },
+                  { label: '75 ₺', value: 75 },
+                  { label: '100 ₺', value: 100 },
+                ].map((preset) => {
+                  const isSelected = !isCustomTip && selectedTip === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => {
+                        setIsCustomTip(false);
+                        setSelectedTip(preset.value);
+                        setCustomTipInput('');
+                      }}
+                      className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-amber-400 shadow-md shadow-amber-500/20 ring-2 ring-amber-400/40'
+                          : 'bg-[#011410] text-emerald-200 border-emerald-800/70 hover:bg-emerald-950/70 hover:border-emerald-700'
+                      }`}
+                    >
+                      {preset.value > 0 && <Coins className="w-3 h-3 text-amber-300" />}
+                      <span>{preset.label}</span>
+                    </button>
+                  );
+                })}
+
+                {/* Özel Tutar Butonu */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomTip(true);
+                    setSelectedTip(0);
+                  }}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                    isCustomTip
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white border-amber-400 ring-2 ring-amber-400/40'
+                      : 'bg-[#011410] text-emerald-200 border-emerald-800/70 hover:bg-emerald-950/70'
+                  }`}
+                >
+                  Özel Tutar
+                </button>
+              </div>
+
+              {/* Özel Tutar Giriş Kutusu */}
+              {isCustomTip && (
+                <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-150">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={customTipInput}
+                      onChange={(e) => setCustomTipInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="İstediğiniz tutarı yazın (Örn: 150)"
+                      autoFocus
+                      className="w-full bg-[#011410] border border-amber-500/70 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-amber-400/30 font-bold"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-amber-400">
+                      ₺
+                    </span>
+                  </div>
+                  {tipAmount > 0 && (
+                    <span className="text-xs font-extrabold text-amber-300 shrink-0">
+                      +{tipAmount} ₺ Bahşiş
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Price & ETA Summary Bar */}
+            {/* 5. FİYAT, MESAFE VE SÜRE ÖZETİ */}
             <div className="p-4 bg-gradient-to-r from-emerald-950 via-[#032d23] to-teal-950 rounded-2xl border border-emerald-600/70 flex items-center justify-between gap-3 shadow-md">
               <div>
-                <div className="text-[11px] text-emerald-300 flex items-center gap-1.5 font-bold">
+                <div className="text-[11px] text-emerald-300 flex items-center gap-1.5 font-bold flex-wrap">
                   <Clock className="w-3.5 h-3.5 text-amber-400" />
                   <span>Tahmini Varış: <strong>{estimate.durationMins} Dakika</strong></span>
                   <span className="text-emerald-600">•</span>
-                  <span>{estimate.distanceKm} km</span>
+                  <span className="text-emerald-300 font-extrabold">📍 Yaklaşık Mesafe: ~{estimate.distanceKm} km</span>
                 </div>
                 <p className="text-[11px] text-emerald-400/80 mt-0.5">
                   {pickupDistrict} ➔ {destDistrict}
                 </p>
+                {tipAmount > 0 && (
+                  <p className="text-[10px] text-amber-300 font-semibold mt-1">
+                    Tarife: {estimate.price} ₺ + Bahşiş: {tipAmount} ₺
+                  </p>
+                )}
               </div>
 
               <div className="text-right shrink-0">
                 <span className="text-[10px] text-emerald-300 uppercase font-bold block">Toplam Tutar</span>
                 <span className="text-xl sm:text-2xl font-black text-amber-300">
-                  {estimate.price} ₺
+                  {grandTotal} ₺
                 </span>
               </div>
             </div>
@@ -541,7 +728,7 @@ export const QuickCourierModal: React.FC = () => {
               className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm sm:text-base rounded-2xl transition shadow-xl shadow-emerald-700/40 flex items-center justify-center gap-2 cursor-pointer active:scale-98 border border-emerald-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-              <span>{isSubmitting ? 'Kurye Aranıyor...' : `Kuryeyi Çağır (${estimate.price} ₺)`}</span>
+              <span>{isSubmitting ? 'Kurye Aranıyor...' : `Kuryeyi Çağır (${grandTotal} ₺)`}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

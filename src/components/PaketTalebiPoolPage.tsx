@@ -465,9 +465,12 @@ export const PaketTalebiPoolPage: React.FC = () => {
                               +{req.tipAmount} ₺ Bahşiş
                             </span>
                           )}
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-200 font-black text-[10px] border border-emerald-600/70 shadow-xs flex items-center gap-1">
+                            📍 ~{req.estimatedDistanceKm || 5} km
+                          </span>
                         </div>
                         <p className="text-[11px] text-emerald-400/80 mt-0.5">
-                          Tahmini Teslimat: ~{req.estimatedDurationMins || 35} Dk
+                          Yaklaşık Mesafe: ~{req.estimatedDistanceKm || 5} km • Süre: ~{req.estimatedDurationMins || 35} Dk
                         </p>
                       </div>
                     </div>
