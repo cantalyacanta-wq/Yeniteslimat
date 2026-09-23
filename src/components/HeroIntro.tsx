@@ -38,6 +38,7 @@ import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../type
 import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
 import { ReceiptModal } from './ReceiptModal';
 import { CourierPool } from './CourierPool';
+import { AnimatedCourierSpeechBubble } from './AnimatedCourierSpeechBubble';
 
 export const HeroIntro: React.FC = () => {
   const {
@@ -203,17 +204,6 @@ export const HeroIntro: React.FC = () => {
             {isUserLoggedIn && (
               <button
                 type="button"
-                onClick={openQuickCourierModal}
-                className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
-                title="Form doldurmadan kayıtlı adresinize hemen kurye çağırın"
-              >
-                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                <span>⚡ Acil Kurye Çağır</span>
-              </button>
-            )}
-            {isUserLoggedIn && (
-              <button
-                type="button"
                 onClick={logout}
                 className="px-4 py-3 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
                 title="Oturumu Kapat"
@@ -225,10 +215,10 @@ export const HeroIntro: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentView('customer')}
-              className="px-4 py-3 bg-[#022b22] hover:bg-[#033b2e] text-emerald-200 border border-emerald-700/60 font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
+              className="px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Yeni Paket Formu</span>
+              <span>+ Yeni Paket</span>
             </button>
           </div>
         </div>
@@ -311,44 +301,21 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* Assigned Courier Banner (if assigned) */}
+          {/* Assigned Courier Banner (with Animated Motor Courier & Speech Bubble) */}
           {activeCustomerOrder.assignedCourier ? (
-            <div className="bg-[#022e23] border border-emerald-700/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-md">
-                  {activeCustomerOrder.assignedCourier.name.split(' ')[0][0]}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm text-white">{activeCustomerOrder.assignedCourier.name}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[10px] font-bold">
-                      ⭐ {activeCustomerOrder.assignedCourier.rating.toFixed(1)}
-                    </span>
-                  </div>
-                  <p className="text-emerald-300/90 text-[11px] font-medium">
-                    🏍️ Moto Kurye • {activeCustomerOrder.assignedCourier.phone}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                {activeCustomerOrder.assignedCourier.phone && (
-                  <a
-                    href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5" />
-                    <span>Kuryeyi Ara</span>
-                  </a>
-                )}
-                {/* Cancel Button Even When Courier is Assigned */}
+            <div className="space-y-2.5">
+              <AnimatedCourierSpeechBubble order={activeCustomerOrder} />
+              <div className="flex items-center justify-between gap-2 px-1 text-xs">
+                <span className="text-[11px] text-emerald-300/80 font-medium truncate">
+                  Atanan Kurye: <strong className="text-white">{activeCustomerOrder.assignedCourier.name}</strong> ({activeCustomerOrder.assignedCourier.phone})
+                </span>
                 <button
                   type="button"
                   onClick={() => setConfirmCancelModal(activeCustomerOrder)}
-                  className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="px-3 py-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-700/60 font-semibold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
                   title="Kurye atanmış olsa bile siparişinizi iptal edebilirsiniz"
                 >
-                  <X className="w-3.5 h-3.5 text-rose-400" />
+                  <X className="w-3 h-3 text-rose-400" />
                   <span>Talebi İptal Et</span>
                 </button>
               </div>
@@ -695,41 +662,19 @@ export const HeroIntro: React.FC = () => {
               </div>
 
               {activeCustomerOrder.assignedCourier ? (
-                <div className="bg-[#022e23] border border-emerald-700/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-black flex items-center justify-center text-sm shadow-md">
-                      {activeCustomerOrder.assignedCourier.name.split(' ')[0][0]}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-white">{activeCustomerOrder.assignedCourier.name}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[10px] font-bold">
-                          ⭐ {activeCustomerOrder.assignedCourier.rating.toFixed(1)}
-                        </span>
-                      </div>
-                      <p className="text-emerald-300/90 text-[11px] font-medium">
-                        🏍️ Moto Kurye • {activeCustomerOrder.assignedCourier.phone}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                    {activeCustomerOrder.assignedCourier.phone && (
-                      <a
-                        href={`tel:${activeCustomerOrder.assignedCourier.phone}`}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                      >
-                        <PhoneCall className="w-3.5 h-3.5" />
-                        <span>Kuryeyi Ara</span>
-                      </a>
-                    )}
+                <div className="space-y-2.5">
+                  <AnimatedCourierSpeechBubble order={activeCustomerOrder} />
+                  <div className="flex items-center justify-between gap-2 px-1 text-xs">
+                    <span className="text-[11px] text-emerald-300/80 font-medium truncate">
+                      Atanan Kurye: <strong className="text-white">{activeCustomerOrder.assignedCourier.name}</strong> ({activeCustomerOrder.assignedCourier.phone})
+                    </span>
                     <button
                       type="button"
                       onClick={() => setConfirmCancelModal(activeCustomerOrder)}
-                      className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white border border-rose-600/60 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      className="px-3 py-1.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-700/60 font-semibold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0"
                       title="Siparişinizi iptal edebilirsiniz"
                     >
-                      <X className="w-3.5 h-3.5 text-rose-400" />
+                      <X className="w-3 h-3 text-rose-400" />
                       <span>İptal Et</span>
                     </button>
                   </div>

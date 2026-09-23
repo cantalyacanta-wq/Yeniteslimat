@@ -22,6 +22,7 @@ import {
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
 import { AntalyaMap } from './AntalyaMap';
+import { AnimatedCourierSpeechBubble } from './AnimatedCourierSpeechBubble';
 
 export const OrderTracker: React.FC = () => {
   const { 
@@ -360,6 +361,11 @@ export const OrderTracker: React.FC = () => {
 
           {/* Right 1 Column: Courier Info, Actions & Rating */}
           <div className="space-y-6">
+            {/* Animated Motor Courier Speech Bubble when Courier is Assigned */}
+            {currentOrder.assignedCourier && (
+              <AnimatedCourierSpeechBubble order={currentOrder} />
+            )}
+
             {/* Courier Profile Card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5">
