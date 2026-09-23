@@ -42,6 +42,7 @@ export const CustomerRequestForm: React.FC = () => {
     currentUser, 
     cancelRequest,
     openAuthModal,
+    openQuickCourierModal,
   } = useDelivery();
 
   // Address Lock checkbox state
@@ -393,6 +394,33 @@ export const CustomerRequestForm: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Quick Courier Call Banner for logged-in customer */}
+      {currentUser.role === 'customer' && currentUser.id !== 'user-guest-01' && (
+        <div className="bg-gradient-to-r from-emerald-950 via-[#032e24] to-[#02231c] border border-emerald-500/60 rounded-3xl p-4 sm:p-5 shadow-lg text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center font-black shadow-md shrink-0">
+              <Zap className="w-5 h-5 fill-amber-950" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-extrabold text-white">
+                Uzun form doldurmak istemiyor musunuz?
+              </p>
+              <p className="text-[11px] text-emerald-300/90">
+                Kayıtlı adresinize anında kurye çağırın, sadece paketin nereye gideceğini belirtin.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openQuickCourierModal}
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0 self-start sm:self-auto border border-emerald-400/40"
+          >
+            <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+            <span>⚡ Acil Kurye Çağır</span>
+          </button>
+        </div>
+      )}
 
       {/* Active In-Progress Order Notification with Quick Cancel Button */}
       {activeOrder && (

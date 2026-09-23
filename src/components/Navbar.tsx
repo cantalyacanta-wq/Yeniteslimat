@@ -9,6 +9,7 @@ import {
   Lock,
   LayoutDashboard,
   Plus,
+  Zap,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 
@@ -21,6 +22,7 @@ export const Navbar: React.FC = () => {
     logout,
     openAuthModal,
     activeCourierDeliveries,
+    openQuickCourierModal,
   } = useDelivery();
 
   const hasActiveCourierDelivery =
@@ -175,6 +177,20 @@ export const Navbar: React.FC = () => {
 
           {/* Right Section: Compact Button or Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+
+            {/* Quick Courier Call Button for Customer */}
+            {currentUser.role === 'customer' && (
+              <button
+                type="button"
+                onClick={openQuickCourierModal}
+                className="px-2.5 sm:px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-[11px] sm:text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-400/40 shrink-0"
+                title="Form doldurmadan kayıtlı adresinize hemen moto kurye çağırın"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
+                <span className="hidden sm:inline">Acil Kurye Çağır</span>
+                <span className="sm:hidden">Acil Çağır</span>
+              </button>
+            )}
             
             {/* If logged in with active account */}
             {currentUser.id !== 'user-guest-01' && currentUser.email ? (

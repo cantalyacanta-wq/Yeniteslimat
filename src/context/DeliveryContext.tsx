@@ -55,6 +55,12 @@ interface DeliveryContextType {
   setAuthModalNotice: (notice: string | null) => void;
   openAuthModal: (tab?: 'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password', notice?: string | null) => void;
   closeAuthModal: () => void;
+
+  // Quick Courier Modal Controls (Acil Kurye Çağır)
+  isQuickCourierOpen: boolean;
+  setIsQuickCourierOpen: (open: boolean) => void;
+  openQuickCourierModal: () => void;
+  closeQuickCourierModal: () => void;
   requestPasswordReset: (identifier: string, role?: 'customer' | 'courier' | 'admin') => Promise<{
     success: boolean;
     message: string;
@@ -291,6 +297,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'courier_login' | 'courier_register' | 'forgot_password' | 'courier_forgot_password'>('courier_login');
   const [authModalNotice, setAuthModalNotice] = useState<string | null>(null);
+
+  // 6. Global Quick Courier Modal State (Acil Kurye Çağır)
+  const [isQuickCourierOpen, setIsQuickCourierOpen] = useState<boolean>(false);
 
   // Ref to track active user and requests for real-time notifications & vibration across devices
   const currentUserRef = React.useRef<UserAccount>(currentUser);
@@ -596,6 +605,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const closeAuthModal = useCallback(() => {
     setIsAuthModalOpen(false);
     setAuthModalNotice(null);
+  }, []);
+
+  const openQuickCourierModal = useCallback(() => {
+    setIsQuickCourierOpen(true);
+  }, []);
+
+  const closeQuickCourierModal = useCallback(() => {
+    setIsQuickCourierOpen(false);
   }, []);
 
   // Set Current View with persistence and URL history pushState for mobile back-button support
@@ -1964,6 +1981,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAuthModalNotice,
         openAuthModal,
         closeAuthModal,
+        isQuickCourierOpen,
+        setIsQuickCourierOpen,
+        openQuickCourierModal,
+        closeQuickCourierModal,
         requestPasswordReset,
         requests,
         couriers,

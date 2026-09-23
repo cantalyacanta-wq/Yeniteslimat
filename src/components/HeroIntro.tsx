@@ -30,7 +30,8 @@ import {
   Search,
   History,
   FileText,
-  LogOut
+  LogOut,
+  Zap,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
@@ -49,6 +50,7 @@ export const HeroIntro: React.FC = () => {
     openAuthModal,
     rateDelivery,
     logout,
+    openQuickCourierModal,
   } = useDelivery();
 
   // If a courier is logged in, directly show CourierPool and never customer interfaces
@@ -197,7 +199,18 @@ export const HeroIntro: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+            {isUserLoggedIn && (
+              <button
+                type="button"
+                onClick={openQuickCourierModal}
+                className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
+                title="Form doldurmadan kayıtlı adresinize hemen kurye çağırın"
+              >
+                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                <span>⚡ Acil Kurye Çağır</span>
+              </button>
+            )}
             {isUserLoggedIn && (
               <button
                 type="button"
@@ -212,10 +225,10 @@ export const HeroIntro: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentView('customer')}
-              className="px-5 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+              className="px-4 py-3 bg-[#022b22] hover:bg-[#033b2e] text-emerald-200 border border-emerald-700/60 font-extrabold text-xs sm:text-sm rounded-2xl transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Yeni Paket</span>
+              <span>+ Yeni Paket Formu</span>
             </button>
           </div>
         </div>
@@ -546,6 +559,32 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
+          {/* PRIMARY QUICK ACTION: ACİL KURYE ÇAĞIR (FORM DOLDURMADAN) */}
+          <button
+            type="button"
+            onClick={openQuickCourierModal}
+            className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm sm:text-base rounded-2xl transition shadow-xl shadow-emerald-700/40 flex items-center justify-between gap-3 cursor-pointer active:scale-98 border border-emerald-300/40 group text-left"
+            title="Form doldurmadan kayıtlı adresinize hemen moto kurye çağırın"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center font-black shadow-md group-hover:scale-110 transition shrink-0">
+                <Zap className="w-6 h-6 fill-amber-950" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-white text-base sm:text-lg">Acil Kurye Çağır</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-amber-400/20 text-amber-200 border border-amber-300/40 rounded-md font-bold uppercase tracking-wider">
+                    Form Doldurmadan
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-100/90 font-medium mt-0.5">
+                  Kayıtlı adresinize 30-45 dakikada anında moto kurye gelsin
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-1 transition shrink-0 hidden sm:block" />
+          </button>
+
           {/* Full-width "Geçmiş Teslimatlarım" Button */}
           <button
             type="button"
@@ -556,19 +595,19 @@ export const HeroIntro: React.FC = () => {
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
             }}
-            className="w-full py-3.5 px-4 bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-600/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            className="w-full py-3 px-4 bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-600/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
             title="Geçmiş Teslimatları Görüntüle"
           >
             <History className="w-4 h-4 text-emerald-400" />
             <span>Geçmiş Teslimatlarım ({deliveredOrders.length})</span>
           </button>
 
-          {/* Two-Button Row: Oturumu Kapat & + Yeni Paket */}
+          {/* Two-Button Row: Oturumu Kapat & + Detaylı Form */}
           <div className="grid grid-cols-2 gap-3 w-full">
             <button
               type="button"
               onClick={logout}
-              className="w-full py-3.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md"
+              className="w-full py-3 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md"
               title="Müşteri Oturumunu Kapat"
             >
               <LogOut className="w-4 h-4 text-rose-400" />
@@ -578,10 +617,11 @@ export const HeroIntro: React.FC = () => {
             <button
               type="button"
               onClick={() => setCurrentView('customer')}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-xl shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              className="w-full py-3 bg-[#022b22] hover:bg-[#033b2e] text-emerald-200 border border-emerald-700/60 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              title="Ayrıntılı paket talebi formu doldur"
             >
-              <Plus className="w-5 h-5" />
-              <span>+ Yeni Paket</span>
+              <Plus className="w-4 h-4" />
+              <span>+ Detaylı Form</span>
             </button>
           </div>
         </div>

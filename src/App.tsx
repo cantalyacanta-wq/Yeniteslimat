@@ -10,6 +10,7 @@ import { AdminManagement } from './components/AdminManagement';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
+import { QuickCourierModal } from './components/QuickCourierModal';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
 import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
@@ -202,6 +203,9 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
     <>
       {/* Global Auth Modal */}
       <AuthModal />
+
+      {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
+      <QuickCourierModal />
 
       {/* Dedicated Standalone /pakettalebi Route View */}
       {isPaketTalebiRoute ? (
