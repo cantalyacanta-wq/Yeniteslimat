@@ -323,38 +323,108 @@ if (Array.isArray(dbState.requests)) {
 // EMAIL NOTIFICATION SYSTEM FOR REQUESTS & DISPATCH
 // ==========================================
 
+export const MAX_ORDER_EMAIL_AGE_MS = 20 * 60 * 1000; // 20 minutes max age for sending new order emails
+
 export function isTestOrFakeOrder(order: any): boolean {
-  if (!order || typeof order !== 'object') return false;
+  if (!order || typeof order !== 'object') return true;
+  if (order.isTest === true) return true;
+
   const id = String(order.id || '').toLowerCase().trim();
   const tracking = String(order.trackingCode || '').toUpperCase().trim();
   const senderName = String(order.sender?.contactName || '').toLowerCase().trim();
   const receiverName = String(order.receiver?.contactName || '').toLowerCase().trim();
+  const senderPhone = String(order.sender?.contactPhone || '').replace(/\D/g, '');
+  const receiverPhone = String(order.receiver?.contactPhone || '').replace(/\D/g, '');
   const pkgName = String(order.packageName || '').toLowerCase().trim();
+  const note = String(order.noteForCourier || '').toLowerCase().trim();
 
-  if (order.isTest === true) return true;
+  // Test ID patterns
   if (
-    id.startsWith('req-sample-') ||
-    id.startsWith('req-test-') ||
-    id.startsWith('req-live-test') ||
-    id.startsWith('test-') ||
-    id.startsWith('sample-')
+    id.includes('sample') ||
+    id.includes('test') ||
+    id.includes('verif') ||
+    id.includes('dummy') ||
+    id.includes('mock') ||
+    id.includes('puretext') ||
+    id.includes('live-order') ||
+    id.includes('live-test')
   ) {
     return true;
   }
+
+  // Test tracking patterns
   if (
+    tracking.includes('TEST') ||
+    tracking.includes('SAMPLE') ||
+    tracking.includes('VERIF') ||
+    tracking.includes('DEMO') ||
     tracking === 'ANT-3333' ||
     tracking === 'ANT-5892' ||
+    tracking === 'ANT-7240' ||
+    tracking === 'ANT-7788' ||
+    tracking === 'ANT-9988' ||
+    tracking === 'ANT-7414' ||
+    tracking === 'ANT-91827' ||
+    tracking === 'ANT-6397' ||
     tracking === 'ANT-9999' ||
-    tracking === 'ANT-TEST' ||
-    tracking.startsWith('TEST-') ||
     tracking.startsWith('REF-')
   ) {
     return true;
   }
-  if (senderName.includes('test') || senderName.includes('deneme') || senderName.includes('örnek') || senderName.includes('ornek')) return true;
-  if (receiverName.includes('test') || receiverName.includes('deneme') || receiverName.includes('örnek') || receiverName.includes('ornek')) return true;
-  if (pkgName.includes('test paketi') || pkgName.includes('örnek')) return true;
-  if (senderName === 'umit torun' && receiverName === 'umit torun') return true;
+
+  // Known mock test persona names
+  const testNames = [
+    'test',
+    'deneme',
+    'örnek',
+    'ornek',
+    'murat kara',
+    'ayşe yıldırım',
+    'ayse yildirim',
+    'ahmet bey',
+    'mehmet bey',
+    'mustafa kaya',
+    'zeynep çelik',
+    'zeynep celik',
+    'selim bey',
+    'serkan bey',
+    'zeynep hanım',
+    'zeynep hanim',
+    'deniz akdeniz (müşteri)',
+    'test müşteri',
+    'test alıcı',
+    'djsje sks',
+    'uu jj',
+    'frf',
+  ];
+  if (testNames.some((t) => senderName.includes(t) || receiverName.includes(t))) {
+    return true;
+  }
+
+  // Same sender & receiver with developer name or test pattern
+  if (senderName && receiverName && senderName === receiverName) {
+    if (senderName.includes('umit') || senderName.includes('ümit') || senderName.includes('test')) {
+      return true;
+    }
+  }
+
+  // Dummy phone patterns commonly entered during fake/test runs
+  const dummyPhones = [
+    '05000000000',
+    '5000000000',
+    '05555555555',
+    '5555555555',
+  ];
+  if (dummyPhones.includes(senderPhone) || dummyPhones.includes(receiverPhone)) {
+    return true;
+  }
+
+  if (pkgName.includes('test') || pkgName.includes('örnek') || pkgName.includes('deneme')) {
+    return true;
+  }
+  if (note.includes('test amaçlı') || note.includes('test siparişi') || note.includes('deneme siparişi')) {
+    return true;
+  }
 
   return false;
 }
@@ -506,7 +576,10 @@ const emailQueue: EmailJob[] = [];
 const emailQueueEvents = new EventEmitter();
 let isQueueWorkerRunning = false;
 
-function createDirectMailTransporter() {
+let cachedMailTransporter: nodemailer.Transporter | null = null;
+let lastTransporterConfigKey = '';
+
+function getMailTransporter() {
   const cfg = dbState.smtpConfig;
   const envHost = process.env.SMTP_HOST;
   const envUser = process.env.SMTP_USER || process.env.GMAIL_USER;
@@ -523,22 +596,35 @@ function createDirectMailTransporter() {
   const port = isGmail ? 465 : (Number(cfg?.port) || 587);
   const secure = port === 465;
 
-  if (user && pass && cfg?.enabled !== false) {
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    } as nodemailer.TransportOptions);
+  const configKey = `${host}:${port}:${secure}:${user}:${pass}`;
 
-    return { transporter, fromAddress, isConfigured: true, user, host };
+  if (!cachedMailTransporter || lastTransporterConfigKey !== configKey) {
+    if (cachedMailTransporter) {
+      try { cachedMailTransporter.close(); } catch {}
+    }
+    if (user && pass && cfg?.enabled !== false) {
+      cachedMailTransporter = nodemailer.createTransport({
+        pool: true,
+        maxConnections: 3,
+        maxMessages: 100,
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+      } as nodemailer.TransportOptions);
+      lastTransporterConfigKey = configKey;
+      console.log(`[SMTP POOL] Initialized high-performance pooled SMTP transport on ${host}:${port} (${user})`);
+    } else {
+      cachedMailTransporter = null;
+      lastTransporterConfigKey = '';
+    }
   }
 
-  return { transporter: null, fromAddress, isConfigured: false, user, host };
+  return { transporter: cachedMailTransporter, fromAddress, isConfigured: Boolean(cachedMailTransporter), user, host };
 }
 
 // Background worker that asynchronously pops and processes pending queue jobs
@@ -559,7 +645,7 @@ async function processEmailQueue() {
       console.log(`[ASYNC QUEUE] 🚀 Processing job #${job.id} for Order #${job.trackingCode} (Attempt ${job.attempts}/${job.maxAttempts}) to: ${job.recipients.join(', ')}`);
 
       try {
-        const mailDetails = createDirectMailTransporter();
+        const mailDetails = getMailTransporter();
         let emailStatus: 'sent' | 'simulated' | 'failed' = 'simulated';
         let errorMessage: string | undefined;
         let isRealDelivery = false;
@@ -567,34 +653,70 @@ async function processEmailQueue() {
         const failedRecipients: { email: string; error: string }[] = [];
 
         if (mailDetails.transporter && mailDetails.isConfigured) {
-          for (const targetEmail of job.recipients) {
-            try {
-              const info = await mailDetails.transporter.sendMail({
-                from: mailDetails.fromAddress,
-                to: targetEmail,
-                replyTo: 'kuryeantalyam@gmail.com',
-                subject: job.subject,
-                text: job.textContent,
-                html: job.htmlContent,
-                priority: 'high',
-                headers: {
-                  'X-Priority': '1',
-                  'X-MSMail-Priority': 'High',
-                  'Importance': 'high',
-                },
-              });
-              sentRecipients.push(targetEmail);
-              console.log(`[ASYNC QUEUE SUCCESS] Delivered to ${targetEmail}. SMTP response: ${info.response}`);
-            } catch (sendErr: any) {
-              failedRecipients.push({ email: targetEmail, error: sendErr.message || 'SMTP hatası' });
-              console.warn(`[ASYNC QUEUE FAIL] Target ${targetEmail} failed:`, sendErr.message);
+          const adminRecipient = 'kuryeantalyam@gmail.com';
+          const courierRecipients = job.recipients.filter(
+            (r) => r.toLowerCase() !== adminRecipient.toLowerCase()
+          );
+
+          // 1. PRIMARY DISPATCH: Immediate direct delivery to management kuryeantalyam@gmail.com (<1 second)
+          try {
+            const adminInfo = await mailDetails.transporter.sendMail({
+              from: mailDetails.fromAddress,
+              to: adminRecipient,
+              replyTo: adminRecipient,
+              subject: job.subject,
+              text: job.textContent,
+              html: job.htmlContent,
+              priority: 'high',
+              headers: {
+                'X-Priority': '1',
+                'X-MSMail-Priority': 'High',
+                'Importance': 'high',
+              },
+            });
+            sentRecipients.push(adminRecipient);
+            console.log(`[ASYNC QUEUE] ✅ Admin dispatch delivered to ${adminRecipient} in ${Date.now() - startTime}ms. Response: ${adminInfo.response}`);
+          } catch (adminErr: any) {
+            console.warn(`[ASYNC QUEUE FAIL] Admin dispatch error:`, adminErr.message);
+            failedRecipients.push({ email: adminRecipient, error: adminErr.message || 'SMTP iletim hatası' });
+          }
+
+          // 2. COURIER BROADCAST: Send via BCC in batches of max 45 (to respect RFC and Gmail recipient limits)
+          // Using BCC replaces 66 sequential connections with 1 or 2 fast connections!
+          // Saves 98% daily quota and delivers immediately to all couriers!
+          if (courierRecipients.length > 0 && !job.isTest) {
+            const chunkSize = 45;
+            for (let i = 0; i < courierRecipients.length; i += chunkSize) {
+              const chunk = courierRecipients.slice(i, i + chunkSize);
+              try {
+                const bccInfo = await mailDetails.transporter.sendMail({
+                  from: mailDetails.fromAddress,
+                  to: adminRecipient,
+                  bcc: chunk,
+                  replyTo: adminRecipient,
+                  subject: job.subject,
+                  text: job.textContent,
+                  html: job.htmlContent,
+                  priority: 'high',
+                  headers: {
+                    'X-Priority': '1',
+                    'X-MSMail-Priority': 'High',
+                    'Importance': 'high',
+                  },
+                });
+                sentRecipients.push(...chunk);
+                console.log(`[ASYNC QUEUE] ✅ Courier broadcast chunk (${chunk.length} couriers) delivered. Response: ${bccInfo.response}`);
+              } catch (bccErr: any) {
+                console.warn(`[ASYNC QUEUE FAIL] Courier broadcast chunk error:`, bccErr.message);
+                chunk.forEach((em) => failedRecipients.push({ email: em, error: bccErr.message || 'BCC iletim hatası' }));
+              }
             }
           }
 
           if (sentRecipients.length > 0) {
             emailStatus = 'sent';
             isRealDelivery = true;
-            console.log(`[ASYNC QUEUE SUCCESS] Successfully delivered to ${sentRecipients.length} address(es): ${sentRecipients.join(', ')} in ${Date.now() - startTime}ms`);
+            console.log(`[ASYNC QUEUE SUCCESS] Successfully delivered to ${sentRecipients.length} address(es) in ${Date.now() - startTime}ms`);
             if (failedRecipients.length > 0) {
               errorMessage = `Kısmi iletim (${sentRecipients.length} başarılı). Hata alanlar: ${failedRecipients.map((f) => f.email).join(', ')}`;
             }
@@ -694,6 +816,43 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const orderId = order.id || '';
   const trackingCode = order.trackingCode || orderId || 'ANT-0000';
   const isTest = isTestOrFakeOrder(order);
+
+  // 1. REJECT TEST OR FAKE ORDERS COMPLETELY
+  if (isTest && !isForce) {
+    console.log(`[EMAIL GUARD] 🚫 Skipping test/fake order #${trackingCode} (${orderId}). No email will be sent.`);
+    order.emailDispatched = true;
+    order.emailDispatchedAt = 'test_skipped';
+    if (orderId) dispatchedEmailOrderIds.add(orderId);
+    if (trackingCode) dispatchedEmailOrderIds.add(trackingCode);
+    return {
+      success: true,
+      isRealDelivery: false,
+      status: 'test_skipped',
+      message: 'Test/sahte talep tespit edildi, e-posta gönderilmedi.',
+    };
+  }
+
+  // 2. STALE ORDER GUARD - NEVER SEND EMAILS FOR ORDERS OLDER THAN 20 MINUTES
+  // This completely eliminates "Dünkü talepler bugün geliyor"
+  if (!isForce && order.createdAt) {
+    const orderCreatedAtMs = new Date(order.createdAt).getTime();
+    if (!isNaN(orderCreatedAtMs)) {
+      const ageMs = Date.now() - orderCreatedAtMs;
+      if (ageMs > MAX_ORDER_EMAIL_AGE_MS) {
+        console.log(`[EMAIL GUARD] ⏰ Stale order #${trackingCode} (${orderId}) created ${Math.round(ageMs / 60000)}m ago. Skipping email dispatch.`);
+        order.emailDispatched = true;
+        order.emailDispatchedAt = order.emailDispatchedAt || 'stale_skipped';
+        if (orderId) dispatchedEmailOrderIds.add(orderId);
+        if (trackingCode) dispatchedEmailOrderIds.add(trackingCode);
+        return {
+          success: true,
+          isRealDelivery: false,
+          status: 'stale_skipped',
+          message: 'Eski tarihli sipariş için e-posta gönderimi atlandı.',
+        };
+      }
+    }
+  }
 
   // Prevent duplicate jobs for non-force real requests
   if (!isForce) {
@@ -1093,13 +1252,19 @@ function initFirestoreSync() {
             newOrUpdatedCount++;
           }
 
-          // Check if email needs to be dispatched (if not marked dispatched and not test/fake)
+          // Check if email needs to be dispatched (if not marked dispatched, fresh, and not test/fake)
           const isTest = isTestOrFakeOrder(fullOrder);
-          const needsEmail = !isTest && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
+          const orderAgeMs = fullOrder.createdAt ? (Date.now() - new Date(fullOrder.createdAt).getTime()) : Infinity;
+          const isFresh = orderAgeMs <= MAX_ORDER_EMAIL_AGE_MS;
+          const needsEmail = !isTest && isFresh && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
 
           if (needsEmail) {
-            console.log(`[FIRESTORE SYNC] 📦 New real customer order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
+            console.log(`[FIRESTORE SYNC] 📦 New fresh customer order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
             enqueueNewOrderEmail(fullOrder, undefined, false);
+          } else if (!isFresh) {
+            // Mark stale order as dispatched in memory so it never triggers
+            dispatchedEmailOrderIds.add(docId);
+            dispatchedEmailOrderIds.add(trackingCode);
           }
         });
 
@@ -1208,20 +1373,33 @@ function initFirestoreSync() {
 // Initial Firestore connection trigger
 initFirestoreSync();
 
-// Periodic background sweep every 5 seconds to guarantee NO real customer request misses email notification
+// Periodic background sweep every 10 seconds for unsent fresh real customer orders
 setInterval(() => {
   if (Array.isArray(dbState.requests)) {
+    const now = Date.now();
     dbState.requests.forEach((r) => {
-      if (isTestOrFakeOrder(r)) return;
+      if (!r || !r.id || isTestOrFakeOrder(r)) return;
+
+      const orderAgeMs = r.createdAt ? (now - new Date(r.createdAt).getTime()) : Infinity;
+      // Stale orders get marked as dispatched so they never trigger
+      if (orderAgeMs > MAX_ORDER_EMAIL_AGE_MS) {
+        if (!r.emailDispatched) {
+          r.emailDispatched = true;
+          r.emailDispatchedAt = r.emailDispatchedAt || 'stale_skipped';
+          if (r.id) dispatchedEmailOrderIds.add(r.id);
+          if (r.trackingCode) dispatchedEmailOrderIds.add(r.trackingCode);
+        }
+        return;
+      }
 
       const isUnsent = !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
-        console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed real customer order #${r.trackingCode} (${r.id})...`);
+        console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed fresh customer order #${r.trackingCode} (${r.id})...`);
         enqueueNewOrderEmail(r, undefined, false);
       }
     });
   }
-}, 5000);
+}, 10000);
 
 // ==========================================
 // SEO & ROBOTS CRAWLER ROUTES
@@ -1586,8 +1764,12 @@ app.post('/api/requests/sync-batch', (req, res) => {
     }
 
     let enqueuedCount = 0;
+    const now = Date.now();
     requests.forEach((reqItem: any) => {
-      if (!reqItem || !reqItem.id || String(reqItem.id).startsWith('req-sample-')) return;
+      if (!reqItem || !reqItem.id || isTestOrFakeOrder(reqItem)) return;
+
+      const orderAgeMs = reqItem.createdAt ? (now - new Date(reqItem.createdAt).getTime()) : Infinity;
+      const isFresh = orderAgeMs <= MAX_ORDER_EMAIL_AGE_MS;
 
       const idx = dbState.requests.findIndex(
         (r) => r.id === reqItem.id || (r.trackingCode && r.trackingCode === reqItem.trackingCode)
@@ -1596,13 +1778,13 @@ app.post('/api/requests/sync-batch', (req, res) => {
       if (idx >= 0) {
         const existing = dbState.requests[idx];
         dbState.requests[idx] = { ...existing, ...reqItem };
-        if (!existing.emailDispatched && !reqItem.emailDispatched) {
+        if (isFresh && !existing.emailDispatched && !reqItem.emailDispatched) {
           enqueueNewOrderEmail(dbState.requests[idx], undefined, false);
           enqueuedCount++;
         }
       } else {
         dbState.requests.unshift(reqItem);
-        if (!reqItem.emailDispatched) {
+        if (isFresh && !reqItem.emailDispatched) {
           enqueueNewOrderEmail(reqItem, undefined, false);
           enqueuedCount++;
         }
@@ -2521,23 +2703,15 @@ Destek & İletişim: 0507 754 74 84 | kuryeantalyam@gmail.com
 
   console.log(`[PASSWORD RESET REQUEST] Processing for: ${emailOrIdentifier}, targetEmail: ${targetEmail}`);
 
-  // Create direct Gmail SSL transport on port 465 (high deliverability, fastest negotiation)
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: smtpUser, pass: smtpPass },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
+  const mailDetails = getMailTransporter();
+  const transporter = mailDetails.transporter;
 
   let sentReal = false;
   let errDetail = '';
   let sendResultInfo: any = null;
 
   try {
+    if (!transporter) throw new Error('SMTP transporter is not configured');
     sendResultInfo = await transporter.sendMail({
       from: fromAddress,
       to: targetEmail,

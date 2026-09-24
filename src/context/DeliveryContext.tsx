@@ -548,13 +548,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return cloudRequests;
         });
 
-        // Ensure any un-emailed requests from cloud are synced to backend email queue
-        const unemailed = cloudRequests.filter((r) => !r.emailDispatched && (r.status === 'pending_pool' || !r.status));
-        if (unemailed.length > 0) {
+        // Ensure only un-emailed fresh requests (under 20 min) from cloud are synced to backend email queue
+        const now = Date.now();
+        const unemailedFresh = cloudRequests.filter((r) => {
+          if (r.emailDispatched || (r.status && r.status !== 'pending_pool')) return false;
+          const ageMs = r.createdAt ? now - new Date(r.createdAt).getTime() : Infinity;
+          return ageMs <= 20 * 60 * 1000;
+        });
+        if (unemailedFresh.length > 0) {
           fetch('/api/requests/sync-batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ requests: unemailed }),
+            body: JSON.stringify({ requests: unemailedFresh }),
           }).catch(() => {});
         }
       }
@@ -1474,6 +1479,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(reqPayload),
+            keepalive: true,
           });
           if (!res.ok && attempt < 3) {
             setTimeout(() => pushToServer(reqPayload, attempt + 1), 1000 * attempt);
