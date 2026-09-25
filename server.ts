@@ -653,17 +653,24 @@ async function processEmailQueue() {
         const failedRecipients: { email: string; error: string }[] = [];
 
         if (mailDetails.transporter && mailDetails.isConfigured) {
-          const adminRecipient = 'kuryeantalyam@gmail.com';
-          const courierRecipients = job.recipients.filter(
-            (r) => r.toLowerCase() !== adminRecipient.toLowerCase()
+          // Identify primary operators for immediate direct delivery (management and operator courier)
+          const primaryRecipients = ['kuryeantalyam@gmail.com', 'cantalyacanta@gmail.com'].filter(
+            (em) => job.recipients.some((r) => r.toLowerCase() === em.toLowerCase())
+          );
+          if (primaryRecipients.length === 0) {
+            primaryRecipients.push('kuryeantalyam@gmail.com');
+          }
+
+          const otherCourierRecipients = job.recipients.filter(
+            (r) => !primaryRecipients.includes(r.toLowerCase())
           );
 
-          // 1. PRIMARY DISPATCH: Immediate direct delivery to management kuryeantalyam@gmail.com (<1 second)
+          // 1. PRIMARY DISPATCH: Direct priority delivery to management and key operator (<1s)
           try {
             const adminInfo = await mailDetails.transporter.sendMail({
               from: mailDetails.fromAddress,
-              to: adminRecipient,
-              replyTo: adminRecipient,
+              to: primaryRecipients.join(', '),
+              replyTo: 'kuryeantalyam@gmail.com',
               subject: job.subject,
               text: job.textContent,
               html: job.htmlContent,
@@ -674,26 +681,24 @@ async function processEmailQueue() {
                 'Importance': 'high',
               },
             });
-            sentRecipients.push(adminRecipient);
-            console.log(`[ASYNC QUEUE] ✅ Admin dispatch delivered to ${adminRecipient} in ${Date.now() - startTime}ms. Response: ${adminInfo.response}`);
+            sentRecipients.push(...primaryRecipients);
+            console.log(`[ASYNC QUEUE] ✅ Primary direct dispatch delivered to ${primaryRecipients.join(', ')} in ${Date.now() - startTime}ms. Response: ${adminInfo.response}`);
           } catch (adminErr: any) {
-            console.warn(`[ASYNC QUEUE FAIL] Admin dispatch error:`, adminErr.message);
-            failedRecipients.push({ email: adminRecipient, error: adminErr.message || 'SMTP iletim hatası' });
+            console.warn(`[ASYNC QUEUE FAIL] Primary direct dispatch error:`, adminErr.message);
+            primaryRecipients.forEach((em) => failedRecipients.push({ email: em, error: adminErr.message || 'SMTP iletim hatası' }));
           }
 
-          // 2. COURIER BROADCAST: Send via BCC in batches of max 45 (to respect RFC and Gmail recipient limits)
-          // Using BCC replaces 66 sequential connections with 1 or 2 fast connections!
-          // Saves 98% daily quota and delivers immediately to all couriers!
-          if (courierRecipients.length > 0 && !job.isTest) {
-            const chunkSize = 45;
-            for (let i = 0; i < courierRecipients.length; i += chunkSize) {
-              const chunk = courierRecipients.slice(i, i + chunkSize);
+          // 2. COURIER BROADCAST: Send via BCC in safe chunks of 25 (RFC and Gmail anti-spam optimal)
+          if (otherCourierRecipients.length > 0 && !job.isTest) {
+            const chunkSize = 25;
+            for (let i = 0; i < otherCourierRecipients.length; i += chunkSize) {
+              const chunk = otherCourierRecipients.slice(i, i + chunkSize);
               try {
                 const bccInfo = await mailDetails.transporter.sendMail({
                   from: mailDetails.fromAddress,
-                  to: adminRecipient,
+                  to: `"Antalya Nöbetçi Kurye Bildirim Ağı" <${mailDetails.user}>`,
                   bcc: chunk,
-                  replyTo: adminRecipient,
+                  replyTo: 'kuryeantalyam@gmail.com',
                   subject: job.subject,
                   text: job.textContent,
                   html: job.htmlContent,

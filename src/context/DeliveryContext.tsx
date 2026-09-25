@@ -1472,7 +1472,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // 4. Send to Cloud Firestore for Immediate Cross-Device Real-Time Sync
       saveRequestToFirestore(newRequest).catch((e) => console.warn('Firestore request save error:', e));
 
-      // 5. Send to Server Backend for Cross-Device Sync with Retry
+      // 5. Send to Server Backend for Cross-Device Sync with Retry (cold-start tolerant up to 60s)
       const pushToServer = async (reqPayload: DeliveryRequest, attempt = 1) => {
         try {
           const res = await fetch('/api/requests', {
@@ -1481,12 +1481,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             body: JSON.stringify(reqPayload),
             keepalive: true,
           });
-          if (!res.ok && attempt < 3) {
-            setTimeout(() => pushToServer(reqPayload, attempt + 1), 1000 * attempt);
+          if (!res.ok && attempt < 8) {
+            const delayMs = Math.min(6000, 1000 * attempt);
+            setTimeout(() => pushToServer(reqPayload, attempt + 1), delayMs);
           }
         } catch (err) {
-          if (attempt < 3) {
-            setTimeout(() => pushToServer(reqPayload, attempt + 1), 1000 * attempt);
+          if (attempt < 8) {
+            const delayMs = Math.min(6000, 1000 * attempt);
+            setTimeout(() => pushToServer(reqPayload, attempt + 1), delayMs);
           }
         }
       };
@@ -1506,6 +1508,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
       const data = await res.json();
       if (data.success) {
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === orderIdOrCode || r.trackingCode === orderIdOrCode
+              ? { ...r, emailDispatched: true, emailDispatchedAt: new Date().toISOString() }
+              : r
+          )
+        );
         return { success: true, message: 'E-posta bildirimi kuryeantalyam@gmail.com ve kuryelere başarıyla iletildi.' };
       } else {
         return { success: false, message: data.error || 'E-posta gönderilemedi.' };

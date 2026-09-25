@@ -73,12 +73,60 @@ export const AdminManagement: React.FC = () => {
     resetDefaultData,
     switchUser,
     activeStats,
+    resendOrderEmail,
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'customers' | 'couriers' | 'orders' | 'emails' | 'system'>('customers');
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
+
+  // Order Email Dispatch State
+  const [emailSendingOrderId, setEmailSendingOrderId] = useState<string | null>(null);
+  const [emailSendFeedback, setEmailSendFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
+  const [manualOrderCodeToSend, setManualOrderCodeToSend] = useState('');
+  const [manualOrderSendStatus, setManualOrderSendStatus] = useState<string | null>(null);
+
+  const handleForceSendOrderEmail = async (order: DeliveryRequest) => {
+    setEmailSendingOrderId(order.id);
+    setEmailSendFeedback(null);
+    try {
+      const codeOrId = order.trackingCode || order.id;
+      const res = await resendOrderEmail(codeOrId);
+      setEmailSendFeedback({
+        id: order.id,
+        message: res.success ? `✅ #${order.trackingCode} tüm kuryelere ve yönetime başarıyla iletildi!` : (res.message || 'Gönderilemedi'),
+        success: res.success,
+      });
+      setTimeout(() => setEmailSendFeedback(null), 6000);
+    } catch (e: any) {
+      setEmailSendFeedback({
+        id: order.id,
+        message: `Hata: ${e.message}`,
+        success: false,
+      });
+      setTimeout(() => setEmailSendFeedback(null), 6000);
+    } finally {
+      setEmailSendingOrderId(null);
+    }
+  };
+
+  const handleManualDispatchOrder = async () => {
+    if (!manualOrderCodeToSend.trim()) return;
+    setManualOrderSendStatus('E-posta kuyruğa alınıyor ve kuryelere iletiliyor...');
+    try {
+      const res = await resendOrderEmail(manualOrderCodeToSend.trim());
+      if (res.success) {
+        setManualOrderSendStatus(`✅ #${manualOrderCodeToSend.trim()} tüm kuryelere başarıyla iletildi!`);
+        fetchEmailLogs();
+      } else {
+        setManualOrderSendStatus(`❌ Hata: ${res.message || 'Gönderilemedi'}`);
+      }
+    } catch (e: any) {
+      setManualOrderSendStatus(`❌ Hata: ${e.message}`);
+    }
+    setTimeout(() => setManualOrderSendStatus(null), 8000);
+  };
 
   // Customer Management State
   const [searchCustomerQuery, setSearchCustomerQuery] = useState('');
@@ -1350,9 +1398,18 @@ export const AdminManagement: React.FC = () => {
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-black bg-amber-950 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-500/50">
-                          {req.trackingCode}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-black bg-amber-950 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-500/50">
+                            {req.trackingCode}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            req.emailDispatched
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                              : 'bg-amber-950 text-amber-300 border-amber-600/60'
+                          }`}>
+                            {req.emailDispatched ? '✉️ Kuryelere İletildi' : '⏳ E-posta Bekliyor'}
+                          </span>
+                        </div>
                         <span className="text-xs font-black text-amber-400">{req.price} ₺</span>
                       </div>
                       
@@ -1373,17 +1430,42 @@ export const AdminManagement: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between gap-2">
+                    {emailSendFeedback?.id === req.id && (
+                      <div className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border ${
+                        emailSendFeedback.success
+                          ? 'bg-emerald-950 text-emerald-200 border-emerald-500/60'
+                          : 'bg-rose-950 text-rose-200 border-rose-500/60'
+                      }`}>
+                        {emailSendFeedback.message}
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-emerald-900/60 flex items-center justify-between gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => {
                           setAssigningOrder(req);
                           setSelectedCourierForAssign(courierUsers[0]?.id || '');
                         }}
-                        className="flex-1 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex-1 min-w-[110px] py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <Bike className="w-3.5 h-3.5" />
                         <span>Kuryeye Ata</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={emailSendingOrderId === req.id}
+                        onClick={() => handleForceSendOrderEmail(req)}
+                        title="Tüm kuryelere ve yönetime e-posta bildirimi gönder"
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 border ${
+                          req.emailDispatched
+                            ? 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border-emerald-700/60'
+                            : 'bg-amber-950/70 hover:bg-amber-900 text-amber-300 border-amber-600/60'
+                        }`}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>{emailSendingOrderId === req.id ? 'İletiliyor...' : (req.emailDispatched ? 'Mail İletildi (Yinele)' : 'Kuryelere Mail Gönder')}</span>
                       </button>
 
                       <button
@@ -1458,6 +1540,14 @@ export const AdminManagement: React.FC = () => {
                         <span className="font-mono text-xs font-black bg-[#011410] text-amber-400 px-2.5 py-1 rounded-lg border border-emerald-800/60">
                           {req.trackingCode}
                         </span>
+
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          req.emailDispatched
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                            : 'bg-amber-950 text-amber-300 border-amber-600/60'
+                        }`}>
+                          {req.emailDispatched ? '✉️ Kuryelere İletildi' : '⏳ E-posta Bekliyor'}
+                        </span>
                         
                         {req.status === 'pending_pool' && (
                           <span className="text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-600/60 px-2 py-0.5 rounded-full">
@@ -1488,6 +1578,16 @@ export const AdminManagement: React.FC = () => {
                         <span className="text-xs font-bold text-emerald-100">{req.packageName}</span>
                       </div>
 
+                      {emailSendFeedback?.id === req.id && (
+                        <div className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border ${
+                          emailSendFeedback.success
+                            ? 'bg-emerald-950 text-emerald-200 border-emerald-500/60'
+                            : 'bg-rose-950 text-rose-200 border-rose-500/60'
+                        }`}>
+                          {emailSendFeedback.message}
+                        </div>
+                      )}
+
                       <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-300/80">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-emerald-400" />
@@ -1516,7 +1616,23 @@ export const AdminManagement: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Kuryelere Mail Gönder / Tekrarla Butonu */}
+                        <button
+                          type="button"
+                          disabled={emailSendingOrderId === req.id}
+                          onClick={() => handleForceSendOrderEmail(req)}
+                          title="Tüm kuryelere ve yönetime anında e-posta bildirimi gönder"
+                          className={`px-2.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 border ${
+                            req.emailDispatched
+                              ? 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-700/60'
+                              : 'bg-amber-950/80 hover:bg-amber-900 text-amber-300 border-amber-600/60'
+                          }`}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>{emailSendingOrderId === req.id ? 'İletiliyor...' : (req.emailDispatched ? 'Mail İletildi (Yinele)' : 'Kuryelere Mail Gönder')}</span>
+                        </button>
+
                         {/* Manuel Kurye Ata (if pending) */}
                         {req.status === 'pending_pool' && (
                           <button
@@ -1859,6 +1975,73 @@ export const AdminManagement: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Gerçek Sipariş Talebini Tüm Kuryelere Mail Gönder (Zorunlu İletim) */}
+          <div className="bg-[#021d17] p-5 sm:p-6 rounded-3xl border border-amber-500/50 text-white space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-900/60 pb-3">
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-amber-300 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-amber-400" />
+                  <span>📢 Canlı Siparişi Tüm Kuryelere Mail Gönder (Manuel Tetikleme)</span>
+                </h3>
+                <p className="text-xs text-emerald-300/80">
+                  Herhangi bir gerçek siparişi (örn. ANT-9079, ANT-5446) sistemdeki 68 kuryeye ve yöneticiye anında zorunlu e-posta olarak iletebilirsiniz.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#011410] border border-emerald-800/60 space-y-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex-1 w-full relative">
+                  <Package className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={manualOrderCodeToSend}
+                    onChange={(e) => setManualOrderCodeToSend(e.target.value.toUpperCase())}
+                    placeholder="Sipariş Takip Kodu (Örn: ANT-9079 veya 9079)"
+                    className="w-full bg-[#021d17] border border-amber-500/60 rounded-xl pl-9 pr-3 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                {/* Quick select from recent orders */}
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) setManualOrderCodeToSend(e.target.value);
+                  }}
+                  className="bg-[#021d17] border border-emerald-700/60 rounded-xl px-3 py-2.5 text-xs text-emerald-200 outline-none font-medium cursor-pointer"
+                >
+                  <option value="">-- Son Siparişlerden Seç --</option>
+                  {requests.slice(0, 10).map((r) => (
+                    <option key={r.id} value={r.trackingCode}>
+                      {r.trackingCode} - {r.sender?.district} ➔ {r.receiver?.district} ({r.price} TL)
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleManualDispatchOrder}
+                  disabled={!manualOrderCodeToSend.trim()}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>🚀 Tüm Kuryelere Hemen Gönder</span>
+                </button>
+              </div>
+
+              {manualOrderSendStatus && (
+                <div className={`p-3 rounded-xl text-xs font-bold ${
+                  manualOrderSendStatus.includes('✅')
+                    ? 'bg-emerald-950 text-emerald-200 border border-emerald-500'
+                    : manualOrderSendStatus.includes('❌')
+                    ? 'bg-rose-950 text-rose-200 border border-rose-500'
+                    : 'bg-amber-950 text-amber-200 border border-amber-500'
+                }`}>
+                  {manualOrderSendStatus}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Test Email Dispatch Card & Courier Recipient List */}
