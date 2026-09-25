@@ -25,6 +25,9 @@ import {
   ChevronUp,
   KeyRound,
   Volume2,
+  Smartphone,
+  Download,
+  Bell,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
 import { triggerHapticVibration } from '../services/notificationService';
@@ -46,6 +49,7 @@ export const PaketTalebiPoolPage: React.FC = () => {
     syncWithServer,
     openAuthModal,
     logout,
+    requestNotifications,
   } = useDelivery();
 
   const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
@@ -219,6 +223,49 @@ export const PaketTalebiPoolPage: React.FC = () => {
               title="Yenile"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* MOBİL KURYE APK & HIZLI BİLDİRİM BANNERI */}
+        <div className="p-3.5 bg-gradient-to-r from-[#1c0f02] via-[#2a1603] to-[#170c01] border-2 border-amber-500/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-lg shadow-amber-950/40">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+              <Smartphone className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye APK (Android)</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-red-600 text-white font-extrabold">v1.2.0</span>
+              </div>
+              <p className="text-[11px] text-amber-200/80 mt-0.5">
+                Yeni düşen siparişleri ekran kapalıyken siren ve titreşimle anında alın.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-md shadow-red-950/40 flex items-center gap-1.5 transition active:scale-95"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>APK İndir</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await requestNotifications();
+                unlockAudioContext();
+                playNewOrderSound();
+              }}
+              className="px-3 py-2 rounded-xl bg-[#0a1f18] hover:bg-[#0f2e24] text-emerald-300 border border-emerald-600/50 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              title="Bildirim ve Ses İznini Aç"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <span>Bildirim İzni Aç</span>
             </button>
           </div>
         </div>

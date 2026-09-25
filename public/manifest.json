@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Antalya Kurye Talep Havuzu",
+  "short_name": "AntalyaKurye",
+  "description": "Antalya Şehir İçi Moto Kurye Talep Havuzu ve Anlık Canlı Teslimat Bildirimleri",
+  "start_url": "/#pakettalebi",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#dc2626",
+  "background_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -156,6 +156,33 @@ export function playNewOrderSound() {
 }
 
 /**
+ * 1.5 ULTRA-LOUD KURYE HAVUZ SİRENİ (High Urgency Pool Dispatch Alarm)
+ * Trafikte veya cepte olan kuryelerin yeni siparişi anında fark etmesi için
+ * yüksek sesli, 3 tekrarlı acil çağrı melodisi
+ */
+export function playCourierPoolSiren() {
+  if (!isSoundAlertsEnabled()) return;
+
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    // 3 rapid pulses of high frequency dispatch beeps
+    for (let i = 0; i < 3; i++) {
+      const offset = now + i * 0.22;
+      playTone(ctx, 987.77, offset, 0.09, 0.45, 'sawtooth'); // B5
+      playTone(ctx, 1318.51, offset + 0.09, 0.11, 0.50, 'sine'); // E6
+    }
+  } catch (e) {
+    console.debug('playCourierPoolSiren error:', e);
+  }
+}
+
+/**
  * 2. KURYE ATANDI UYARI SESİ (Courier Assigned Alert Sound)
  * Hem kurye (görev atandığında) hem müşteri (kurye yola çıktığında) tarafında çalar:
  * Canlı, neşeli ve onaylayıcı 4 notalı yükselen melodi (C5 -> E5 -> G5 -> C6)

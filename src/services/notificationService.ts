@@ -2,6 +2,7 @@ import { DeliveryRequest, DeliveryStatus, UserRole } from '../types';
 import {
   playAcceptSound,
   playNewOrderSound,
+  playCourierPoolSiren,
   playSuccessSound,
   playStatusChime,
   playCourierAssignedSound,
@@ -112,12 +113,52 @@ export function sendBrowserNotification(
     return false;
   }
 
+  const iconUrl = options.icon || '/pwa-192x192.png';
+  const tag = options.tag || `antalya-kurye-${Date.now()}`;
+  const vibrate = options.vibrate || [200, 100, 200];
+
+  // Try Service Worker registration first (standard for Android PWA / WebAPK)
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready
+      .then((registration) => {
+        return registration.showNotification(title, {
+          body: options.body,
+          icon: iconUrl,
+          badge: iconUrl,
+          tag,
+          data: options.data,
+          vibrate,
+          silent: false,
+        } as NotificationOptions);
+      })
+      .catch(() => {
+        // Fall back to standard Notification constructor
+        try {
+          const notification = new Notification(title, {
+            body: options.body,
+            icon: iconUrl,
+            tag,
+            badge: iconUrl,
+            data: options.data,
+            silent: false,
+          });
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        } catch {}
+      });
+
+    triggerHapticVibration(vibrate);
+    return true;
+  }
+
   try {
     const notification = new Notification(title, {
       body: options.body,
-      icon: options.icon || '/favicon.ico',
-      tag: options.tag || `antalya-kurye-${Date.now()}`,
-      badge: '/favicon.ico',
+      icon: iconUrl,
+      tag,
+      badge: iconUrl,
       data: options.data,
       silent: false,
     });
@@ -129,9 +170,7 @@ export function sendBrowserNotification(
     };
 
     // Vibrate device if supported
-    if (options.vibrate) {
-      triggerHapticVibration(options.vibrate);
-    }
+    triggerHapticVibration(vibrate);
 
     return true;
   } catch (err) {
@@ -205,7 +244,7 @@ export function dispatchOrderStatusNotification(params: {
         isCourierJob = true;
         // Strong pulsating vibration pattern for couriers
         vibratePattern = [200, 100, 200, 100, 250];
-        playNewOrderSound();
+        playCourierPoolSiren();
       } else if (isCustomerOwner) {
         title = '🛵 Siparişiniz Havuzda!';
         body = `[${trackingCode}] Talebiniz alındı (${senderDistrict} ➔ ${receiverDistrict}). En yakın moto kurye bekleniyor.`;

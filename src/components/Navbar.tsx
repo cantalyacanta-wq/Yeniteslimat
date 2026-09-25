@@ -8,6 +8,7 @@ import {
   Lock,
   Volume2,
   VolumeX,
+  Smartphone,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import {
@@ -178,6 +179,17 @@ export const Navbar: React.FC = () => {
 
           {/* Right Section: Compact Button or Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Kurye APK / PWA İndir Butonu */}
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-[11px] sm:text-xs transition shadow-md shadow-red-950/40 border border-amber-400/40 active:scale-95 shrink-0"
+              title="Kuryeler İçin Talep Havuzu Android APK İndir"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+              <span className="whitespace-nowrap">APK İndir</span>
+            </a>
+
             {/* Audio Alert Status & Test Button */}
             <button
               type="button"

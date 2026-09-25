@@ -3025,6 +3025,63 @@ app.post('/api/analytics/reset', (req, res) => {
 });
 
 // ==========================================
+// APK & MOBILE APP DISTRIBUTION
+// ==========================================
+app.get(
+  ['/api/download-apk', '/downloads/Antalya-Kurye-Talep-Havuzu.apk', '/downloads/antalya-kurye-talep-havuzu.apk'],
+  (req, res) => {
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'downloads', 'Antalya-Kurye-Talep-Havuzu.apk'),
+      path.join(process.cwd(), 'dist', 'downloads', 'Antalya-Kurye-Talep-Havuzu.apk'),
+    ];
+    let apkPath = '';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        apkPath = p;
+        break;
+      }
+    }
+
+    if (!apkPath) {
+      return res.status(404).send('APK dosyası hazırlanıyor, lütfen birkaç saniye sonra tekrar deneyiniz.');
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="Antalya-Kurye-Talep-Havuzu.apk"');
+    res.sendFile(apkPath);
+  }
+);
+
+app.get('/api/apk-info', (req, res) => {
+  const apkPath = path.join(process.cwd(), 'public', 'downloads', 'Antalya-Kurye-Talep-Havuzu.apk');
+  let sizeMb = '0.12 MB';
+  let exists = false;
+  if (fs.existsSync(apkPath)) {
+    exists = true;
+    const stats = fs.statSync(apkPath);
+    sizeMb = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+  res.json({
+    success: true,
+    name: 'Antalya Kurye Talep Havuzu',
+    version: '1.2.0',
+    versionCode: 12,
+    size: sizeMb,
+    exists,
+    downloadUrl: '/downloads/Antalya-Kurye-Talep-Havuzu.apk',
+    directApiUrl: '/api/download-apk',
+    releaseDate: '2026-09-25',
+    permissions: [
+      'POST_NOTIFICATIONS (Anlık Yeni Talep Bildirimi)',
+      'VIBRATE (Acil Çağrı Titreşimi)',
+      'WAKE_LOCK (Ekran Kapalıyken Bildirim Alma)',
+      'ACCESS_FINE_LOCATION (Haritada Canlı Konum Takibi)',
+      'INTERNET (7/24 Kesintisiz Sunucu & Havuz Senkronizasyonu)',
+    ],
+  });
+});
+
+// ==========================================
 // VITE MIDDLEWARE & STATIC SERVING
 // ==========================================
 
