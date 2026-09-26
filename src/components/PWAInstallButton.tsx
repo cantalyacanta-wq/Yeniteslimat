@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { Download, Smartphone, CheckCircle, Share2, X } from 'lucide-react';
+import { Smartphone, CheckCircle, Share2, X } from 'lucide-react';
 
 interface PWAInstallButtonProps {
   className?: string;
-  showApkOption?: boolean;
 }
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   className = '',
-  showApkOption = true,
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showGuide, setShowGuide] = useState(false);
@@ -43,16 +41,6 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <Smartphone className="w-3.5 h-3.5 text-blue-400" />
             <span>iOS'a Yükle</span>
           </button>
-        ) : showApkOption ? (
-          <a
-            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-            download="Antalya-Kurye-Talep-Havuzu.apk"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-red-500/50 text-slate-200 hover:text-white text-xs font-medium transition"
-            title="Kurye Android APK İndir"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span>APK İndir</span>
-          </a>
         ) : null}
       </div>
 

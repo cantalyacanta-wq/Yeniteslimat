@@ -21,8 +21,6 @@ import {
   Vibrate,
   Lock,
   AlertCircle,
-  Smartphone,
-  Download,
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -340,35 +338,6 @@ export const CourierPool: React.FC = () => {
       {/* ================================================================= */}
       {activeTab === 'pool' && (
         <div className="space-y-4">
-          {/* Mobil Kurye APK Hızlı İndir Bannerı */}
-          <div className="bg-gradient-to-r from-[#1c0f02] via-[#2a1603] to-[#170c01] p-3.5 rounded-2xl border-2 border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white shadow-lg shadow-amber-950/40">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
-                <Smartphone className="w-5 h-5 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye APK (Android v1.3.0)</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-600 text-white font-extrabold">RESMİ</span>
-                </div>
-                <p className="text-[11px] text-amber-200/80 mt-0.5">
-                  Ekran kapalıyken talep bildirimlerini siren ve titreşimle anında almak için APK'yı indirin.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <a
-                href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-                download="Antalya-Kurye-Talep-Havuzu.apk"
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs shadow-md shadow-red-950/40 flex items-center gap-1.5 transition active:scale-95"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>APK İndir (.apk)</span>
-              </a>
-            </div>
-          </div>
-
           <div className="bg-[#021d17] p-4 rounded-2xl border border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
             <div>
               <h3 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
