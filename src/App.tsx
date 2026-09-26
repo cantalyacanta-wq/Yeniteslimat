@@ -27,6 +27,17 @@ const checkIsAdminRoute = (): boolean => {
 const MainContent: React.FC = () => {
   const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries, openQuickCourierModal } = useDelivery();
 
+  // Automatically trigger all native Android permissions when running inside APK
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).AndroidApp?.requestAllPermissions) {
+      try {
+        (window as any).AndroidApp.requestAllPermissions();
+      } catch (e) {
+        console.debug('AndroidApp auto-permission request error:', e);
+      }
+    }
+  }, []);
+
   // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
   React.useEffect(() => {
     if (

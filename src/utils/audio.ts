@@ -163,6 +163,15 @@ export function playNewOrderSound() {
 export function playCourierPoolSiren() {
   if (!isSoundAlertsEnabled()) return;
 
+  // If in Android native APK container, fire native loud alarm sound:
+  if (typeof window !== 'undefined' && (window as any).AndroidApp?.playAlarmSound) {
+    try {
+      (window as any).AndroidApp.playAlarmSound();
+    } catch (e) {
+      console.debug('AndroidApp.playAlarmSound error:', e);
+    }
+  }
+
   try {
     const ctx = getAudioContext();
     if (!ctx) return;

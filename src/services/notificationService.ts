@@ -28,14 +28,22 @@ const listeners = new Set<NotificationListener>();
 
 /**
  * Trigger Mobile Device Haptic Vibration
- * Uses browser Vibration API with fallback safety
+ * Uses browser Vibration API with fallback safety and Native Android bridge
  */
 export function triggerHapticVibration(pattern: number[] = [150, 100, 200]) {
-  if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    try {
-      navigator.vibrate(pattern);
-    } catch (e) {
-      console.debug('Haptic vibration not supported or permission denied on device:', e);
+  if (typeof window !== 'undefined') {
+    if ((window as any).AndroidApp?.vibrate) {
+      try {
+        const totalDuration = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : 600;
+        (window as any).AndroidApp.vibrate(totalDuration);
+      } catch (e) {}
+    }
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        console.debug('Haptic vibration not supported or permission denied on device:', e);
+      }
     }
   }
 }
@@ -59,6 +67,15 @@ export function getNotificationPermission(): NotificationPermission | 'unsupport
  * Request notification permission from user
  */
 export async function requestNotificationPermission(): Promise<boolean> {
+  // If running inside Android APK Native Bridge, trigger Android system permission prompts:
+  if (typeof window !== 'undefined' && (window as any).AndroidApp?.requestAllPermissions) {
+    try {
+      (window as any).AndroidApp.requestAllPermissions();
+    } catch (e) {
+      console.debug('AndroidApp.requestAllPermissions error:', e);
+    }
+  }
+
   if (!isNotificationSupported()) {
     console.warn('Tarayıcı bildirim API desteği bulunmuyor.');
     return false;
@@ -109,6 +126,15 @@ export function sendBrowserNotification(
     vibrate?: number[];
   }
 ): boolean {
+  // If running inside Android APK native container, always fire native high-priority notification:
+  if (typeof window !== 'undefined' && (window as any).AndroidApp?.showSystemNotification) {
+    try {
+      (window as any).AndroidApp.showSystemNotification(title, options.body);
+    } catch (e) {
+      console.debug('AndroidApp.showSystemNotification error:', e);
+    }
+  }
+
   if (!isNotificationSupported() || Notification.permission !== 'granted') {
     return false;
   }
