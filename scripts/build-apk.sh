@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Building Antalya Kurye Talep Havuzu APK (v1.2.0) ==="
+echo "=== Building Antalya Kurye Talep Havuzu APK (v1.3.0) ==="
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT_DIR/apk-build"
@@ -10,6 +10,17 @@ DIST_APK="$ROOT_DIR/dist/downloads/Antalya-Kurye-Talep-Havuzu.apk"
 ANDROID_JAR="/usr/lib/android-sdk/platforms/android-23/android.jar"
 if [ ! -f "$ANDROID_JAR" ]; then
   ANDROID_JAR="/tmp/android.jar"
+fi
+
+DX_BIN="$(which dx 2>/dev/null || true)"
+if [ -z "$DX_BIN" ]; then
+  if [ -f "/usr/lib/android-sdk/build-tools/debian/dx" ]; then
+    DX_BIN="/usr/lib/android-sdk/build-tools/debian/dx"
+  elif [ -f "/usr/bin/dalvik-exchange" ]; then
+    DX_BIN="/usr/bin/dalvik-exchange"
+  else
+    DX_BIN="dx"
+  fi
 fi
 
 rm -rf "$BUILD_DIR"
@@ -50,8 +61,8 @@ cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.antalyakurye.talep"
-    android:versionCode="12"
-    android:versionName="1.2.0">
+    android:versionCode="13"
+    android:versionName="1.3.0">
 
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
 
@@ -146,7 +157,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.2.0 (TalepHavuzu)");
+        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.3.0 (TalepHavuzu)");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -204,7 +215,7 @@ javac -source 1.8 -target 1.8 \
   "$BUILD_DIR/src/com/antalyakurye/talep/MainActivity.java"
 
 echo "[3/6] Converting Java bytecode to Dalvik executable (classes.dex)..."
-dx --dex --output="$BUILD_DIR/bin/classes.dex" "$BUILD_DIR/bin"
+"$DX_BIN" --dex --output="$BUILD_DIR/bin/classes.dex" "$BUILD_DIR/bin"
 
 echo "[4/6] Packaging raw APK package..."
 aapt package -f \

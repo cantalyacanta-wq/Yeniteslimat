@@ -236,7 +236,7 @@ export const PaketTalebiPoolPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye APK (Android)</span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] bg-red-600 text-white font-extrabold">v1.2.0</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-red-600 text-white font-extrabold">v1.3.0</span>
               </div>
               <p className="text-[11px] text-amber-200/80 mt-0.5">
                 Yeni düşen siparişleri ekran kapalıyken siren ve titreşimle anında alın.

@@ -1160,7 +1160,7 @@ export const AdminManagement: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-extrabold tracking-wider">KURYELERE ÖZEL APK</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">v1.2.0 • Android</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">v1.3.0 • Android</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">⚡ Anlık Ses & Titreşim</span>
                   </div>
                   <h4 className="font-black text-sm sm:text-base text-white mt-1">
@@ -2387,7 +2387,7 @@ export const AdminManagement: React.FC = () => {
                     RESMİ ANDROID APK
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                    Sürüm: v1.2.0 • 2026 Edition
+                    Sürüm: v1.3.0 • 2026 Edition
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> İmzalı & Doğrulandı (v1/v2/v3)

@@ -3064,13 +3064,13 @@ app.get('/api/apk-info', (req, res) => {
   res.json({
     success: true,
     name: 'Antalya Kurye Talep Havuzu',
-    version: '1.2.0',
-    versionCode: 12,
+    version: '1.3.0',
+    versionCode: 13,
     size: sizeMb,
     exists,
     downloadUrl: '/downloads/Antalya-Kurye-Talep-Havuzu.apk',
     directApiUrl: '/api/download-apk',
-    releaseDate: '2026-09-25',
+    releaseDate: '2026-09-26',
     permissions: [
       'POST_NOTIFICATIONS (Anlık Yeni Talep Bildirimi)',
       'VIBRATE (Acil Çağrı Titreşimi)',

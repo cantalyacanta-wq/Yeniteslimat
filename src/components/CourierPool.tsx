@@ -348,7 +348,7 @@ export const CourierPool: React.FC = () => {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye APK (Android v1.2.0)</span>
+                  <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye APK (Android v1.3.0)</span>
                   <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-600 text-white font-extrabold">RESMİ</span>
                 </div>
                 <p className="text-[11px] text-amber-200/80 mt-0.5">

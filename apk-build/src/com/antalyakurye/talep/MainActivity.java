@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.2.0 (TalepHavuzu)");
+        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.3.0 (TalepHavuzu)");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
