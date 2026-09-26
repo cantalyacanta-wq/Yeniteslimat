@@ -752,8 +752,20 @@ export const AdminManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Stats & Lock Panel Button */}
+        {/* Quick Stats, APK Download & Lock Panel Button */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
+          {/* Doğrudan APK İndirme Linki Butonu */}
+          <a
+            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+            download="Antalya-Kurye-Talep-Havuzu.apk"
+            className="px-3.5 py-2 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white rounded-2xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-red-950/50 border border-amber-400/50 shrink-0 hover:scale-105 active:scale-95"
+            title="Antalya Kurye Talep Havuzu Android APK İndir (v1.3.0)"
+          >
+            <Smartphone className="w-4 h-4 text-amber-200" />
+            <Download className="w-3.5 h-3.5 text-white" />
+            <span className="font-extrabold">Kurye APK İndir</span>
+          </a>
+
           <div className="bg-[#011410] px-3 py-2 rounded-2xl border border-emerald-800/60 text-emerald-300">
             <span className="text-[10px] text-emerald-400/80 block">Müşteriler</span>
             <strong className="text-sm font-black text-white">{customerUsers.length} Müşteri</strong>
@@ -788,6 +800,81 @@ export const AdminManagement: React.FC = () => {
             <LogOut className="w-4 h-4 text-rose-400" />
             <span className="hidden sm:inline">Güvenli Çıkış</span>
           </button>
+        </div>
+      </div>
+
+      {/* Kurye Android APK Hızlı Erişim & İndirme Linki Barı */}
+      <div className="bg-gradient-to-r from-red-950/80 via-[#261403]/90 to-amber-950/80 p-3 sm:p-4 rounded-3xl border border-amber-500/40 shadow-lg shadow-black/40 flex flex-col md:flex-row md:items-center justify-between gap-3 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0">
+            <Smartphone className="w-5 h-5 text-amber-300 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-sm text-white flex items-center gap-1.5">
+                <span>Antalya Kurye APK (Android v1.3.0)</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-600 text-white font-extrabold">RESMİ</span>
+              </span>
+              <span className="text-[11px] text-amber-300/90 font-semibold">• Siren, Titreşim & Canlı Havuz</span>
+            </div>
+            <p className="text-xs text-amber-100/70 mt-0.5">
+              Kuryelerin arka planda ve ekran kapalıyken talep alması için resmi APK indirme linki.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <a
+            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+            download="Antalya-Kurye-Talep-Havuzu.apk"
+            className="px-3.5 py-2 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-red-950/50 cursor-pointer active:scale-95"
+            title="Antalya Kurye APK'yı İndir"
+          >
+            <Download className="w-4 h-4" />
+            <span>APK'yı İndir (.apk)</span>
+          </a>
+
+          <button
+            type="button"
+            onClick={() => {
+              const url = window.location.origin + '/downloads/Antalya-Kurye-Talep-Havuzu.apk';
+              navigator.clipboard.writeText(url);
+              setApkLinkCopied(true);
+              setTimeout(() => setApkLinkCopied(false), 3000);
+            }}
+            className="px-3 py-2 bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            title="İndirme Linkini Kopyala"
+          >
+            {apkLinkCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{apkLinkCopied ? 'Kopyalandı!' : 'Linki Kopyala'}</span>
+          </button>
+
+          <a
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+              `🛵 Antalya Kurye Talep Havuzu Android Uygulaması (v1.3.0) Hazır!\n\nYeni siparişleri kaçırmamak için hemen APK'yı yükleyin:\n${
+                typeof window !== 'undefined' ? window.location.origin : ''
+              }/downloads/Antalya-Kurye-Talep-Havuzu.apk`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            title="WhatsApp Kurye Grubunda Paylaş"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">WhatsApp'a Gönder</span>
+          </a>
+
+          {activeTab !== 'apk' && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('apk')}
+              className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+              title="QR Kod ve Detaylı APK Ayarları"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>QR Kod & Detay</span>
+            </button>
+          )}
         </div>
       </div>
 
