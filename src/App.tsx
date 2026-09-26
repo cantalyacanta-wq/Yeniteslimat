@@ -13,7 +13,7 @@ import { AuthModal } from './components/AuthModal';
 import { QuickCourierModal } from './components/QuickCourierModal';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
-import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
+import { Bike, ShieldCheck, Zap, FileText, Smartphone } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -176,6 +176,16 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Yönetim</span>
             </button>
+            <span className="text-emerald-800">•</span>
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="text-amber-400 hover:text-amber-200 underline font-extrabold transition cursor-pointer flex items-center gap-1"
+              title="Kuryeler İçin Android APK İndir (v1.3.0)"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-300" />
+              <span>Kurye APK İndir</span>
+            </a>
             <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />

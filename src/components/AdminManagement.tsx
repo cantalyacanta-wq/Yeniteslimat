@@ -738,13 +738,23 @@ export const AdminManagement: React.FC = () => {
             <Shield className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-extrabold text-white">
                 Antalya Kurye Yönetim Paneli
               </h2>
               <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-900 text-emerald-300 border border-emerald-700/60 rounded-md uppercase">
                 Yönetici
               </span>
+              <a
+                href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+                download="Antalya-Kurye-Talep-Havuzu.apk"
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white rounded-full text-xs font-black shadow-md border border-amber-400/50 transition active:scale-95 animate-pulse hover:animate-none"
+                title="Android APK'yı Doğrudan İndir (v1.3.0)"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-200" />
+                <Download className="w-3.5 h-3.5 text-white" />
+                <span>APK İndir (v1.3.0)</span>
+              </a>
             </div>
             <p className="text-xs text-emerald-300/80 mt-0.5">
               Müşteri & kurye yönetimi, canlı havuz ve sipariş denetim merkezi.
