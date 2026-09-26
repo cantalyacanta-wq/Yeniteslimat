@@ -4,6 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Ignore Vite HMR / WebSocket connection errors in preview iframe per guidelines -->
+    <script>
+      (function() {
+        const isViteWs = function(msg) {
+          if (!msg) return false;
+          const s = typeof msg === 'string' ? msg : (msg.message || '');
+          return s.includes('[vite]') || s.includes('WebSocket') || s.includes('ws://') || s.includes('wss://');
+        };
+        const origErr = console.error;
+        console.error = function(...args) {
+          if (args.some(isViteWs)) return;
+          origErr.apply(console, args);
+        };
+        const origWarn = console.warn;
+        console.warn = function(...args) {
+          if (args.some(isViteWs)) return;
+          origWarn.apply(console, args);
+        };
+        window.addEventListener('error', function(e) {
+          if (isViteWs(e.message)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          if (isViteWs(e.reason)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
+    
     <!-- Favicon & App Icons matching the uploaded red pin badge -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
