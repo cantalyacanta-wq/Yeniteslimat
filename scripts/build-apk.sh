@@ -125,7 +125,9 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView webView;
-    private static final String APP_URL = "https://ais-pre-dsymsorzrgunvtpunotord-5052813439.europe-west2.run.app/#pakettalebi";
+    private static final String PRIMARY_URL = "https://www.antalyateslimat.com/#pakettalebi";
+    private static final String FALLBACK_URL = "https://antalyateslimat.com/#pakettalebi";
+    private boolean triedFallback = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -165,6 +167,27 @@ public class MainActivity extends Activity {
                 view.loadUrl(url);
                 return true;
             }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                if (!triedFallback) {
+                    triedFallback = true;
+                    view.loadUrl(FALLBACK_URL);
+                    return;
+                }
+                String errHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    + "<style>body{margin:0;background:#021814;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;padding:20px;box-sizing:border-box;}"
+                    + ".box{background:#03241d;border:1px solid #059669;border-radius:24px;padding:32px 20px;max-width:340px;width:100%;}"
+                    + "h2{color:#34d399;font-size:20px;margin:0 0 10px;}"
+                    + "p{color:#94a3b8;font-size:13px;line-height:1.5;margin:0 0 20px;}"
+                    + "button{background:linear-gradient(135deg,#dc2626,#f59e0b);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;}"
+                    + "</style></head><body><div class='box'>"
+                    + "<h2>Antalya Kurye</h2>"
+                    + "<p>Bağlantı sağlanamadı. Lütfen internetinizi kontrol edin.</p>"
+                    + "<button onclick='location.href=\"" + PRIMARY_URL + "\"'>Yeniden Dene</button>"
+                    + "</div></body></html>";
+                view.loadDataWithBaseURL(null, errHtml, "text/html", "UTF-8", null);
+            }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -186,7 +209,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.loadUrl(APP_URL);
+        webView.loadUrl(PRIMARY_URL);
     }
 
     @Override
