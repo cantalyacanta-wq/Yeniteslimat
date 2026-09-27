@@ -13,6 +13,8 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.os.Vibrator;
 import android.provider.Settings;
@@ -39,101 +41,118 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        // Tum beklenmeyen hatalari yakalayip uygulamanin aniden kapanmasini onle
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable throwable) {
+                throwable.printStackTrace();
+            }
+        });
 
-        // Kurye gorevdeyken ekranin kapanmasini onle
+        super.onCreate(savedInstanceState);
+
+        try {
+            requestWindowFeature(Window.FEATURE_NO_TITLE);
+        } catch (Throwable ignored) {}
+
         try {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
 
-        // Bildirim kanalini Android 8.0+ icin olustur (Yuksek oncelik, sesli, titresimli)
+        // 1. ILK OLARAK WEBVIEW'I BASLAT VE EKRANA BAS (Kullanici aninda uygulamayi gorsun)
+        try {
+            webView = new WebView(this);
+            setContentView(webView);
+
+            WebSettings s = webView.getSettings();
+            s.setJavaScriptEnabled(true);
+            s.setDomStorageEnabled(true);
+            s.setDatabaseEnabled(true);
+            s.setGeolocationEnabled(true);
+            s.setUseWideViewPort(true);
+            s.setLoadWithOverviewMode(true);
+            s.setMediaPlaybackRequiresUserGesture(false);
+            s.setCacheMode(WebSettings.LOAD_DEFAULT);
+            s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; NativeBridge)");
+
+            // Native Javascript koprusu
+            webView.addJavascriptInterface(new WebAppInterface(), "AndroidApp");
+
+            webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                    view.loadUrl(url);
+                    return true;
+                }
+
+                @Override
+                public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                    if (!triedFallback) {
+                        triedFallback = true;
+                        view.loadUrl(FALLBACK_URL);
+                        return;
+                    }
+                    String errHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                        + "<style>body{margin:0;background:#021814;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;padding:20px;box-sizing:border-box;}"
+                        + ".box{background:#03241d;border:1px solid #059669;border-radius:24px;padding:32px 20px;max-width:340px;width:100%;}"
+                        + "h2{color:#34d399;font-size:20px;margin:0 0 10px;}"
+                        + "p{color:#94a3b8;font-size:13px;line-height:1.5;margin:0 0 20px;}"
+                        + "button{background:linear-gradient(135deg,#dc2626,#f59e0b);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;}"
+                        + "</style></head><body><div class='box'>"
+                        + "<h2>Antalya Kurye</h2>"
+                        + "<p>Bağlantı sağlanamadı. Lütfen internetinizi kontrol edin.</p>"
+                        + "<button onclick='location.href=\"" + PRIMARY_URL + "\"'>Yeniden Dene</button>"
+                        + "</div></body></html>";
+                    view.loadDataWithBaseURL(null, errHtml, "text/html", "UTF-8", null);
+                }
+            });
+
+            webView.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public void onPermissionRequest(final PermissionRequest request) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                request.grant(request.getResources());
+                            } catch (Throwable ignored) {}
+                        }
+                    });
+                }
+
+                @Override
+                public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                    callback.invoke(origin, true, true);
+                }
+            });
+
+            webView.loadUrl(PRIMARY_URL);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+
+        // 2. Bildirim kanalini olustur
         createNotificationChannel();
 
-        // 1. Android Calisma Zamani Izinlerini Aninda Iste (Bildirim, Konum vb.)
-        checkAndRequestAllPermissions();
-
-        // 2. Arka Planda Uykuya Girmemesi Icin Pil Optimizasyon Muafiyeti Iste
-        requestBatteryOptimizationExemption();
-
-        // 3. Arka Plan Uyanik Kalma Kilidi (WakeLock) Al
+        // 3. WakeLock (Arka Plan Korumasi)
         try {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AntalyaKurye:KeepAlive");
-                wakeLock.acquire(24 * 60 * 60 * 1000L); // 24 saat boyunca uyanik tut
+                wakeLock.acquire(12 * 60 * 60 * 1000L);
             }
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
 
-        // 4. Foreground Service Baslat (Arka planda kesintisiz bildirim baglantisi)
-        startCourierForegroundService("🛵 Antalya Kurye Aktif", "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz");
-
-        webView = new WebView(this);
-        setContentView(webView);
-
-        WebSettings s = webView.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setDatabaseEnabled(true);
-        s.setGeolocationEnabled(true);
-        s.setUseWideViewPort(true);
-        s.setLoadWithOverviewMode(true);
-        s.setMediaPlaybackRequiresUserGesture(false);
-        s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; ForegroundService)");
-
-        // Web uygulamasinin native Android fonksiyonlarini cagirabilmesi icin Javascript koprusu
-        webView.addJavascriptInterface(new WebAppInterface(), "AndroidApp");
-
-        webView.setWebViewClient(new WebViewClient() {
+        // 4. Guvenli Gecikmeli Izin & Arka Plan Servis Baslatma (Uygulamanin acilisinda asla cokmez)
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
-                return true;
+            public void run() {
+                try {
+                    checkAndRequestAllPermissions();
+                    startCourierForegroundService("🛵 Antalya Kurye Aktif", "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz");
+                } catch (Throwable ignored) {}
             }
-
-            @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                if (!triedFallback) {
-                    triedFallback = true;
-                    view.loadUrl(FALLBACK_URL);
-                    return;
-                }
-                String errHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                    + "<style>body{margin:0;background:#021814;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;padding:20px;box-sizing:border-box;}"
-                    + ".box{background:#03241d;border:1px solid #059669;border-radius:24px;padding:32px 20px;max-width:340px;width:100%;}"
-                    + "h2{color:#34d399;font-size:20px;margin:0 0 10px;}"
-                    + "p{color:#94a3b8;font-size:13px;line-height:1.5;margin:0 0 20px;}"
-                    + "button{background:linear-gradient(135deg,#dc2626,#f59e0b);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:14px;font-weight:bold;cursor:pointer;width:100%;}"
-                    + "</style></head><body><div class='box'>"
-                    + "<h2>Antalya Kurye</h2>"
-                    + "<p>Bağlantı sağlanamadı. Lütfen internetinizi kontrol edin.</p>"
-                    + "<button onclick='location.href=\"" + PRIMARY_URL + "\"'>Yeniden Dene</button>"
-                    + "</div></body></html>";
-                view.loadDataWithBaseURL(null, errHtml, "text/html", "UTF-8", null);
-            }
-        });
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onPermissionRequest(final PermissionRequest request) {
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            request.grant(request.getResources());
-                        } catch (Exception ignored) {}
-                    }
-                });
-            }
-
-            @Override
-            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, true);
-            }
-        });
-
-        webView.loadUrl(PRIMARY_URL);
+        }, 1500);
     }
 
     public void startCourierForegroundService(String title, String text) {
@@ -146,13 +165,13 @@ public class MainActivity extends Activity {
                 try {
                     java.lang.reflect.Method startFgMethod = Context.class.getMethod("startForegroundService", Intent.class);
                     startFgMethod.invoke(this, serviceIntent);
-                } catch (Exception fallback) {
+                } catch (Throwable fallback) {
                     startService(serviceIntent);
                 }
             } else {
                 startService(serviceIntent);
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -162,16 +181,18 @@ public class MainActivity extends Activity {
             Intent serviceIntent = new Intent(this, CourierForegroundService.class);
             serviceIntent.setAction(CourierForegroundService.ACTION_STOP);
             stopService(serviceIntent);
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // KRİTİK: webView.onPause() kasitli olarak cagirILMAZ!
-        // Boylece Javascript motoru ve Firestore arkaplanda uyumaz, canli calismaya devam eder!
+        // webView.onPause() kasitli olarak cagirILMAZ!
+        // Javascript timerlari ve Firestore arka planda canli calismaya devam eder!
         if (webView != null) {
-            webView.resumeTimers();
+            try {
+                webView.resumeTimers();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -179,7 +200,9 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         if (webView != null) {
-            webView.resumeTimers();
+            try {
+                webView.resumeTimers();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -187,7 +210,9 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (webView != null) {
-            webView.resumeTimers();
+            try {
+                webView.resumeTimers();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -209,14 +234,14 @@ public class MainActivity extends Activity {
                 if (!needed.isEmpty()) {
                     requestPermissions(needed.toArray(new String[needed.size()]), 1001);
                 }
-            } catch (Exception ignored) {}
+            } catch (Throwable ignored) {}
         }
     }
 
     private void requestBatteryOptimizationExemption() {
         if (Build.VERSION.SDK_INT >= 23) {
             try {
-                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                 String packageName = getPackageName();
                 if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
                     Intent intent = new Intent();
@@ -224,11 +249,11 @@ public class MainActivity extends Activity {
                     intent.setData(Uri.parse("package:" + packageName));
                     startActivity(intent);
                 }
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 try {
                     Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                     startActivity(intent);
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
             }
         }
     }
@@ -236,7 +261,7 @@ public class MainActivity extends Activity {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             try {
-                NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
                 if (nm == null) return;
                 Class<?> channelClass = Class.forName("android.app.NotificationChannel");
                 java.lang.reflect.Constructor<?> constructor = channelClass.getConstructor(String.class, CharSequence.class, int.class);
@@ -253,7 +278,7 @@ public class MainActivity extends Activity {
 
                 java.lang.reflect.Method createMethod = nm.getClass().getMethod("createNotificationChannel", channelClass);
                 createMethod.invoke(nm, channel);
-            } catch (Exception ignored) {}
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -274,27 +299,34 @@ public class MainActivity extends Activity {
                 }
                 ringtone.play();
             }
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
     }
 
     private void showNativeNotification(String title, String body) {
         try {
-            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            createNotificationChannel();
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
 
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            
+            // Android 12+ (API 31+) FLAG_IMMUTABLE zorunlu!
+            int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) {
+                pendingFlags |= 0x04000000;
+            }
+            PendingIntent pi = PendingIntent.getActivity(this, 0, intent, pendingFlags);
 
             Notification.Builder builder = new Notification.Builder(this);
             if (Build.VERSION.SDK_INT >= 26) {
                 try {
                     java.lang.reflect.Method setChannelMethod = builder.getClass().getMethod("setChannelId", String.class);
                     setChannelMethod.invoke(builder, CHANNEL_ID);
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
             }
 
-            // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve tam baslik/metin
+            // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve genisletilmis tam metin
             builder.setTicker(title + ": " + body)
                    .setContentTitle(title)
                    .setContentText(body)
@@ -306,7 +338,7 @@ public class MainActivity extends Activity {
                    .setVibrate(new long[]{0, 350, 150, 350, 150, 600});
 
             if (Build.VERSION.SDK_INT >= 16) {
-                builder.setStyle(new Notification.BigTextStyle().bigText(body).setSummaryText("Antalya Kurye Havuz"));
+                builder.setStyle(new Notification.BigTextStyle().bigText(body).setSummaryText("Antalya Kurye"));
             }
 
             if (Build.VERSION.SDK_INT >= 21) {
@@ -317,30 +349,32 @@ public class MainActivity extends Activity {
             playNativeAlarm();
 
             try {
-                Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null) {
                     v.vibrate(new long[]{0, 350, 150, 350, 150, 600}, -1);
                 }
-            } catch (Exception ignored) {}
+            } catch (Throwable ignored) {}
 
             nm.notify((int) (System.currentTimeMillis() % 100000), builder.build());
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        boolean anyGranted = false;
-        for (int res : grantResults) {
-            if (res == PackageManager.PERMISSION_GRANTED) {
-                anyGranted = true;
-                break;
+        try {
+            boolean anyGranted = false;
+            for (int res : grantResults) {
+                if (res == PackageManager.PERMISSION_GRANTED) {
+                    anyGranted = true;
+                    break;
+                }
             }
-        }
-        if (anyGranted) {
-            Toast.makeText(this, "Antalya Kurye: İzinler onaylandı!", Toast.LENGTH_SHORT).show();
-        }
-        requestBatteryOptimizationExemption();
+            if (anyGranted) {
+                Toast.makeText(this, "Antalya Kurye: İzinler onaylandı!", Toast.LENGTH_SHORT).show();
+                startCourierForegroundService("🛵 Antalya Kurye Aktif", "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz");
+            }
+        } catch (Throwable ignored) {}
     }
 
     public class WebAppInterface {
@@ -349,8 +383,10 @@ public class MainActivity extends Activity {
             MainActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    checkAndRequestAllPermissions();
-                    requestBatteryOptimizationExemption();
+                    try {
+                        checkAndRequestAllPermissions();
+                        requestBatteryOptimizationExemption();
+                    } catch (Throwable ignored) {}
                 }
             });
         }
@@ -360,7 +396,9 @@ public class MainActivity extends Activity {
             MainActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    startCourierForegroundService(title, text);
+                    try {
+                        startCourierForegroundService(title, text);
+                    } catch (Throwable ignored) {}
                 }
             });
         }
@@ -370,7 +408,9 @@ public class MainActivity extends Activity {
             MainActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    stopCourierForegroundService();
+                    try {
+                        stopCourierForegroundService();
+                    } catch (Throwable ignored) {}
                 }
             });
         }
@@ -381,7 +421,9 @@ public class MainActivity extends Activity {
                 webView.post(new Runnable() {
                     @Override
                     public void run() {
-                        webView.resumeTimers();
+                        try {
+                            webView.resumeTimers();
+                        } catch (Throwable ignored) {}
                     }
                 });
             }
@@ -400,11 +442,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void vibrate(long ms) {
             try {
-                Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null) {
                     v.vibrate(ms > 0 ? ms : 600);
                 }
-            } catch (Exception ignored) {}
+            } catch (Throwable ignored) {}
         }
 
         @JavascriptInterface
@@ -421,11 +463,11 @@ public class MainActivity extends Activity {
         public boolean isBatteryOptimizationIgnored() {
             try {
                 if (Build.VERSION.SDK_INT >= 23) {
-                    PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                     return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
                 }
                 return true;
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 return false;
             }
         }
@@ -442,11 +484,11 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (wakeLock != null && wakeLock.isHeld()) {
-            try {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
-            } catch (Exception ignored) {}
-        }
+            }
+        } catch (Throwable ignored) {}
         super.onDestroy();
     }
 }
