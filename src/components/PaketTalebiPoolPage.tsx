@@ -28,15 +28,9 @@ import {
   Bell,
   Download,
   Smartphone,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
-import {
-  triggerHapticVibration,
-  isApkStatusNotificationHidden,
-  toggleApkStatusBarNotification,
-} from '../services/notificationService';
+import { triggerHapticVibration } from '../services/notificationService';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 import { isRunningInApk, shouldHideApkButtons, markApkDownloaded } from '../utils/apkDetection';
 import { TermsOfUseModal } from './TermsOfUseModal';
@@ -94,19 +88,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
     !currentUser.name?.includes('Mustafa Demir');
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
-  const [isStatusBarNotificationHidden, setIsStatusBarNotificationHidden] = useState<boolean>(() => isApkStatusNotificationHidden());
-  const [statusBarToast, setStatusBarToast] = useState<string | null>(null);
-
-  const handleToggleStatusBarNotification = () => {
-    const visible = toggleApkStatusBarNotification();
-    setIsStatusBarNotificationHidden(!visible);
-    if (!visible) {
-      setStatusBarToast('Üst bildirim çubuğundaki sabit yazı kapatıldı. Sipariş dinleme arka planda kesintisiz çalışmaya devam ediyor.');
-    } else {
-      setStatusBarToast('Üst bildirim çubuğundaki durum yazısı yeniden açıldı.');
-    }
-    setTimeout(() => setStatusBarToast(null), 5000);
-  };
 
   // If user accepted an order, check if it's currently in their active list
   const activeUserDeliveries = requests.filter(
@@ -217,24 +198,15 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
-            {/* Android Üst Bildirim Çubuğu Yazısını Kapat / Aç Butonu */}
-            <button
-              type="button"
-              onClick={handleToggleStatusBarNotification}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition cursor-pointer active:scale-95 shadow-xs ${
-                isStatusBarNotificationHidden
-                  ? 'bg-slate-800/90 text-amber-300 border-amber-500/50 hover:bg-slate-700'
-                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900'
-              }`}
-              title="Android üst bildirim çubuğundaki 'Antalya Kurye Aktif' yazısını kapatıp açabilirsiniz. Arka planda sipariş dinleme devam eder."
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-[11px] sm:text-xs transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
+              title="Antalya Kurye Mobil APK Uygulamasını İndirin"
             >
-              {isStatusBarNotificationHidden ? (
-                <Eye className="w-3.5 h-3.5 text-amber-400" />
-              ) : (
-                <EyeOff className="w-3.5 h-3.5 text-emerald-400" />
-              )}
-              <span>{isStatusBarNotificationHidden ? 'Üst Yazıyı Aç' : 'Üst Yazıyı Kapat'}</span>
-            </button>
+              <Download className="w-3.5 h-3.5" />
+              <span>APK İndir</span>
+            </a>
 
             <button
               type="button"
@@ -265,23 +237,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* Durum Bildirimi Bilgilendirme Toast'u */}
-        {statusBarToast && (
-          <div className="p-3 bg-gradient-to-r from-[#03241d] to-[#021d17] border border-amber-500/50 rounded-2xl text-emerald-100 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{statusBarToast}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStatusBarToast(null)}
-              className="text-amber-300 hover:text-white font-bold text-xs shrink-0 cursor-pointer"
-            >
-              Kapat
-            </button>
-          </div>
-        )}
 
         {/* MOBİL KURYE APK HIZLI İNDİRME BANNERI (APK içinde veya indirilmişse gizlenir) */}
         {!shouldHideApkButtons() && (
@@ -330,13 +285,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => openAuthModal('courier_login', 'Farklı bir kurye hesabına geçmek için lütfen giriş yapınız.')}
-                className="px-3 py-1.5 rounded-xl bg-[#021813] hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold transition cursor-pointer shrink-0"
-              >
-                Kurye Değiştir
-              </button>
               <button
                 type="button"
                 onClick={() => logout()}
