@@ -125,13 +125,35 @@ function playTone(
   osc.stop(startTime + duration);
 }
 
+let cachedAudioElement: HTMLAudioElement | null = null;
+
+function playAudioFile(url: string, volume = 0.9): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  try {
+    if (!cachedAudioElement) {
+      cachedAudioElement = new Audio();
+      cachedAudioElement.preload = 'auto';
+    }
+    cachedAudioElement.src = url;
+    cachedAudioElement.volume = volume;
+    return cachedAudioElement.play().catch(() => {
+      // Autoplay or format fallback
+    });
+  } catch {
+    return Promise.resolve();
+  }
+}
+
 /**
- * 1. YENİ PAKET TALEBİ UYARI SESİ (New Package Alert Sound)
- * Hem kurye hem müşteri tarafında çalar:
- * Dikkat çeken çift tonlu "Ding-Dong! Ding-Dong!" kurye çağrı melodisi
+ * 1. YENİ PAKET TALEBİ & KURYE HAVUZ UYARI SESİ (New Package Alert Sound)
+ * Yüklenen yeni çağrı melodisi: 4 notalı kristal parlak yükselen arpeggio ve onay tınısı
+ * (E5 -> A5 -> C#6 -> E6 ardından A5 -> C#6 -> E6 -> G#6 -> A6)
  */
 export function playNewOrderSound() {
   if (!isSoundAlertsEnabled()) return;
+
+  // 1. Try playing custom audio asset first
+  playAudioFile('/sounds/order_alert.mp3', 0.95);
 
   try {
     const ctx = getAudioContext();
@@ -142,14 +164,19 @@ export function playNewOrderSound() {
 
     const now = ctx.currentTime;
 
-    // Pulse 1: Ding-Dong (784Hz G5 -> 1046Hz C6)
-    playTone(ctx, 784.0, now, 0.18, 0.32, 'triangle');
-    playTone(ctx, 1046.5, now + 0.08, 0.28, 0.35, 'sine');
+    // Pulse 1: Uplifting courier call arpeggio (E5 -> A5 -> C#6 -> E6)
+    playTone(ctx, 659.25, now, 0.22, 0.35, 'triangle');
+    playTone(ctx, 880.00, now + 0.12, 0.22, 0.38, 'sine');
+    playTone(ctx, 1108.73, now + 0.24, 0.26, 0.40, 'triangle');
+    playTone(ctx, 1318.51, now + 0.38, 0.55, 0.45, 'sine');
 
-    // Pulse 2: Second Ding-Dong for high attentiveness (courier dispatch feel)
-    const secondPulse = now + 0.24;
-    playTone(ctx, 880.0, secondPulse, 0.18, 0.34, 'triangle');
-    playTone(ctx, 1318.51, secondPulse + 0.08, 0.38, 0.38, 'sine'); // E6
+    // Pulse 2: High attention flourish (A5 -> C#6 -> E6 -> G#6 -> A6)
+    const secondPulse = now + 0.95;
+    playTone(ctx, 880.00, secondPulse, 0.18, 0.35, 'sine');
+    playTone(ctx, 1108.73, secondPulse + 0.12, 0.18, 0.38, 'triangle');
+    playTone(ctx, 1318.51, secondPulse + 0.24, 0.24, 0.42, 'sine');
+    playTone(ctx, 1661.22, secondPulse + 0.38, 0.28, 0.44, 'triangle');
+    playTone(ctx, 1760.00, secondPulse + 0.52, 1.10, 0.48, 'sine');
   } catch (e) {
     console.debug('playNewOrderSound error:', e);
   }
@@ -158,7 +185,7 @@ export function playNewOrderSound() {
 /**
  * 1.5 ULTRA-LOUD KURYE HAVUZ SİRENİ (High Urgency Pool Dispatch Alarm)
  * Trafikte veya cepte olan kuryelerin yeni siparişi anında fark etmesi için
- * yüksek sesli, 3 tekrarlı acil çağrı melodisi
+ * hem yerel Android alarmını hem yeni sipariş sesini çalar
  */
 export function playCourierPoolSiren() {
   if (!isSoundAlertsEnabled()) return;
@@ -172,23 +199,8 @@ export function playCourierPoolSiren() {
     }
   }
 
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-
-    const now = ctx.currentTime;
-    // 3 rapid pulses of high frequency dispatch beeps
-    for (let i = 0; i < 3; i++) {
-      const offset = now + i * 0.22;
-      playTone(ctx, 987.77, offset, 0.09, 0.45, 'sawtooth'); // B5
-      playTone(ctx, 1318.51, offset + 0.09, 0.11, 0.50, 'sine'); // E6
-    }
-  } catch (e) {
-    console.debug('playCourierPoolSiren error:', e);
-  }
+  playAudioFile('/sounds/order_alert.mp3', 1.0);
+  playNewOrderSound();
 }
 
 /**

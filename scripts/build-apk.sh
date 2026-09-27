@@ -56,6 +56,10 @@ async function makeIcons() {
 makeIcons().catch(console.error);
 "
 
+# Custom order alert sound for native Android notifications
+mkdir -p "$BUILD_DIR/res/raw"
+cp public/sounds/order_alert.wav "$BUILD_DIR/res/raw/order_alert.wav"
+
 # Create AndroidManifest.xml
 cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
 <?xml version="1.0" encoding="utf-8"?>
@@ -297,6 +301,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -618,6 +623,16 @@ public class MainActivity extends Activity {
                 java.lang.reflect.Method setVibPatMethod = channelClass.getMethod("setVibrationPattern", long[].class);
                 setVibPatMethod.invoke(channel, new long[]{0, 350, 150, 350, 150, 600});
 
+                try {
+                    Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.order_alert);
+                    AudioAttributes aa = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build();
+                    java.lang.reflect.Method setSoundMethod = channelClass.getMethod("setSound", Uri.class, AudioAttributes.class);
+                    setSoundMethod.invoke(channel, soundUri, aa);
+                } catch (Throwable ignored) {}
+
                 java.lang.reflect.Method createMethod = nm.getClass().getMethod("createNotificationChannel", channelClass);
                 createMethod.invoke(nm, channel);
             } catch (Throwable ignored) {}
@@ -626,19 +641,24 @@ public class MainActivity extends Activity {
 
     private void playNativeAlarm() {
         try {
-            Uri notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (notificationUri == null) {
-                notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            MediaPlayer mp = MediaPlayer.create(getApplicationContext(), R.raw.order_alert);
+            if (mp != null) {
+                mp.setVolume(1.0f, 1.0f);
+                mp.start();
+                mp.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                    @Override
+                    public void onCompletion(MediaPlayer player) {
+                        try { player.release(); } catch (Throwable ignored) {}
+                    }
+                });
+                return;
             }
+        } catch (Throwable ignored) {}
+
+        try {
+            Uri notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             Ringtone ringtone = RingtoneManager.getRingtone(getApplicationContext(), notificationUri);
             if (ringtone != null) {
-                if (Build.VERSION.SDK_INT >= 21) {
-                    AudioAttributes aa = new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build();
-                    ringtone.setAudioAttributes(aa);
-                }
                 ringtone.play();
             }
         } catch (Throwable ignored) {}
@@ -678,6 +698,11 @@ public class MainActivity extends Activity {
                     );
                     wake.acquire(8000);
                 }
+            } catch (Throwable ignored) {}
+
+            try {
+                Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.order_alert);
+                builder.setSound(soundUri);
             } catch (Throwable ignored) {}
 
             // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve genisletilmis tam metin

@@ -21,6 +21,8 @@ import {
   Vibrate,
   Lock,
   AlertCircle,
+  Download,
+  Smartphone,
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -203,6 +205,17 @@ export const CourierPool: React.FC = () => {
             </span>
           </div>
 
+          <a
+            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+            download="Antalya-Kurye-Talep-Havuzu.apk"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
+            title="Arka Planda Kesintisiz Bildirim İçin Android Kurye APK'sını İndirin"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Kurye APK İndir</span>
+            <span className="sm:hidden">APK İndir</span>
+          </a>
+
           <button
             type="button"
             onClick={() => setIsCourierOnline(!isCourierOnline)}
@@ -216,6 +229,32 @@ export const CourierPool: React.FC = () => {
             <span>{isCourierOnline ? 'Çevrimiçi' : 'Çevrimdışı'}</span>
           </button>
         </div>
+      </div>
+
+      {/* Kurye APK Hızlı İndirme Kartı */}
+      <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] rounded-2xl border border-amber-500/40 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
+        <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
+            <Smartphone className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 text-left">
+            <div className="flex items-center gap-2">
+              <h3 className="font-black text-white text-xs sm:text-sm">Antalya Kurye Mobil Uygulaması (APK)</h3>
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
+            </div>
+            <p className="text-[11px] text-emerald-300/80">
+              Ekran kapalıyken veya telefon kilitliyken 7/24 sesli çağrılarla yeni paketleri anında yakalayın.
+            </p>
+          </div>
+        </div>
+        <a
+          href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+          download="Antalya-Kurye-Talep-Havuzu.apk"
+          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          <span>Kurye APK İndir</span>
+        </a>
       </div>
 
       {/* ACTIVE COURIER DELIVERY LOCK BANNER */}
