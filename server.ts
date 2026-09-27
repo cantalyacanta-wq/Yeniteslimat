@@ -132,6 +132,7 @@ export interface SmtpConfig {
   fromName?: string;
   fromEmail?: string;
   enabled?: boolean;
+  newOrderEmailsEnabled?: boolean;
   lastTestedAt?: string;
   lastTestStatus?: 'success' | 'error';
   lastTestMessage?: string;
@@ -181,6 +182,22 @@ interface ServerDatabase {
   updatedAt: string;
 }
 
+const DEFAULT_SMTP_CONFIG: SmtpConfig = {
+  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  user: 'kuryeantalyam@gmail.com',
+  pass: 'tlnsrezkaobytsvg',
+  fromName: 'Antalya Şehir İçi Teslimat 7/24',
+  fromEmail: 'kuryeantalyam@gmail.com',
+  enabled: true,
+  newOrderEmailsEnabled: false,
+  lastTestedAt: new Date().toISOString(),
+  lastTestStatus: 'success',
+  lastTestMessage: 'Gmail SMTP bağlantısı hazırlandı (kuryeantalyam@gmail.com).',
+};
+
 let dbState: ServerDatabase = {
   users: DEFAULT_USERS,
   couriers: DEFAULT_COURIERS,
@@ -188,20 +205,7 @@ let dbState: ServerDatabase = {
   emailLogs: [],
   extraCourierEmails: [],
   visitorStats: { ...DEFAULT_VISITOR_STATS },
-  smtpConfig: {
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    user: 'kuryeantalyam@gmail.com',
-    pass: 'tlnsrezkaobytsvg',
-    fromName: 'Antalya Şehir İçi Teslimat 7/24',
-    fromEmail: 'kuryeantalyam@gmail.com',
-    enabled: true,
-    lastTestedAt: new Date().toISOString(),
-    lastTestStatus: 'success',
-    lastTestMessage: 'Gmail SMTP bağlantısı hazırlandı (kuryeantalyam@gmail.com).',
-  },
+  smtpConfig: { ...DEFAULT_SMTP_CONFIG },
   updatedAt: new Date().toISOString(),
 };
 
@@ -256,6 +260,7 @@ function loadDatabase() {
           fromName: existingSmtp.fromName || 'Antalya Şehir İçi Teslimat 7/24',
           fromEmail: existingSmtp.fromEmail || 'kuryeantalyam@gmail.com',
           enabled: existingSmtp.enabled !== false,
+          newOrderEmailsEnabled: existingSmtp.newOrderEmailsEnabled === true ? true : false,
           lastTestedAt: existingSmtp.lastTestedAt || new Date().toISOString(),
           lastTestStatus: existingSmtp.lastTestStatus || 'success',
           lastTestMessage: existingSmtp.lastTestMessage || 'Gmail SMTP bağlantısı hazır.',
@@ -822,6 +827,22 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
   const trackingCode = order.trackingCode || orderId || 'ANT-0000';
   const isTest = isTestOrFakeOrder(order);
 
+  // 0. GLOBAL NEW ORDER EMAILS DISABLED GUARD (User Request: "Yeni talep maillerini kapat yeni bir talep geldiginde mail kimseye gitmesin")
+  const newOrderEmailsEnabled = dbState.smtpConfig?.newOrderEmailsEnabled === true;
+  if (!newOrderEmailsEnabled && !isForce) {
+    console.log(`[EMAIL GUARD] 🚫 Yeni talep mailleri kapalı. #${trackingCode} (${orderId}) için kimseye e-posta gönderilmedi.`);
+    order.emailDispatched = true;
+    order.emailDispatchedAt = 'disabled_by_config';
+    if (orderId) dispatchedEmailOrderIds.add(orderId);
+    if (trackingCode) dispatchedEmailOrderIds.add(trackingCode);
+    return {
+      success: true,
+      isRealDelivery: false,
+      status: 'disabled',
+      message: 'Yeni talep e-posta bildirimleri kapatılmıştır. Hiç kimseye e-posta gönderilmedi.',
+    };
+  }
+
   // 1. REJECT TEST OR FAKE ORDERS COMPLETELY
   if (isTest && !isForce) {
     console.log(`[EMAIL GUARD] 🚫 Skipping test/fake order #${trackingCode} (${orderId}). No email will be sent.`);
@@ -1261,7 +1282,8 @@ function initFirestoreSync() {
           const isTest = isTestOrFakeOrder(fullOrder);
           const orderAgeMs = fullOrder.createdAt ? (Date.now() - new Date(fullOrder.createdAt).getTime()) : Infinity;
           const isFresh = orderAgeMs <= MAX_ORDER_EMAIL_AGE_MS;
-          const needsEmail = !isTest && isFresh && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
+          const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled === true;
+          const needsEmail = isOrderEmailsActive && !isTest && isFresh && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
 
           if (needsEmail) {
             console.log(`[FIRESTORE SYNC] 📦 New fresh customer order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
@@ -1396,6 +1418,9 @@ setInterval(() => {
         }
         return;
       }
+
+      const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled === true;
+      if (!isOrderEmailsActive) return;
 
       const isUnsent = !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
@@ -1902,6 +1927,7 @@ app.get('/api/smtp-config', (req, res) => {
       fromName: cfg.fromName || 'Antalya Şehir İçi Teslimat 7/24',
       fromEmail: cfg.fromEmail || user || 'kuryeantalyam@gmail.com',
       enabled: cfg.enabled !== false,
+      newOrderEmailsEnabled: Boolean(cfg.newOrderEmailsEnabled),
       hasPassword: hasPass,
       lastTestedAt: cfg.lastTestedAt,
       lastTestStatus: cfg.lastTestStatus,
@@ -1911,10 +1937,32 @@ app.get('/api/smtp-config', (req, res) => {
   });
 });
 
+// Quick toggle for New Order Emails (Admin Quick Switch)
+app.post('/api/notifications/toggle-order-emails', (req, res) => {
+  try {
+    const { enabled } = req.body || {};
+    if (!dbState.smtpConfig) {
+      dbState.smtpConfig = { ...DEFAULT_SMTP_CONFIG };
+    }
+    const currentStatus = dbState.smtpConfig.newOrderEmailsEnabled === true;
+    const newStatus = typeof enabled === 'boolean' ? enabled : !currentStatus;
+    dbState.smtpConfig.newOrderEmailsEnabled = newStatus;
+    saveDatabase();
+    console.log(`[ORDER EMAILS TOGGLED] Yeni talep mailleri durumu: ${newStatus ? 'AÇIK' : 'KAPALI'}`);
+    res.json({
+      success: true,
+      newOrderEmailsEnabled: newStatus,
+      message: newStatus ? 'Yeni sipariş e-posta bildirimleri açıldı.' : 'Yeni sipariş e-posta bildirimleri kapatıldı (kimseye mail gitmeyecek).',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // SAVE & VERIFY SMTP Configuration
 app.post('/api/smtp-config', async (req, res) => {
   try {
-    const { service, host, port, secure, user, pass, fromName, fromEmail, enabled } = req.body;
+    const { service, host, port, secure, user, pass, fromName, fromEmail, enabled, newOrderEmailsEnabled } = req.body;
     const existing = dbState.smtpConfig || {};
     const finalPass = (pass && pass.trim() !== '') ? pass.trim() : (existing.pass || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '');
     const cleanUser = (user || existing.user || 'kuryeantalyam@gmail.com').trim();
@@ -1929,6 +1977,7 @@ app.post('/api/smtp-config', async (req, res) => {
       fromName: (fromName || 'Antalya Şehir İçi Teslimat 7/24').trim(),
       fromEmail: (fromEmail || cleanUser || 'kuryeantalyam@gmail.com').trim(),
       enabled: enabled !== false,
+      newOrderEmailsEnabled: typeof newOrderEmailsEnabled === 'boolean' ? newOrderEmailsEnabled : Boolean(existing.newOrderEmailsEnabled),
     };
 
     let testVerified = false;

@@ -43,6 +43,7 @@ import {
   Calendar,
   Smartphone,
   Bell,
+  BellOff,
   Volume2,
   QrCode,
   Share2,
@@ -215,6 +216,28 @@ export const AdminManagement: React.FC = () => {
   const [newExtraEmailInput, setNewExtraEmailInput] = useState('');
   const [isAddingExtraEmail, setIsAddingExtraEmail] = useState(false);
   const [extraEmailFeedback, setExtraEmailFeedback] = useState<string | null>(null);
+  const [newOrderEmailsEnabled, setNewOrderEmailsEnabled] = useState(false);
+  const [isTogglingOrderEmails, setIsTogglingOrderEmails] = useState(false);
+
+  const handleToggleOrderEmails = async () => {
+    setIsTogglingOrderEmails(true);
+    try {
+      const nextVal = !newOrderEmailsEnabled;
+      const res = await fetch('/api/notifications/toggle-order-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextVal }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNewOrderEmailsEnabled(Boolean(data.newOrderEmailsEnabled));
+      }
+    } catch (err) {
+      console.error('Toggle order emails error:', err);
+    } finally {
+      setIsTogglingOrderEmails(false);
+    }
+  };
 
   const fetchEmailLogs = async () => {
     setIsLoadingEmails(true);
@@ -280,6 +303,7 @@ export const AdminManagement: React.FC = () => {
             setSmtpLastTestedAt(data.config.lastTestedAt || new Date().toISOString());
             setSmtpLastTestStatus(data.config.lastTestStatus || 'success');
             setSmtpLastTestMessage(data.config.lastTestMessage || 'Gmail SMTP bağlantısı aktif.');
+            setNewOrderEmailsEnabled(Boolean(data.config.newOrderEmailsEnabled));
             if (!testTargetEmail && data.config.user) {
               setTestTargetEmail(data.config.user);
             }
@@ -336,6 +360,7 @@ export const AdminManagement: React.FC = () => {
           fromName: smtpFromName.trim(),
           fromEmail: smtpFromEmail.trim(),
           enabled: true,
+          newOrderEmailsEnabled: newOrderEmailsEnabled,
         }),
       });
 
@@ -1852,6 +1877,68 @@ export const AdminManagement: React.FC = () => {
       {/* ===================================================================== */}
       {activeTab === 'emails' && (
         <div className="space-y-6">
+          {/* Global New Order Emails Kill Switch Banner */}
+          <div className={`p-5 sm:p-6 rounded-3xl border text-white space-y-4 shadow-xl transition ${
+            !newOrderEmailsEnabled
+              ? 'bg-gradient-to-r from-[#1f0d04] via-[#241105] to-[#170a02] border-amber-600/70'
+              : 'bg-gradient-to-r from-[#03241d] to-[#021f19] border-emerald-500/60'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className={`p-3 rounded-2xl shrink-0 ${
+                  !newOrderEmailsEnabled
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                }`}>
+                  <BellOff className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-extrabold text-white">
+                      Yeni Talep E-Posta Bildirimleri:
+                    </h3>
+                    <span className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                      !newOrderEmailsEnabled
+                        ? 'bg-rose-500 text-white shadow-xs'
+                        : 'bg-emerald-500 text-black shadow-xs'
+                    }`}>
+                      {!newOrderEmailsEnabled
+                        ? '🔴 KAPALI (Talep Geldiğinde Kimseye Mail Gitmez)'
+                        : '🟢 AÇIK (Talep Geldiğinde E-posta Gönderilir)'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {!newOrderEmailsEnabled
+                      ? 'Yeni bir sipariş oluşturulduğunda kuryelere veya yönetime e-posta gönderimi kapatılmıştır. Yeni talep geldiğinde kimseye mail iletilmez.'
+                      : 'Yeni bir sipariş oluşturulduğunda sistem kuryelerin ve yöneticinin e-posta kutusuna otomatik bildirim iletir.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={isTogglingOrderEmails}
+                  onClick={handleToggleOrderEmails}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-black transition cursor-pointer flex items-center gap-2 shadow-md ${
+                    !newOrderEmailsEnabled
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-950/40'
+                      : 'bg-gradient-to-r from-rose-700 to-rose-600 hover:from-rose-600 hover:to-rose-500 text-white shadow-rose-950/40'
+                  }`}
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>
+                    {isTogglingOrderEmails
+                      ? 'Güncelleniyor...'
+                      : !newOrderEmailsEnabled
+                        ? 'Yeni Talep Maillerini Aç'
+                        : 'Yeni Talep Maillerini Kapat'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Status Diagnostic Card */}
           <div className={`p-5 sm:p-6 rounded-3xl border text-white space-y-4 shadow-xl transition ${
             smtpLastTestStatus === 'success' || (smtpIsConfigured && smtpHasPassword)
