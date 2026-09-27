@@ -146,6 +146,7 @@ import java.util.concurrent.TimeUnit;
 public class CourierForegroundService extends Service {
     public static final String ACTION_START = "com.antalyakurye.talep.START_FOREGROUND";
     public static final String ACTION_STOP = "com.antalyakurye.talep.STOP_FOREGROUND";
+    public static final String ACTION_HIDE_NOTIFICATION = "com.antalyakurye.talep.HIDE_NOTIFICATION";
     public static final String EXTRA_TITLE = "EXTRA_TITLE";
     public static final String EXTRA_TEXT = "EXTRA_TEXT";
     private static final int FOREGROUND_NOTIFICATION_ID = 9001;
@@ -213,6 +214,18 @@ public class CourierForegroundService extends Service {
             return START_NOT_STICKY;
         }
 
+        if (intent != null && ACTION_HIDE_NOTIFICATION.equals(intent.getAction())) {
+            try {
+                if (Build.VERSION.SDK_INT >= 24) {
+                    stopForeground(STOP_FOREGROUND_REMOVE);
+                } else {
+                    stopForeground(true);
+                }
+            } catch (Throwable ignored) {}
+            // Servis durdurulmaz (stopSelf cagrilmaz), arka plan ve bildirim dinleme kesintisiz surer
+            return START_STICKY;
+        }
+
         try {
             createChannelIfNeeded();
 
@@ -235,6 +248,11 @@ public class CourierForegroundService extends Service {
             }
             PendingIntent pi = PendingIntent.getActivity(this, 0, appIntent, pendingFlags);
 
+            // Bildirimi kapatma / gizleme niyeti (Kullanici istediginde bildirimi kapatabilir, servis arka planda calisir)
+            Intent hideIntent = new Intent(this, CourierForegroundService.class);
+            hideIntent.setAction(ACTION_HIDE_NOTIFICATION);
+            PendingIntent hidePi = PendingIntent.getService(this, 1, hideIntent, pendingFlags);
+
             Notification.Builder builder = new Notification.Builder(this);
             if (Build.VERSION.SDK_INT >= 26) {
                 try {
@@ -247,8 +265,20 @@ public class CourierForegroundService extends Service {
                    .setContentText(text)
                    .setSmallIcon(R.mipmap.ic_launcher)
                    .setContentIntent(pi)
-                   .setOngoing(true)
+                   .setDeleteIntent(hidePi)
+                   .setOngoing(false)
                    .setPriority(Notification.PRIORITY_LOW);
+
+            if (Build.VERSION.SDK_INT >= 20) {
+                Notification.Action hideAction = new Notification.Action.Builder(
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                    "Bildirimi Kapat",
+                    hidePi
+                ).build();
+                builder.addAction(hideAction);
+            } else {
+                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Bildirimi Kapat", hidePi);
+            }
 
             if (Build.VERSION.SDK_INT >= 21) {
                 builder.setVisibility(Notification.VISIBILITY_PUBLIC);
@@ -531,6 +561,14 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
+    public void hideForegroundNotification() {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_HIDE_NOTIFICATION);
+            startService(serviceIntent);
+        } catch (Throwable ignored) {}
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -790,6 +828,18 @@ public class MainActivity extends Activity {
                 public void run() {
                     try {
                         stopCourierForegroundService();
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void hideForegroundNotification() {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        MainActivity.this.hideForegroundNotification();
                     } catch (Throwable ignored) {}
                 }
             });

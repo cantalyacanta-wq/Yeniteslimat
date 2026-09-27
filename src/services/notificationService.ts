@@ -64,6 +64,67 @@ export function getNotificationPermission(): NotificationPermission | 'unsupport
 }
 
 /**
+ * Check if user has chosen to close/hide the top APK status bar notification
+ */
+export function isApkStatusNotificationHidden(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem('antalya_hide_apk_status_bar') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hide the ongoing "Antalya Kurye Aktif - Paket talep havuzu dinleniyor" notification from the Android status bar.
+ * The background listeners, order notifications and sirens continue running 100% in background.
+ */
+export function hideApkStatusBarNotification(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('antalya_hide_apk_status_bar', 'true');
+    if ((window as any).AndroidApp?.hideForegroundNotification) {
+      (window as any).AndroidApp.hideForegroundNotification();
+    } else if ((window as any).AndroidApp?.stopForegroundService) {
+      (window as any).AndroidApp.stopForegroundService();
+    }
+  } catch (e) {
+    console.debug('hideApkStatusBarNotification error:', e);
+  }
+}
+
+/**
+ * Show / restore the ongoing "Antalya Kurye Aktif" status bar notification
+ */
+export function showApkStatusBarNotification(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('antalya_hide_apk_status_bar');
+    if ((window as any).AndroidApp?.startForegroundService) {
+      (window as any).AndroidApp.startForegroundService(
+        '🛵 Antalya Kurye Aktif',
+        'Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz'
+      );
+    }
+  } catch (e) {
+    console.debug('showApkStatusBarNotification error:', e);
+  }
+}
+
+/**
+ * Toggle the status bar notification visibility
+ */
+export function toggleApkStatusBarNotification(): boolean {
+  if (isApkStatusNotificationHidden()) {
+    showApkStatusBarNotification();
+    return true; // now visible
+  } else {
+    hideApkStatusBarNotification();
+    return false; // now hidden
+  }
+}
+
+/**
  * Request notification permission from user
  */
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -71,6 +132,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (typeof window !== 'undefined' && (window as any).AndroidApp?.requestAllPermissions) {
     try {
       (window as any).AndroidApp.requestAllPermissions();
+      if (isApkStatusNotificationHidden()) {
+        setTimeout(() => {
+          hideApkStatusBarNotification();
+        }, 1800);
+      }
     } catch (e) {
       console.debug('AndroidApp.requestAllPermissions error:', e);
     }

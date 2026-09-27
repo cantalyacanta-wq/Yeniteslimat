@@ -23,12 +23,22 @@ import {
   AlertCircle,
   Download,
   Smartphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
-import { triggerHapticVibration, requestNotificationPermission, sendBrowserNotification, emitInAppNotification } from '../services/notificationService';
+import {
+  triggerHapticVibration,
+  requestNotificationPermission,
+  sendBrowserNotification,
+  emitInAppNotification,
+  isApkStatusNotificationHidden,
+  toggleApkStatusBarNotification,
+} from '../services/notificationService';
 import { playNewOrderSound, playStatusChime, playSuccessSound, unlockAudioContext } from '../utils/audio';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
+import { shouldHideApkButtons, markApkDownloaded, isRunningInApk } from '../utils/apkDetection';
 
 export const CourierPool: React.FC = () => {
   const {
@@ -47,6 +57,19 @@ export const CourierPool: React.FC = () => {
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'pool' | 'active' | 'completed'>('pool');
+  const [isStatusBarNotificationHidden, setIsStatusBarNotificationHidden] = useState<boolean>(() => isApkStatusNotificationHidden());
+  const [statusBarToast, setStatusBarToast] = useState<string | null>(null);
+
+  const handleToggleStatusBarNotification = () => {
+    const visible = toggleApkStatusBarNotification();
+    setIsStatusBarNotificationHidden(!visible);
+    if (!visible) {
+      setStatusBarToast('Üst bildirim çubuğundaki sabit yazı kapatıldı. Sipariş dinleme arka planda kesintisiz çalışmaya devam ediyor.');
+    } else {
+      setStatusBarToast('Üst bildirim çubuğundaki durum yazısı yeniden açıldı.');
+    }
+    setTimeout(() => setStatusBarToast(null), 5000);
+  };
 
   // Confirmation Modals State
   const [confirmAcceptOrder, setConfirmAcceptOrder] = useState<DeliveryRequest | null>(null);
@@ -196,25 +219,33 @@ export const CourierPool: React.FC = () => {
           </div>
         </div>
 
-        {/* Courier Online / Today Earnings Toggle */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-emerald-800/40">
-          <div className="text-left sm:text-right">
+        {/* Courier Online / Today Earnings & Status Bar Notification Toggle */}
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-emerald-800/40 flex-wrap">
+          <div className="text-left sm:text-right shrink-0">
             <span className="text-[10px] sm:text-[11px] text-emerald-400/80 block font-medium">Bugünkü Kazanç</span>
             <span className="text-base sm:text-lg font-black text-amber-400">
               {activeStats.courierEarningsToday} ₺
             </span>
           </div>
 
-          <a
-            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-            download="Antalya-Kurye-Talep-Havuzu.apk"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
-            title="Arka Planda Kesintisiz Bildirim İçin Android Kurye APK'sını İndirin"
+          {/* Android Üst Bildirim Çubuğu Yazısını Kapat / Aç Butonu */}
+          <button
+            type="button"
+            onClick={handleToggleStatusBarNotification}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 border ${
+              isStatusBarNotificationHidden
+                ? 'bg-slate-800/90 text-amber-300 border-amber-500/50 hover:bg-slate-700'
+                : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900'
+            }`}
+            title="Android üst bildirim çubuğundaki 'Antalya Kurye Aktif' yazısını kapatıp açabilirsiniz. Arka planda sipariş dinleme ve sesli sirenler kesintisiz devam eder."
           >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Kurye APK İndir</span>
-            <span className="sm:hidden">APK İndir</span>
-          </a>
+            {isStatusBarNotificationHidden ? (
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <EyeOff className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            <span>{isStatusBarNotificationHidden ? 'Üst Yazıyı Aç' : 'Üst Yazıyı Kapat'}</span>
+          </button>
 
           <button
             type="button"
@@ -231,31 +262,51 @@ export const CourierPool: React.FC = () => {
         </div>
       </div>
 
-      {/* Kurye APK Hızlı İndirme Kartı */}
-      <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] rounded-2xl border border-amber-500/40 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
-        <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
-            <Smartphone className="w-5 h-5" />
+      {/* Durum Bildirimi Bilgilendirme Toast'u */}
+      {statusBarToast && (
+        <div className="p-3 bg-gradient-to-r from-[#03241d] to-[#021d17] border border-amber-500/50 rounded-2xl text-emerald-100 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{statusBarToast}</span>
           </div>
-          <div className="min-w-0 text-left">
-            <div className="flex items-center gap-2">
-              <h3 className="font-black text-white text-xs sm:text-sm">Antalya Kurye Mobil Uygulaması (APK)</h3>
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
-            </div>
-            <p className="text-[11px] text-emerald-300/80">
-              Ekran kapalıyken veya telefon kilitliyken 7/24 sesli çağrılarla yeni paketleri anında yakalayın.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setStatusBarToast(null)}
+            className="text-amber-300 hover:text-white font-bold text-xs shrink-0 cursor-pointer"
+          >
+            Kapat
+          </button>
         </div>
-        <a
-          href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-          download="Antalya-Kurye-Talep-Havuzu.apk"
-          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          <span>Kurye APK İndir</span>
-        </a>
-      </div>
+      )}
+
+      {/* Kurye APK Hızlı İndirme Kartı (APK içinde veya indirilmişse gizlenir) */}
+      {!shouldHideApkButtons() && (
+        <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] rounded-2xl border border-amber-500/40 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
+          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 text-left">
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-white text-xs sm:text-sm">Antalya Kurye Mobil Uygulaması (APK)</h3>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
+              </div>
+              <p className="text-[11px] text-emerald-300/80">
+                Ekran kapalıyken veya telefon kilitliyken 7/24 sesli çağrılarla yeni paketleri anında yakalayın.
+              </p>
+            </div>
+          </div>
+          <a
+            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+            download="Antalya-Kurye-Talep-Havuzu.apk"
+            onClick={markApkDownloaded}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            <span>Kurye APK İndir</span>
+          </a>
+        </div>
+      )}
 
       {/* ACTIVE COURIER DELIVERY LOCK BANNER */}
       {hasActiveDelivery && (

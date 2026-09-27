@@ -238,6 +238,14 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
+    public void hideForegroundNotification() {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_HIDE_NOTIFICATION);
+            startService(serviceIntent);
+        } catch (Throwable ignored) {}
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -497,6 +505,18 @@ public class MainActivity extends Activity {
                 public void run() {
                     try {
                         stopCourierForegroundService();
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void hideForegroundNotification() {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        MainActivity.this.hideForegroundNotification();
                     } catch (Throwable ignored) {}
                 }
             });

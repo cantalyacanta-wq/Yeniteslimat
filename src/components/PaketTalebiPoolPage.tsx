@@ -28,10 +28,17 @@ import {
   Bell,
   Download,
   Smartphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
-import { triggerHapticVibration } from '../services/notificationService';
+import {
+  triggerHapticVibration,
+  isApkStatusNotificationHidden,
+  toggleApkStatusBarNotification,
+} from '../services/notificationService';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
+import { isRunningInApk, shouldHideApkButtons, markApkDownloaded } from '../utils/apkDetection';
 import { TermsOfUseModal } from './TermsOfUseModal';
 import { KvkkModal } from './KvkkModal';
 import confetti from 'canvas-confetti';
@@ -87,6 +94,19 @@ export const PaketTalebiPoolPage: React.FC = () => {
     !currentUser.name?.includes('Mustafa Demir');
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [isStatusBarNotificationHidden, setIsStatusBarNotificationHidden] = useState<boolean>(() => isApkStatusNotificationHidden());
+  const [statusBarToast, setStatusBarToast] = useState<string | null>(null);
+
+  const handleToggleStatusBarNotification = () => {
+    const visible = toggleApkStatusBarNotification();
+    setIsStatusBarNotificationHidden(!visible);
+    if (!visible) {
+      setStatusBarToast('Üst bildirim çubuğundaki sabit yazı kapatıldı. Sipariş dinleme arka planda kesintisiz çalışmaya devam ediyor.');
+    } else {
+      setStatusBarToast('Üst bildirim çubuğundaki durum yazısı yeniden açıldı.');
+    }
+    setTimeout(() => setStatusBarToast(null), 5000);
+  };
 
   // If user accepted an order, check if it's currently in their active list
   const activeUserDeliveries = requests.filter(
@@ -177,35 +197,44 @@ export const PaketTalebiPoolPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#011410] via-[#021d17] to-[#011410] text-slate-100 py-6 px-3 sm:px-6 flex flex-col justify-start items-center">
-      <div className="w-full max-w-2xl space-y-5">
+    <div className="min-h-screen bg-gradient-to-b from-[#011410] via-[#021d17] to-[#011410] text-slate-100 py-3 sm:py-6 px-2.5 sm:px-6 flex flex-col justify-start items-center">
+      <div className="w-full max-w-2xl space-y-3.5 sm:space-y-5 overflow-hidden">
         
         {/* MINIMAL HEADER: Antalya Teslimat 7/24 */}
-        <div className="flex items-center justify-between pb-3 border-b border-emerald-800/60">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-emerald-800/60 gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0">
               <Bike className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                 Antalya Şehir İçi Teslimat 7/24
               </h1>
-              <p className="text-xs text-emerald-400 font-medium">
+              <p className="text-xs text-emerald-400 font-medium truncate">
                 Paket Talebi & Kurye Görev Ekranı
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <a
-              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-              download="Antalya-Kurye-Talep-Havuzu.apk"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-[11px] sm:text-xs transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
-              title="7/24 Kesintisiz Arka Plan Bildirimi için Kurye APK'sını İndirin"
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+            {/* Android Üst Bildirim Çubuğu Yazısını Kapat / Aç Butonu */}
+            <button
+              type="button"
+              onClick={handleToggleStatusBarNotification}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition cursor-pointer active:scale-95 shadow-xs ${
+                isStatusBarNotificationHidden
+                  ? 'bg-slate-800/90 text-amber-300 border-amber-500/50 hover:bg-slate-700'
+                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900'
+              }`}
+              title="Android üst bildirim çubuğundaki 'Antalya Kurye Aktif' yazısını kapatıp açabilirsiniz. Arka planda sipariş dinleme devam eder."
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>APK İndir</span>
-            </a>
+              {isStatusBarNotificationHidden ? (
+                <Eye className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <EyeOff className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span>{isStatusBarNotificationHidden ? 'Üst Yazıyı Aç' : 'Üst Yazıyı Kapat'}</span>
+            </button>
 
             <button
               type="button"
@@ -214,14 +243,14 @@ export const PaketTalebiPoolPage: React.FC = () => {
                 playNewOrderSound();
                 triggerHapticVibration([200, 100, 200]);
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-[11px] font-bold text-emerald-300 transition cursor-pointer active:scale-95 shadow-xs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-[11px] font-bold text-emerald-300 transition cursor-pointer active:scale-95 shadow-xs"
               title="Kurye yeni sipariş bildirim sesini test edin"
             >
               <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Sesi Test Et</span>
+              <span>Sesi Test Et</span>
             </button>
 
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-[11px] font-bold text-emerald-300">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-[11px] font-bold text-emerald-300">
               <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
               <span>Canlı</span>
             </div>
@@ -237,50 +266,70 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
         </div>
 
-        {/* MOBİL KURYE APK HIZLI İNDİRME BANNERI */}
-        <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] border border-amber-500/40 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
-              <Smartphone className="w-5 h-5" />
+        {/* Durum Bildirimi Bilgilendirme Toast'u */}
+        {statusBarToast && (
+          <div className="p-3 bg-gradient-to-r from-[#03241d] to-[#021d17] border border-amber-500/50 rounded-2xl text-emerald-100 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{statusBarToast}</span>
             </div>
-            <div className="min-w-0 text-left">
-              <div className="flex items-center gap-2">
-                <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye Android APK</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
-              </div>
-              <p className="text-[11px] text-emerald-300/80">Ekran kapalıyken veya arka plandayken anlık sesli ve titreşimli yeni sipariş çağrısı</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStatusBarToast(null)}
+              className="text-amber-300 hover:text-white font-bold text-xs shrink-0 cursor-pointer"
+            >
+              Kapat
+            </button>
           </div>
-          <a
-            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-            download="Antalya-Kurye-Talep-Havuzu.apk"
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
-          >
-            <Download className="w-4 h-4" />
-            <span>Kurye APK İndir</span>
-          </a>
-        </div>
+        )}
+
+        {/* MOBİL KURYE APK HIZLI İNDİRME BANNERI (APK içinde veya indirilmişse gizlenir) */}
+        {!shouldHideApkButtons() && (
+          <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] border border-amber-500/40 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 text-left">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye Android APK</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
+                </div>
+                <p className="text-[11px] text-emerald-300/80">Ekran kapalıyken veya arka plandayken anlık sesli ve titreşimli yeni sipariş çağrısı</p>
+              </div>
+            </div>
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              onClick={markApkDownloaded}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              <span>Kurye APK İndir</span>
+            </a>
+          </div>
+        )}
 
         {/* COURIER AUTHENTICATION STATUS & MANDATORY LOGIN BANNER */}
         {isCourier ? (
-          <div className="p-3.5 bg-gradient-to-r from-[#03241d] to-[#021a15] border border-emerald-600/70 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-md">
-            <div className="flex items-center gap-3">
+          <div className="p-3.5 bg-gradient-to-r from-[#03241d] to-[#021a15] border border-emerald-600/70 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0">
                 <Bike className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-white text-sm">{currentUser.name}</span>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-200 font-black text-[10px]">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-white text-sm truncate">{currentUser.name}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-200 font-black text-[10px] shrink-0">
                     AKTİF KURYE OTURUMU
                   </span>
                 </div>
-                <span className="text-[11px] text-emerald-300/90 font-mono">
+                <span className="text-[11px] text-emerald-300/90 font-mono block truncate">
                   {currentUser.phone} • {currentUser.vehicleType || 'Motosiklet'}
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
               <button
                 type="button"
                 onClick={() => openAuthModal('courier_login', 'Farklı bir kurye hesabına geçmek için lütfen giriş yapınız.')}
@@ -497,39 +546,39 @@ export const PaketTalebiPoolPage: React.FC = () => {
               return (
                 <div
                   key={req.id}
-                  className="p-5 sm:p-6 rounded-3xl bg-[#021f19] border-2 border-emerald-600/90 shadow-2xl space-y-4 text-white"
+                  className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[#021f19] border-2 border-emerald-600/90 shadow-2xl space-y-3 sm:space-y-4 text-white overflow-hidden"
                 >
                   {/* Talep Başlığı & Kazanç */}
-                  <div className="flex items-center justify-between pb-3 border-b border-emerald-800/60">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
-                        <Zap className="w-5 h-5 animate-pulse" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-emerald-800/60 gap-2.5">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 sm:mt-0">
+                        <Zap className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono font-black text-base text-amber-400">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="font-mono font-black text-sm sm:text-base text-amber-400">
                             #{req.trackingCode}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 font-bold text-[10px] uppercase border border-emerald-800/60">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 font-bold text-[10px] uppercase border border-emerald-800/60 shrink-0">
                             {req.packageName || 'Standart Paket'}
                           </span>
                           {req.tipAmount && req.tipAmount > 0 && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-extrabold text-[10px] border border-amber-500/80 shadow-sm animate-pulse">
+                            <span className="px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-extrabold text-[10px] border border-amber-500/80 shadow-sm animate-pulse shrink-0">
                               +{req.tipAmount} ₺ Bahşiş
                             </span>
                           )}
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-200 font-black text-[10px] border border-emerald-600/70 shadow-xs flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-200 font-black text-[10px] border border-emerald-600/70 shadow-xs flex items-center gap-1 shrink-0">
                             📍 ~{req.estimatedDistanceKm || 5} km
                           </span>
                         </div>
-                        <p className="text-[11px] text-emerald-400/80 mt-0.5">
+                        <p className="text-[11px] text-emerald-400/80 mt-0.5 truncate">
                           Yaklaşık Mesafe: ~{req.estimatedDistanceKm || 5} km • Süre: ~{req.estimatedDurationMins || 35} Dk
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <div className="text-left sm:text-right flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-900/60 shrink-0">
+                      <div className="flex items-center sm:justify-end gap-1">
                         <span className="text-[10px] text-emerald-400/70 block font-medium">Kurye Kazancı</span>
                         {req.tipAmount && req.tipAmount > 0 && (
                           <span className="text-[9px] font-bold text-amber-300 bg-amber-950/80 border border-amber-600/60 px-1 rounded">
@@ -537,7 +586,7 @@ export const PaketTalebiPoolPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-xl font-black text-emerald-300">
+                      <span className="text-lg sm:text-xl font-black text-emerald-300">
                         +{req.courierEarnings || Math.round(req.price * 0.85)} ₺
                       </span>
                     </div>
