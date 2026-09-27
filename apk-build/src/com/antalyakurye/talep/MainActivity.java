@@ -65,6 +65,9 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
+        // 4. Foreground Service Baslat (Arka planda kesintisiz bildirim baglantisi)
+        startCourierForegroundService("🛵 Antalya Kurye Aktif", "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz");
+
         webView = new WebView(this);
         setContentView(webView);
 
@@ -77,7 +80,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.4.0 (TalepHavuzu; NativeBridge)");
+        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; ForegroundService)");
 
         // Web uygulamasinin native Android fonksiyonlarini cagirabilmesi icin Javascript koprusu
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidApp");
@@ -131,6 +134,61 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl(PRIMARY_URL);
+    }
+
+    public void startCourierForegroundService(String title, String text) {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_START);
+            if (title != null) serviceIntent.putExtra(CourierForegroundService.EXTRA_TITLE, title);
+            if (text != null) serviceIntent.putExtra(CourierForegroundService.EXTRA_TEXT, text);
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    java.lang.reflect.Method startFgMethod = Context.class.getMethod("startForegroundService", Intent.class);
+                    startFgMethod.invoke(this, serviceIntent);
+                } catch (Exception fallback) {
+                    startService(serviceIntent);
+                }
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stopCourierForegroundService() {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_STOP);
+            stopService(serviceIntent);
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // KRİTİK: webView.onPause() kasitli olarak cagirILMAZ!
+        // Boylece Javascript motoru ve Firestore arkaplanda uyumaz, canli calismaya devam eder!
+        if (webView != null) {
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (webView != null) {
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.resumeTimers();
+        }
     }
 
     private void checkAndRequestAllPermissions() {
@@ -236,7 +294,9 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {}
             }
 
-            builder.setContentTitle(title)
+            // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve tam baslik/metin
+            builder.setTicker(title + ": " + body)
+                   .setContentTitle(title)
                    .setContentText(body)
                    .setSmallIcon(R.mipmap.ic_launcher)
                    .setContentIntent(pi)
@@ -245,8 +305,13 @@ public class MainActivity extends Activity {
                    .setDefaults(Notification.DEFAULT_ALL)
                    .setVibrate(new long[]{0, 350, 150, 350, 150, 600});
 
+            if (Build.VERSION.SDK_INT >= 16) {
+                builder.setStyle(new Notification.BigTextStyle().bigText(body).setSummaryText("Antalya Kurye Havuz"));
+            }
+
             if (Build.VERSION.SDK_INT >= 21) {
                 builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+                builder.setCategory(Notification.CATEGORY_CALL);
             }
 
             playNativeAlarm();
@@ -288,6 +353,38 @@ public class MainActivity extends Activity {
                     requestBatteryOptimizationExemption();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public void startForegroundService(final String title, final String text) {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    startCourierForegroundService(title, text);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopForegroundService() {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    stopCourierForegroundService();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void keepAlivePing() {
+            if (webView != null) {
+                webView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        webView.resumeTimers();
+                    }
+                });
+            }
         }
 
         @JavascriptInterface

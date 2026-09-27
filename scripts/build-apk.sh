@@ -77,6 +77,7 @@ cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -99,6 +100,11 @@ cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name="com.antalyakurye.talep.CourierForegroundService"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 </manifest>
 EOF
@@ -109,6 +115,106 @@ cat << 'EOF' > "$BUILD_DIR/res/values/strings.xml"
 <resources>
     <string name="app_name">Antalya Kurye</string>
 </resources>
+EOF
+
+# Create CourierForegroundService.java
+cat << 'EOF' > "$BUILD_DIR/src/com/antalyakurye/talep/CourierForegroundService.java"
+package com.antalyakurye.talep;
+
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Intent;
+import android.os.Build;
+import android.os.IBinder;
+import android.os.PowerManager;
+
+public class CourierForegroundService extends Service {
+    public static final String ACTION_START = "com.antalyakurye.talep.START_FOREGROUND";
+    public static final String ACTION_STOP = "com.antalyakurye.talep.STOP_FOREGROUND";
+    public static final String EXTRA_TITLE = "EXTRA_TITLE";
+    public static final String EXTRA_TEXT = "EXTRA_TEXT";
+    private static final int FOREGROUND_NOTIFICATION_ID = 9001;
+    private static final String CHANNEL_ID = "antalya_kurye_talep";
+    private PowerManager.WakeLock wakeLock = null;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null) {
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AntalyaKurye:ForegroundServiceLock");
+                wakeLock.acquire();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_STOP.equals(intent.getAction())) {
+            try {
+                stopForeground(true);
+            } catch (Exception ignored) {}
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        String title = "🛵 Antalya Kurye Aktif";
+        String text = "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz";
+        if (intent != null) {
+            String customTitle = intent.getStringExtra(EXTRA_TITLE);
+            String customText = intent.getStringExtra(EXTRA_TEXT);
+            if (customTitle != null && !customTitle.isEmpty()) title = customTitle;
+            if (customText != null && !customText.isEmpty()) text = customText;
+        }
+
+        Intent appIntent = new Intent(this, MainActivity.class);
+        appIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(this, 0, appIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification.Builder builder = new Notification.Builder(this);
+        if (Build.VERSION.SDK_INT >= 26) {
+            try {
+                java.lang.reflect.Method setChannelMethod = builder.getClass().getMethod("setChannelId", String.class);
+                setChannelMethod.invoke(builder, CHANNEL_ID);
+            } catch (Exception ignored) {}
+        }
+
+        builder.setContentTitle(title)
+               .setContentText(text)
+               .setSmallIcon(R.mipmap.ic_launcher)
+               .setContentIntent(pi)
+               .setOngoing(true)
+               .setPriority(Notification.PRIORITY_LOW);
+
+        if (Build.VERSION.SDK_INT >= 21) {
+            builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+        }
+
+        try {
+            startForeground(FOREGROUND_NOTIFICATION_ID, builder.build());
+        } catch (Exception ignored) {}
+
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            try {
+                wakeLock.release();
+            } catch (Exception ignored) {}
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}
 EOF
 
 # Create MainActivity.java
@@ -180,6 +286,9 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
 
+        // 4. Foreground Service Baslat (Arka planda kesintisiz bildirim baglantisi)
+        startCourierForegroundService("🛵 Antalya Kurye Aktif", "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz");
+
         webView = new WebView(this);
         setContentView(webView);
 
@@ -192,7 +301,7 @@ public class MainActivity extends Activity {
         s.setLoadWithOverviewMode(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.4.0 (TalepHavuzu; NativeBridge)");
+        s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; ForegroundService)");
 
         // Web uygulamasinin native Android fonksiyonlarini cagirabilmesi icin Javascript koprusu
         webView.addJavascriptInterface(new WebAppInterface(), "AndroidApp");
@@ -246,6 +355,61 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl(PRIMARY_URL);
+    }
+
+    public void startCourierForegroundService(String title, String text) {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_START);
+            if (title != null) serviceIntent.putExtra(CourierForegroundService.EXTRA_TITLE, title);
+            if (text != null) serviceIntent.putExtra(CourierForegroundService.EXTRA_TEXT, text);
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    java.lang.reflect.Method startFgMethod = Context.class.getMethod("startForegroundService", Intent.class);
+                    startFgMethod.invoke(this, serviceIntent);
+                } catch (Exception fallback) {
+                    startService(serviceIntent);
+                }
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stopCourierForegroundService() {
+        try {
+            Intent serviceIntent = new Intent(this, CourierForegroundService.class);
+            serviceIntent.setAction(CourierForegroundService.ACTION_STOP);
+            stopService(serviceIntent);
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // KRİTİK: webView.onPause() kasitli olarak cagirILMAZ!
+        // Boylece Javascript motoru ve Firestore arkaplanda uyumaz, canli calismaya devam eder!
+        if (webView != null) {
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (webView != null) {
+            webView.resumeTimers();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.resumeTimers();
+        }
     }
 
     private void checkAndRequestAllPermissions() {
@@ -351,7 +515,9 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {}
             }
 
-            builder.setContentTitle(title)
+            // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve tam baslik/metin
+            builder.setTicker(title + ": " + body)
+                   .setContentTitle(title)
                    .setContentText(body)
                    .setSmallIcon(R.mipmap.ic_launcher)
                    .setContentIntent(pi)
@@ -360,8 +526,13 @@ public class MainActivity extends Activity {
                    .setDefaults(Notification.DEFAULT_ALL)
                    .setVibrate(new long[]{0, 350, 150, 350, 150, 600});
 
+            if (Build.VERSION.SDK_INT >= 16) {
+                builder.setStyle(new Notification.BigTextStyle().bigText(body).setSummaryText("Antalya Kurye Havuz"));
+            }
+
             if (Build.VERSION.SDK_INT >= 21) {
                 builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+                builder.setCategory(Notification.CATEGORY_CALL);
             }
 
             playNativeAlarm();
@@ -403,6 +574,38 @@ public class MainActivity extends Activity {
                     requestBatteryOptimizationExemption();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public void startForegroundService(final String title, final String text) {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    startCourierForegroundService(title, text);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopForegroundService() {
+            MainActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    stopCourierForegroundService();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void keepAlivePing() {
+            if (webView != null) {
+                webView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        webView.resumeTimers();
+                    }
+                });
+            }
         }
 
         @JavascriptInterface
@@ -482,7 +685,7 @@ javac -source 1.8 -target 1.8 \
   -cp "$ANDROID_JAR" \
   -d "$BUILD_DIR/bin" \
   "$BUILD_DIR/gen/com/antalyakurye/talep/R.java" \
-  "$BUILD_DIR/src/com/antalyakurye/talep/MainActivity.java"
+  "$BUILD_DIR/src/com/antalyakurye/talep/"*.java
 
 echo "[3/6] Converting Java bytecode to Dalvik executable (classes.dex)..."
 "$DX_BIN" --dex --output="$BUILD_DIR/bin/classes.dex" "$BUILD_DIR/bin"

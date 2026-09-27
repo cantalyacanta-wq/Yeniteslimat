@@ -27,16 +27,38 @@ const checkIsAdminRoute = (): boolean => {
 const MainContent: React.FC = () => {
   const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries, openQuickCourierModal } = useDelivery();
 
-  // Automatically trigger all native Android permissions when running inside APK
+  // Automatically trigger Android permissions & start Foreground Service hook for continuous background connection
   React.useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).AndroidApp?.requestAllPermissions) {
+    if (typeof window === 'undefined') return;
+
+    const android = (window as any).AndroidApp;
+    if (android) {
       try {
-        (window as any).AndroidApp.requestAllPermissions();
+        if (typeof android.requestAllPermissions === 'function') {
+          android.requestAllPermissions();
+        }
+        if (typeof android.startForegroundService === 'function') {
+          android.startForegroundService(
+            '🛵 Antalya Kurye Aktif',
+            'Paket talep havuzu 7/24 dinleniyor. Yeni çağrılar anında bildirilir.'
+          );
+        }
       } catch (e) {
-        console.debug('AndroidApp auto-permission request error:', e);
+        console.debug('AndroidApp foreground service startup error:', e);
       }
+
+      // Continuous background keep-alive ping to Android bridge
+      const pingInterval = setInterval(() => {
+        try {
+          if (typeof android.keepAlivePing === 'function') {
+            android.keepAlivePing();
+          }
+        } catch (ignored) {}
+      }, 20000);
+
+      return () => clearInterval(pingInterval);
     }
-  }, []);
+  }, [currentUser.role]);
 
   // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
   React.useEffect(() => {
