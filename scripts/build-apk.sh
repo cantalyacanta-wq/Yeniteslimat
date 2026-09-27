@@ -34,13 +34,45 @@ mkdir -p "$BUILD_DIR/res/mipmap-xxxhdpi"
 mkdir -p "$ROOT_DIR/public/downloads"
 mkdir -p "$ROOT_DIR/dist/downloads"
 
-# Generate launcher icons from high-res logo
+# Generate launcher icons from high-res logo (white bicycle on emerald-to-teal gradient)
 node -e "
 const sharp = require('sharp');
 const path = require('path');
-const logo = path.join('$ROOT_DIR', 'public', 'app-logo.png');
+const fs = require('fs');
+
+const svg = \`
+<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"512\" height=\"512\" viewBox=\"0 0 512 512\">
+  <defs>
+    <linearGradient id=\"grad\" x1=\"0%\" y1=\"100%\" x2=\"100%\" y2=\"0%\">
+      <stop offset=\"0%\" stop-color=\"#047857\" />
+      <stop offset=\"50%\" stop-color=\"#059669\" />
+      <stop offset=\"100%\" stop-color=\"#0d9488\" />
+    </linearGradient>
+    <filter id=\"glow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">
+      <feDropShadow dx=\"0\" dy=\"8\" stdDeviation=\"12\" flood-color=\"#022c22\" flood-opacity=\"0.4\" />
+    </filter>
+  </defs>
+  
+  <!-- Background with emerald-to-teal gradient -->
+  <rect width=\"512\" height=\"512\" rx=\"115\" fill=\"url(#grad)\" />
+  
+  <!-- Inner subtle border -->
+  <rect x=\"8\" y=\"8\" width=\"496\" height=\"496\" rx=\"107\" fill=\"none\" stroke=\"#34d399\" stroke-width=\"4\" stroke-opacity=\"0.3\" />
+  
+  <!-- Centered White Bicycle Icon -->
+  <g transform=\"translate(112, 112) scale(12)\" filter=\"url(#glow)\">
+    <circle cx=\"18.5\" cy=\"17.5\" r=\"3.5\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />
+    <circle cx=\"5.5\" cy=\"17.5\" r=\"3.5\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />
+    <circle cx=\"15\" cy=\"5\" r=\"1.2\" fill=\"#ffffff\" stroke=\"#ffffff\" stroke-width=\"0.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />
+    <path d=\"M12 17.5V14l-3-3 4-3 2 3h2\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" />
+  </g>
+</svg>
+\`;
 
 async function makeIcons() {
+  const logoBuf = Buffer.from(svg);
+  await sharp(logoBuf).png().toFile(path.join('$ROOT_DIR', 'public', 'app-logo.png'));
+  
   const sizes = {
     'mipmap-mdpi': 48,
     'mipmap-hdpi': 72,
@@ -50,7 +82,7 @@ async function makeIcons() {
   };
   for (const [dir, sz] of Object.entries(sizes)) {
     const dest = path.join('$BUILD_DIR', 'res', dir, 'ic_launcher.png');
-    await sharp(logo).resize(sz, sz).png().toFile(dest);
+    await sharp(logoBuf).resize(sz, sz).png().toFile(dest);
   }
 }
 makeIcons().catch(console.error);
