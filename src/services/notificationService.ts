@@ -94,6 +94,23 @@ export function hideApkStatusBarNotification(): void {
 }
 
 /**
+ * Dismiss persistent APK status bar notification on courier logout
+ */
+export function dismissApkForegroundNotificationOnLogout(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if ((window as any).AndroidApp?.stopForegroundService) {
+      (window as any).AndroidApp.stopForegroundService();
+    }
+    if ((window as any).AndroidApp?.hideForegroundNotification) {
+      (window as any).AndroidApp.hideForegroundNotification();
+    }
+  } catch (e) {
+    console.debug('dismissApkForegroundNotificationOnLogout error:', e);
+  }
+}
+
+/**
  * Show / restore the ongoing "Antalya Kurye Aktif" status bar notification
  */
 export function showApkStatusBarNotification(): void {

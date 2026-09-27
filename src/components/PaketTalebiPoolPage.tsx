@@ -30,7 +30,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
-import { triggerHapticVibration } from '../services/notificationService';
+import { triggerHapticVibration, dismissApkForegroundNotificationOnLogout } from '../services/notificationService';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
 import { isRunningInApk, shouldHideApkButtons, markApkDownloaded } from '../utils/apkDetection';
 import { TermsOfUseModal } from './TermsOfUseModal';
@@ -238,33 +238,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
         </div>
 
-        {/* MOBİL KURYE APK HIZLI İNDİRME BANNERI (APK içinde veya indirilmişse gizlenir) */}
-        {!shouldHideApkButtons() && (
-          <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] border border-amber-500/40 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-            <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-white text-xs sm:text-sm">Antalya Kurye Android APK</span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
-                </div>
-                <p className="text-[11px] text-emerald-300/80">Ekran kapalıyken veya arka plandayken anlık sesli ve titreşimli yeni sipariş çağrısı</p>
-              </div>
-            </div>
-            <a
-              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-              download="Antalya-Kurye-Talep-Havuzu.apk"
-              onClick={markApkDownloaded}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
-            >
-              <Download className="w-4 h-4" />
-              <span>Kurye APK İndir</span>
-            </a>
-          </div>
-        )}
-
         {/* COURIER AUTHENTICATION STATUS & MANDATORY LOGIN BANNER */}
         {isCourier ? (
           <div className="p-3.5 bg-gradient-to-r from-[#03241d] to-[#021a15] border border-emerald-600/70 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
@@ -287,7 +260,10 @@ export const PaketTalebiPoolPage: React.FC = () => {
             <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
               <button
                 type="button"
-                onClick={() => logout()}
+                onClick={() => {
+                  dismissApkForegroundNotificationOnLogout();
+                  logout();
+                }}
                 className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-700/50 text-rose-300 text-[11px] font-semibold transition cursor-pointer shrink-0"
                 title="Oturumu Kapat"
               >

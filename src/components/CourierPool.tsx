@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Download,
   Smartphone,
+  LogOut,
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -31,6 +32,7 @@ import {
   requestNotificationPermission,
   sendBrowserNotification,
   emitInAppNotification,
+  dismissApkForegroundNotificationOnLogout,
 } from '../services/notificationService';
 import { playNewOrderSound, playStatusChime, playSuccessSound, unlockAudioContext } from '../utils/audio';
 import { maskCustomerName, maskPhoneNumber } from '../utils/masking';
@@ -50,6 +52,7 @@ export const CourierPool: React.FC = () => {
     releaseRequestBackToPool,
     activeStats,
     openAuthModal,
+    logout,
   } = useDelivery();
 
   const [activeTab, setActiveTab] = useState<'pool' | 'active' | 'completed'>('pool');
@@ -203,7 +206,7 @@ export const CourierPool: React.FC = () => {
         </div>
 
         {/* Action Controls & Small APK Button */}
-        <div className="flex items-center justify-end gap-2.5 sm:gap-3 border-t sm:border-t-0 pt-3 sm:pt-0 border-emerald-800/40">
+        <div className="flex items-center justify-end gap-2 sm:gap-2.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-emerald-800/40 flex-wrap">
           <a
             href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
             download="Antalya-Kurye-Talep-Havuzu.apk"
@@ -217,7 +220,7 @@ export const CourierPool: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsCourierOnline(!isCourierOnline)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 border ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 border ${
               isCourierOnline
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-xs'
                 : 'bg-emerald-950/40 text-emerald-400/70 border-emerald-800/60'
@@ -226,37 +229,21 @@ export const CourierPool: React.FC = () => {
             <span className={`w-2 h-2 rounded-full ${isCourierOnline ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
             <span>{isCourierOnline ? 'Çevrimiçi' : 'Çevrimdışı'}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              dismissApkForegroundNotificationOnLogout();
+              logout();
+            }}
+            className="px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-700/50 text-rose-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+            title="Kurye Oturumunu Kapat"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Çıkış Yap</span>
+          </button>
         </div>
       </div>
-
-      {/* Kurye APK Hızlı İndirme Kartı (APK içinde veya indirilmişse gizlenir) */}
-      {!shouldHideApkButtons() && (
-        <div className="bg-gradient-to-r from-[#03261f] via-[#043328] to-[#021f18] rounded-2xl border border-amber-500/40 p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
-          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-600/30">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div className="min-w-0 text-left">
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-white text-xs sm:text-sm">Antalya Kurye Mobil Uygulaması (APK)</h3>
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] border border-amber-500/40">v1.5.0</span>
-              </div>
-              <p className="text-[11px] text-emerald-300/80">
-                Ekran kapalıyken veya telefon kilitliyken 7/24 sesli çağrılarla yeni paketleri anında yakalayın.
-              </p>
-            </div>
-          </div>
-          <a
-            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-            download="Antalya-Kurye-Talep-Havuzu.apk"
-            onClick={markApkDownloaded}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-md shadow-amber-600/30 active:scale-95 shrink-0"
-          >
-            <Download className="w-4 h-4" />
-            <span>Kurye APK İndir</span>
-          </a>
-        </div>
-      )}
 
       {/* ACTIVE COURIER DELIVERY LOCK BANNER */}
       {hasActiveDelivery && (

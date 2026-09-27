@@ -8,6 +8,7 @@ import {
   dispatchOrderStatusNotification,
   getNotificationPermission,
   requestNotificationPermission,
+  dismissApkForegroundNotificationOnLogout,
 } from '../services/notificationService';
 import {
   subscribeToDeliveryRequests,
@@ -1320,6 +1321,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Logout feature - cleanly resets to guest customer & classic home view
   const logout = useCallback(() => {
+    // Dismiss persistent APK status bar notification if running inside Android APK
+    dismissApkForegroundNotificationOnLogout();
+
     let guestUser = users.find((u) => u.id === 'user-guest-01') || INITIAL_USERS[0];
     if (!guestUser) {
       guestUser = {
