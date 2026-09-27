@@ -6,9 +6,13 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class CourierForegroundService extends Service {
     public static final String ACTION_START = "com.antalyakurye.talep.START_FOREGROUND";
@@ -18,6 +22,8 @@ public class CourierForegroundService extends Service {
     private static final int FOREGROUND_NOTIFICATION_ID = 9001;
     private static final String CHANNEL_ID = "antalya_kurye_talep";
     private PowerManager.WakeLock wakeLock = null;
+    private WifiManager.WifiLock wifiLock = null;
+    private ScheduledExecutorService heartbeatExecutor = null;
 
     @Override
     public void onCreate() {
@@ -27,8 +33,29 @@ public class CourierForegroundService extends Service {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AntalyaKurye:ForegroundLock");
-                wakeLock.acquire(12 * 60 * 60 * 1000L); // 12 saat guvenli zaman asimi
+                wakeLock.acquire(24 * 60 * 60 * 1000L); // 24 saat kesintisiz uyanik kal
             }
+        } catch (Throwable ignored) {}
+
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AntalyaKurye:WifiLock");
+                wifiLock.acquire();
+            }
+        } catch (Throwable ignored) {}
+
+        // Arka plandayken WebView JavaScript motorunu ve agini her 3 saniyede bir canli tutan nabiz
+        try {
+            heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+            heartbeatExecutor.scheduleWithFixedDelay(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        MainActivity.sendKeepAlivePulse();
+                    } catch (Throwable ignored) {}
+                }
+            }, 2, 3, TimeUnit.SECONDS);
         } catch (Throwable ignored) {}
     }
 
@@ -72,7 +99,7 @@ public class CourierForegroundService extends Service {
             Intent appIntent = new Intent(this, MainActivity.class);
             appIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             
-            // Android 12+ (API 31+) icin FLAG_IMMUTABLE (0x04000000) zorunludur! Yoksa uygulama coker!
+            // Android 12+ (API 31+) icin FLAG_IMMUTABLE (0x04000000) zorunludur
             int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= 23) {
                 pendingFlags |= 0x04000000;
@@ -108,6 +135,16 @@ public class CourierForegroundService extends Service {
 
     @Override
     public void onDestroy() {
+        try {
+            if (heartbeatExecutor != null) {
+                heartbeatExecutor.shutdownNow();
+            }
+        } catch (Throwable ignored) {}
+        try {
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+            }
+        } catch (Throwable ignored) {}
         try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();

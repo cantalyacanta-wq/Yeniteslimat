@@ -598,6 +598,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // 3. Also poll Express API as additional resilient fallback every 2 seconds
     syncWithServer();
+    if (typeof window !== 'undefined') {
+      (window as any).__syncDeliveryServer = syncWithServer;
+    }
     const interval = setInterval(syncWithServer, 2000);
 
     // 4. Record initial site visit for analytics

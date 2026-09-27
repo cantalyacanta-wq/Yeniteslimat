@@ -72,6 +72,9 @@ cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -81,6 +84,7 @@ cat << 'EOF' > "$BUILD_DIR/AndroidManifest.xml"
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:allowBackup="true"
@@ -127,9 +131,13 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class CourierForegroundService extends Service {
     public static final String ACTION_START = "com.antalyakurye.talep.START_FOREGROUND";
@@ -139,6 +147,8 @@ public class CourierForegroundService extends Service {
     private static final int FOREGROUND_NOTIFICATION_ID = 9001;
     private static final String CHANNEL_ID = "antalya_kurye_talep";
     private PowerManager.WakeLock wakeLock = null;
+    private WifiManager.WifiLock wifiLock = null;
+    private ScheduledExecutorService heartbeatExecutor = null;
 
     @Override
     public void onCreate() {
@@ -148,8 +158,29 @@ public class CourierForegroundService extends Service {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AntalyaKurye:ForegroundLock");
-                wakeLock.acquire(12 * 60 * 60 * 1000L); // 12 saat guvenli zaman asimi
+                wakeLock.acquire(24 * 60 * 60 * 1000L); // 24 saat kesintisiz uyanik kal
             }
+        } catch (Throwable ignored) {}
+
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AntalyaKurye:WifiLock");
+                wifiLock.acquire();
+            }
+        } catch (Throwable ignored) {}
+
+        // Arka plandayken WebView JavaScript motorunu ve agini her 3 saniyede bir canli tutan nabiz
+        try {
+            heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+            heartbeatExecutor.scheduleWithFixedDelay(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        MainActivity.sendKeepAlivePulse();
+                    } catch (Throwable ignored) {}
+                }
+            }, 2, 3, TimeUnit.SECONDS);
         } catch (Throwable ignored) {}
     }
 
@@ -193,7 +224,7 @@ public class CourierForegroundService extends Service {
             Intent appIntent = new Intent(this, MainActivity.class);
             appIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             
-            // Android 12+ (API 31+) icin FLAG_IMMUTABLE (0x04000000) zorunludur! Yoksa uygulama coker!
+            // Android 12+ (API 31+) icin FLAG_IMMUTABLE (0x04000000) zorunludur
             int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= 23) {
                 pendingFlags |= 0x04000000;
@@ -230,6 +261,16 @@ public class CourierForegroundService extends Service {
     @Override
     public void onDestroy() {
         try {
+            if (heartbeatExecutor != null) {
+                heartbeatExecutor.shutdownNow();
+            }
+        } catch (Throwable ignored) {}
+        try {
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+            }
+        } catch (Throwable ignored) {}
+        try {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
             }
@@ -259,6 +300,7 @@ import android.media.AudioAttributes;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -266,6 +308,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
@@ -280,15 +323,58 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
-    private WebView webView;
+    public static MainActivity instance = null;
+    public WebView webView;
     private static final String PRIMARY_URL = "https://www.antalyateslimat.com/#pakettalebi";
     private static final String FALLBACK_URL = "https://antalyateslimat.com/#pakettalebi";
     private static final String CHANNEL_ID = "antalya_kurye_talep";
     private boolean triedFallback = false;
     private PowerManager.WakeLock wakeLock = null;
+    private WifiManager.WifiLock wifiLock = null;
+
+    // Chromium'un arka planda timers ve network soketlerini dondurmesini onleyen ozel WebView
+    public static class KeepAliveWebView extends WebView {
+        public KeepAliveWebView(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onWindowVisibilityChanged(int visibility) {
+            // Chromium pencerenin gorunurlugunu sorguladiginda DAIMA View.VISIBLE donulur!
+            // Boylece arka plandayken veya ekran kapaliyken JavaScript ve Firestore asla dondurulmaz!
+            super.onWindowVisibilityChanged(View.VISIBLE);
+        }
+
+        @Override
+        protected void onVisibilityChanged(View changedView, int visibility) {
+            super.onVisibilityChanged(changedView, View.VISIBLE);
+        }
+    }
+
+    public static void sendKeepAlivePulse() {
+        final MainActivity act = instance;
+        if (act != null && act.webView != null) {
+            act.webView.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        act.webView.resumeTimers();
+                        if (Build.VERSION.SDK_INT >= 19) {
+                            act.webView.evaluateJavascript(
+                                "if (typeof window.__antalyaKeepAlive === 'function') { window.__antalyaKeepAlive(); }",
+                                null
+                            );
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        instance = this;
+
         // Tum beklenmeyen hatalari yakalayip uygulamanin aniden kapanmasini onle
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             @Override
@@ -309,7 +395,7 @@ public class MainActivity extends Activity {
 
         // 1. ILK OLARAK WEBVIEW'I BASLAT VE EKRANA BAS (Kullanici aninda uygulamayi gorsun)
         try {
-            webView = new WebView(this);
+            webView = new KeepAliveWebView(this);
             setContentView(webView);
 
             WebSettings s = webView.getSettings();
@@ -321,7 +407,7 @@ public class MainActivity extends Activity {
             s.setLoadWithOverviewMode(true);
             s.setMediaPlaybackRequiresUserGesture(false);
             s.setCacheMode(WebSettings.LOAD_DEFAULT);
-            s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; NativeBridge)");
+            s.setUserAgentString(s.getUserAgentString() + " AntalyaKuryeApp/1.5.0 (TalepHavuzu; NativeBridge; KeepAlive)");
 
             // Native Javascript koprusu
             webView.addJavascriptInterface(new WebAppInterface(), "AndroidApp");
@@ -382,7 +468,7 @@ public class MainActivity extends Activity {
         // 2. Bildirim kanalini olustur
         createNotificationChannel();
 
-        // 3. WakeLock (Arka Plan Korumasi)
+        // 3. WakeLock & WifiLock (Arka Plan Korumasi)
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
@@ -391,7 +477,15 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable ignored) {}
 
-        // 4. Guvenli Gecikmeli Izin & Arka Plan Servis Baslatma (Uygulamanin acilisinda asla cokmez)
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AntalyaKurye:ActWifiLock");
+                wifiLock.acquire();
+            }
+        } catch (Throwable ignored) {}
+
+        // 4. Guvenli Gecikmeli Izin & Arka Plan Servis Baslatma
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -574,6 +668,18 @@ public class MainActivity extends Activity {
                 } catch (Throwable ignored) {}
             }
 
+            // Ekran kapaliysa veya telefon kilitliyse ekrani aninda aydinlat
+            try {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    PowerManager.WakeLock wake = pm.newWakeLock(
+                        PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                        "AntalyaKurye:ScreenWakeOnOrder"
+                    );
+                    wake.acquire(8000);
+                }
+            } catch (Throwable ignored) {}
+
             // Ust bildirim cubugunda aninda cikan yazi (Ticker text) ve genisletilmis tam metin
             builder.setTicker(title + ": " + body)
                    .setContentTitle(title)
@@ -583,6 +689,7 @@ public class MainActivity extends Activity {
                    .setAutoCancel(true)
                    .setPriority(Notification.PRIORITY_MAX)
                    .setDefaults(Notification.DEFAULT_ALL)
+                   .setFullScreenIntent(pi, true)
                    .setVibrate(new long[]{0, 350, 150, 350, 150, 600});
 
             if (Build.VERSION.SDK_INT >= 16) {

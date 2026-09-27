@@ -54,11 +54,28 @@ const MainContent: React.FC = () => {
             android.keepAlivePing();
           }
         } catch (ignored) {}
-      }, 20000);
+      }, 10000);
 
       return () => clearInterval(pingInterval);
     }
   }, [currentUser.role]);
+
+  // Expose global __antalyaKeepAlive hook called directly by the native Android Foreground Service
+  React.useEffect(() => {
+    (window as any).__antalyaKeepAlive = () => {
+      try {
+        if (typeof (window as any).__syncDeliveryServer === 'function') {
+          (window as any).__syncDeliveryServer();
+        }
+      } catch (e) {
+        console.debug('Background keep-alive sync error:', e);
+      }
+    };
+
+    return () => {
+      delete (window as any).__antalyaKeepAlive;
+    };
+  }, []);
 
   // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
   React.useEffect(() => {
