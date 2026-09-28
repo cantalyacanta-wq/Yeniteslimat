@@ -3325,7 +3325,7 @@ app.post('/api/ai-voice/chat', async (req, res) => {
     // If Gemini client is active, try calling Gemini 2.5 Flash with a fast 2.5s timeout
     if (geminiClient && userText) {
       try {
-        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri sesli temsilcisisin. Nazik, profesyonel bir kadın temsilci olarak konuşursun.
+        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri sesli temsilcisisin. Hızlı, dinamik ve profesyonel bir erkek müşteri temsilcisi olarak konuşursun.
 Görevin sesli olarak kullanıcıyla konuşup Antalya içinde moto kurye yönlendirmektir.
 Adımlar:
 1. Alış Adresi (Nereden alınacak?)
@@ -3578,7 +3578,7 @@ async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Bu
       voice: voiceName,
       lang: 'tr-TR',
       outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate: '+12%',
+      rate: '+22%',
       pitch: '+0Hz',
     });
     await tts.ttsPromise(text, tmpPath);
@@ -3622,7 +3622,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
   try {
     const rawText = String(req.query.text || '').trim();
     const voiceParam = String(req.query.voice || '').toLowerCase();
-    const voiceName = voiceParam === 'male' ? 'tr-TR-AhmetNeural' : 'tr-TR-EmelNeural'; // Varsayılan ses bayan (Emel)
+    const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural'; // Varsayılan hızlı erkek sesi (Ahmet)
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
@@ -3649,7 +3649,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.status(400).send('No speakable text');
     }
 
-    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v2`;
+    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v3_fast`;
     if (ttsAudioCache.has(cacheKey)) {
       const cached = ttsAudioCache.get(cacheKey)!;
       res.setHeader('Content-Type', 'audio/mpeg');

@@ -92,11 +92,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const isSpeakingRef = useRef<boolean>(false);
 
-  // Preload initial greeting audio with female voice (Emel) and initialize audio element
+  // Preload initial greeting audio with male voice (Ahmet) and initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const preloadAudio = new Audio(
-        `/api/ai-voice/tts?voice=female&text=${encodeURIComponent(initialGreeting)}`
+        `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(initialGreeting)}`
       );
       preloadAudio.preload = 'auto';
       sharedAudioRef.current = preloadAudio;
@@ -204,7 +204,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Fallback Web Speech Synthesis (Female Voice, Fluent Cadence)
+  // Fallback Web Speech Synthesis (Fast & Energetic Male Voice)
   const speakWithLocalSynthesis = useCallback(
     (cleanSpeech: string) => {
       if (isAudioMuted || !synthRef.current || typeof window === 'undefined') return;
@@ -213,23 +213,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
-        utterance.rate = 1.12; // Natural conversational Turkish flow (prevents word-by-word stutter)
-        utterance.pitch = 1.0;
+        utterance.rate = 1.22; // Fast, energetic, fluent customer service cadence
+        utterance.pitch = 0.95;
 
         const voices = synthRef.current.getVoices();
-        const trFemaleVoice = voices.find(
+        const trMaleVoice = voices.find(
           (v) =>
             (v.lang.includes('tr') || v.lang.includes('TR')) &&
-            (v.name.toLowerCase().includes('emel') ||
-              v.name.toLowerCase().includes('female') ||
-              v.name.toLowerCase().includes('kadın') ||
-              v.name.toLowerCase().includes('bayan') ||
-              v.name.toLowerCase().includes('filiz') ||
-              v.name.toLowerCase().includes('seda') ||
-              v.name.toLowerCase().includes('zira') ||
-              v.name.toLowerCase().includes('yelda'))
+            (v.name.toLowerCase().includes('ahmet') ||
+              v.name.toLowerCase().includes('male') ||
+              v.name.toLowerCase().includes('erkek') ||
+              v.name.toLowerCase().includes('tolga') ||
+              v.name.toLowerCase().includes('cem') ||
+              v.name.toLowerCase().includes('murat'))
         );
-        const trVoice = trFemaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
+        const trVoice = trMaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
         if (trVoice) {
           utterance.voice = trVoice;
         }
@@ -258,7 +256,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     [isAudioMuted]
   );
 
-  // High-Definition Neural Realistic Female Voice (Emel)
+  // High-Definition Neural Realistic Fast Male Voice (Ahmet)
   const speakText = useCallback(
     (textToSpeak: string) => {
       if (isAudioMuted || typeof window === 'undefined') return;
@@ -283,7 +281,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       if (!cleanSpeech) return;
 
       try {
-        const audioUrl = `/api/ai-voice/tts?voice=female&text=${encodeURIComponent(cleanSpeech)}`;
+        const audioUrl = `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(cleanSpeech)}`;
         
         if (!sharedAudioRef.current && typeof Audio !== 'undefined') {
           sharedAudioRef.current = new Audio();
