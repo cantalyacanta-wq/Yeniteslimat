@@ -55,7 +55,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const [lastCreatedCode, setLastCreatedCode] = useState<string | null>(null);
 
   const initialGreeting =
-    'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
+    'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -196,17 +196,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
         utterance.rate = 1.0;
-        utterance.pitch = 0.95;
+        utterance.pitch = 1.05;
 
         const voices = synthRef.current.getVoices();
-        const trMaleVoice = voices.find(
+        const trFemaleVoice = voices.find(
           (v) =>
             (v.lang.includes('tr') || v.lang.includes('TR')) &&
-            (v.name.toLowerCase().includes('ahmet') ||
-              v.name.toLowerCase().includes('male') ||
-              v.name.toLowerCase().includes('erkek'))
+            (v.name.toLowerCase().includes('emel') ||
+              v.name.toLowerCase().includes('female') ||
+              v.name.toLowerCase().includes('kadın') ||
+              v.name.toLowerCase().includes('bayan') ||
+              v.name.toLowerCase().includes('filiz') ||
+              v.name.toLowerCase().includes('seda') ||
+              v.name.toLowerCase().includes('zira'))
         );
-        const trVoice = trMaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
+        const trVoice = trFemaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
         if (trVoice) {
           utterance.voice = trVoice;
         }
@@ -235,7 +239,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     [isAudioMuted]
   );
 
-  // High-Definition Neural Realistic Male Voice
+  // High-Definition Neural Realistic Female Voice (Emel)
   const speakText = useCallback(
     (textToSpeak: string) => {
       if (isAudioMuted || typeof window === 'undefined') return;
@@ -261,7 +265,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       if (!cleanSpeech) return;
 
       try {
-        const audioUrl = `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(cleanSpeech)}`;
+        const audioUrl = `/api/ai-voice/tts?voice=female&text=${encodeURIComponent(cleanSpeech)}`;
         const audio = new Audio(audioUrl);
         audio.preload = 'auto';
 
@@ -478,7 +482,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         };
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Speak AI response with Ahmet's male neural voice
+        // Speak AI response with female neural voice (Emel)
         speakText(data.replyText);
 
         // If user confirmed, immediately trigger order creation
@@ -612,7 +616,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="font-extrabold text-white">Müşteri Hizmetleri (Ahmet)</span>
+            <span className="font-extrabold text-white">Müşteri Hizmetleri</span>
           </div>
 
           {/* Main Circular Button with Wave Rings */}
@@ -620,7 +624,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             type="button"
             onClick={handleOpenWidget}
             className="group relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-2xl shadow-emerald-600/50 hover:shadow-emerald-500/80 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-emerald-400/80 cursor-pointer"
-            aria-label="Sesli Kurye Çağır - Ahmet"
+            aria-label="Sesli Kurye Çağır"
           >
             <span className="absolute -inset-1 rounded-full bg-emerald-500 opacity-40 blur-sm group-hover:opacity-75 animate-pulse transition"></span>
 
@@ -647,14 +651,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                 <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-[#011410] rounded-full"></span>
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-extrabold text-base sm:text-lg text-white leading-tight">
-                    Ahmet • Müşteri Hizmetleri
-                  </h1>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] text-emerald-300 font-extrabold">
-                    7/24 Sesli Asistan
-                  </span>
-                </div>
+                <h1 className="font-extrabold text-base sm:text-lg text-white leading-tight">
+                  Müşteri Hizmetleri
+                </h1>
                 <p className="text-xs text-emerald-300/80">Antalya 7/24 Sesli Kurye & Paket Yönlendirme</p>
               </div>
             </div>
@@ -753,7 +752,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                 </div>
 
                 <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
-                  Ahmet • Müşteri Hizmetleri
+                  Müşteri Hizmetleri
                 </h3>
                 <p className="text-xs text-emerald-300/80 max-w-md mt-0.5">
                   Mikrofon butonuna dokunarak konuşabilir veya aşağıdaki kutuya yazabilirsiniz.
@@ -788,8 +787,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                     className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {m.sender === 'ai' && (
-                      <div className="w-8 h-8 rounded-full bg-emerald-700 border border-emerald-400/50 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm text-xs font-bold">
-                        A
+                      <div className="w-8 h-8 rounded-full bg-emerald-700 border border-emerald-400/50 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm">
+                        <Headphones className="w-4 h-4 text-emerald-200" />
                       </div>
                     )}
                     <div
@@ -801,7 +800,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                     >
                       {m.sender === 'ai' && (
                         <span className="block text-[11px] font-bold text-amber-300 mb-1">
-                          Ahmet (Müşteri Hizmetleri)
+                          Müşteri Hizmetleri
                         </span>
                       )}
                       <p className="whitespace-pre-wrap">{m.text}</p>

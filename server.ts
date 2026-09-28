@@ -3325,7 +3325,7 @@ app.post('/api/ai-voice/chat', async (req, res) => {
     // If Gemini client is active, try calling Gemini 2.5 Flash with a fast 2.5s timeout
     if (geminiClient && userText) {
       try {
-        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri asistanı Ahmet'sin.
+        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri sesli temsilcisisin. Nazik, profesyonel bir kadın temsilci olarak konuşursun.
 Görevin sesli olarak kullanıcıyla konuşup Antalya içinde moto kurye yönlendirmektir.
 Adımlar:
 1. Alış Adresi (Nereden alınacak?)
@@ -3335,9 +3335,8 @@ Adımlar:
 5. Onay
 
 Kurallar:
-- Senin adın Ahmet (Müşteri Hizmetleri).
 - 'nöbetçi' kelimesini asla kullanma, sadece 'kurye' de.
-- Açılış sorusu: 'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
+- Açılış sorusu: 'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
 - Alış adresi alındıktan sonra sadece şunu sor: 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?' (kesinlikle adres tekrarı yapma).
 - Teslimat adresi alındıktan sonra kesinlikle sadece şunu sor: 'Paketin içeriği nedir?'
 - Paket içeriği sorulduktan sonra 'anladım' deme, içeriği tekrarlama! Doğrudan sadece şunu sor: 'Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?'
@@ -3421,7 +3420,7 @@ JSON formatında yanıt ver:
     // Step 1: Greeting or Pickup Address
     if (!userText || currentState.step === 'greeting' || currentState.step === 'ask_pickup') {
       if (!currentState.pickupAddress && !userText) {
-        replyText = 'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
+        replyText = 'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
         currentState.step = 'ask_pickup';
       } else if (!currentState.pickupAddress && userText) {
         currentState.pickupAddress = userText;
@@ -3621,7 +3620,8 @@ function fetchGoogleTtsFallback(text: string): Promise<Buffer> {
 app.get('/api/ai-voice/tts', async (req, res) => {
   try {
     const rawText = String(req.query.text || '').trim();
-    const voiceName = 'tr-TR-AhmetNeural'; // Sadece erkek sesi Ahmet kullanılır
+    const voiceParam = String(req.query.voice || '').toLowerCase();
+    const voiceName = voiceParam === 'male' ? 'tr-TR-AhmetNeural' : 'tr-TR-EmelNeural'; // Varsayılan ses bayan (Emel)
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
