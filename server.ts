@@ -3426,10 +3426,10 @@ JSON formatında yanıt ver:
         currentState.pickupAddress = userText;
         currentState.pickupDistrict = detectAntalyaDistrict(userText);
         currentState.step = 'ask_destination';
-        replyText = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+        replyText = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
       } else {
         currentState.step = 'ask_destination';
-        replyText = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+        replyText = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
       }
     }
     // Step 2: Destination Address -> Then Ask Package Content
@@ -3439,13 +3439,13 @@ JSON formatında yanıt ver:
         currentState.destDistrict = detectAntalyaDistrict(userText);
       }
       currentState.step = 'ask_package_content';
-      replyText = 'Paketin içeriği nedir?';
+      replyText = 'Paketinizin içeriği nedir acaba?';
     }
     // Step 3: Package Content -> Then Ask Phone Number (Do NOT repeat content or say Anladım)
     else if (currentState.step === 'ask_package_content') {
       currentState.packageContent = userText.trim();
       currentState.step = 'ask_phone';
-      replyText = "Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?";
+      replyText = 'Kuryemizin size kolayca ulaşabilmesi için telefon numaranızı öğrenebilir miyim?';
     }
     // Step 4: Phone Number -> Then Confirm
     else if (currentState.step === 'ask_phone') {
@@ -3460,7 +3460,7 @@ JSON formatında yanıt ver:
 
       currentState.estimatedPrice = calculateEstimatedPrice(currentState.pickupDistrict, currentState.destDistrict);
       currentState.step = 'confirm';
-      replyText = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+      replyText = 'Tüm bilgilerinizi aldım. Onaylıyorsanız hemen en yakın kuryemizi adresinize yönlendiriyorum.';
     }
     // Step 5: Confirmation
     else if (currentState.step === 'confirm') {
@@ -3470,12 +3470,12 @@ JSON formatında yanıt ver:
       if (isPositive) {
         shouldCreateOrder = true;
         currentState.step = 'completed';
-        replyText = 'Harika! Siparişinizi hemen sisteme kaydettim, en yakın kuryemiz adresinize yönlendirildi. Takip kodunuz ekranınızda gösteriliyor. İyi günler dilerim!';
+        replyText = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Takip detayları ekranınızda, iyi günler dilerim!';
       } else {
-        replyText = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilirsiniz ya da onaylıyorsanız "Evet" diyebilirsiniz.';
+        replyText = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
       }
     } else {
-      replyText = 'Siparişiniz başarıyla alındı. Yeni bir kurye talebi için lütfen "Yeni Sipariş" diyerek başlayın.';
+      replyText = 'Siparişiniz başarıyla alındı. Yeni bir kurye talebi için dilediğiniz zaman bana seslenebilirsiniz.';
     }
 
     res.json({
@@ -3577,8 +3577,9 @@ async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Bu
     const tts = new EdgeTTS({
       voice: voiceName,
       lang: 'tr-TR',
-      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-      rate: '+4%',
+      outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
+      rate: '+12%',
+      pitch: '+0Hz',
     });
     await tts.ttsPromise(text, tmpPath);
     const buf = await fs.promises.readFile(tmpPath);
@@ -3627,26 +3628,28 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.status(400).send('Text parameter is required');
     }
 
-    // Clean and normalize for smooth, continuous natural Turkish speech (no artificial pauses!)
+    // Clean and normalize for smooth, continuous natural Turkish speech (fluent and professional cadence)
     let s = rawText;
     s = s.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
     s = s.replace(/[#*•_~`]/g, '');
-    s = s.replace(/\bTL\b/g, 'lira');
-    s = s.replace(/\btl\b/g, 'lira');
-    s = s.replace(/\bDk\b/g, 'dakika');
-    s = s.replace(/\bdk\b/g, 'dakika');
-    s = s.replace(/\bCad\./g, 'Caddesi');
-    s = s.replace(/\bMah\./g, 'Mahallesi');
-    s = s.replace(/\bSok\./g, 'Sokağı');
+    s = s.replace(/\bTL\b/gi, 'lira');
+    s = s.replace(/\btl\b/gi, 'lira');
+    s = s.replace(/\bDk\b/gi, 'dakika');
+    s = s.replace(/\bdk\b/gi, 'dakika');
+    s = s.replace(/\bCad\./gi, 'Caddesi');
+    s = s.replace(/\bMah\./gi, 'Mahallesi');
+    s = s.replace(/\bSok\./gi, 'Sokağı');
     s = s.replace(/\bNo:\s*(\d+)/gi, 'numara $1');
     s = s.replace(/ANT-V(\d+)/gi, (m, d) => 'A N T V ' + d.split('').join(' '));
+    s = s.replace(/\s*,\s*/g, ', ');
+    s = s.replace(/\s+/g, ' ');
     const cleanSpeech = s.trim();
 
     if (!cleanSpeech) {
       return res.status(400).send('No speakable text');
     }
 
-    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}`;
+    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v2`;
     if (ttsAudioCache.has(cacheKey)) {
       const cached = ttsAudioCache.get(cacheKey)!;
       res.setHeader('Content-Type', 'audio/mpeg');

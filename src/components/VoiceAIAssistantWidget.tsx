@@ -20,6 +20,7 @@ import {
 import { useDelivery } from '../context/DeliveryContext';
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { DistrictName } from '../types';
+import { unlockAudioContext } from '../utils/audio';
 
 interface Message {
   id: string;
@@ -87,17 +88,18 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const processMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const isSpeakingRef = useRef<boolean>(false);
 
-  // Preload initial greeting audio
+  // Preload initial greeting audio with female voice (Emel) and initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const preloadAudio = new Audio(
-        `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(initialGreeting)}`
+        `/api/ai-voice/tts?voice=female&text=${encodeURIComponent(initialGreeting)}`
       );
       preloadAudio.preload = 'auto';
+      sharedAudioRef.current = preloadAudio;
     }
   }, []);
 
@@ -163,12 +165,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }
 
     return () => {
-      if (currentAudioRef.current) {
+      if (sharedAudioRef.current) {
         try {
-          currentAudioRef.current.pause();
-          currentAudioRef.current.currentTime = 0;
+          sharedAudioRef.current.pause();
+          sharedAudioRef.current.currentTime = 0;
         } catch (e) {}
-        currentAudioRef.current = null;
       }
       if (synthRef.current) {
         synthRef.current.cancel();
@@ -181,12 +182,29 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     };
   }, []);
 
+  // Prime and unlock audio pipeline on any user gesture
+  const primeAudio = useCallback(() => {
+    unlockAudioContext();
+    if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+      if (!sharedAudioRef.current) {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        sharedAudioRef.current = audio;
+      }
+      // Silently wake up the HTMLAudioElement without audible noise to guarantee autoplay clearance
+      if (sharedAudioRef.current && !sharedAudioRef.current.src) {
+        sharedAudioRef.current.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+        sharedAudioRef.current.play().catch(() => {});
+      }
+    }
+  }, []);
+
   // Scroll to bottom of message list
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Fallback Web Speech Synthesis (Male Voice)
+  // Fallback Web Speech Synthesis (Female Voice, Fluent Cadence)
   const speakWithLocalSynthesis = useCallback(
     (cleanSpeech: string) => {
       if (isAudioMuted || !synthRef.current || typeof window === 'undefined') return;
@@ -195,8 +213,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.05;
+        utterance.rate = 1.12; // Natural conversational Turkish flow (prevents word-by-word stutter)
+        utterance.pitch = 1.0;
 
         const voices = synthRef.current.getVoices();
         const trFemaleVoice = voices.find(
@@ -208,7 +226,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
               v.name.toLowerCase().includes('bayan') ||
               v.name.toLowerCase().includes('filiz') ||
               v.name.toLowerCase().includes('seda') ||
-              v.name.toLowerCase().includes('zira'))
+              v.name.toLowerCase().includes('zira') ||
+              v.name.toLowerCase().includes('yelda'))
         );
         const trVoice = trFemaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
         if (trVoice) {
@@ -245,12 +264,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       if (isAudioMuted || typeof window === 'undefined') return;
 
       // Stop any running speech
-      if (currentAudioRef.current) {
+      if (sharedAudioRef.current) {
         try {
-          currentAudioRef.current.pause();
-          currentAudioRef.current.currentTime = 0;
+          sharedAudioRef.current.pause();
+          sharedAudioRef.current.currentTime = 0;
         } catch (e) {}
-        currentAudioRef.current = null;
       }
       if (synthRef.current) {
         synthRef.current.cancel();
@@ -266,7 +284,18 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
       try {
         const audioUrl = `/api/ai-voice/tts?voice=female&text=${encodeURIComponent(cleanSpeech)}`;
-        const audio = new Audio(audioUrl);
+        
+        if (!sharedAudioRef.current && typeof Audio !== 'undefined') {
+          sharedAudioRef.current = new Audio();
+        }
+
+        const audio = sharedAudioRef.current;
+        if (!audio) {
+          speakWithLocalSynthesis(cleanSpeech);
+          return;
+        }
+
+        audio.src = audioUrl;
         audio.preload = 'auto';
 
         audio.onplay = () => {
@@ -277,16 +306,13 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         audio.onended = () => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
-          currentAudioRef.current = null;
         };
 
         audio.onerror = () => {
-          console.debug('Neural Voice failed, using local speech');
-          currentAudioRef.current = null;
+          console.debug('Neural Voice playback error, using local speech');
           speakWithLocalSynthesis(cleanSpeech);
         };
 
-        currentAudioRef.current = audio;
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
@@ -304,22 +330,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
   // Open Fullscreen Widget
   const handleOpenWidget = () => {
+    primeAudio();
     setIsOpen(true);
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';
     }
     if (messages.length === 1 && !isAudioMuted) {
-      setTimeout(() => {
-        speakText(messages[0].text);
-      }, 300);
+      speakText(messages[0].text);
     }
   };
 
   // Close Fullscreen Widget
   const handleCloseWidget = () => {
-    if (currentAudioRef.current) {
+    if (sharedAudioRef.current) {
       try {
-        currentAudioRef.current.pause();
+        sharedAudioRef.current.pause();
       } catch (e) {}
     }
     if (synthRef.current) {
@@ -346,12 +371,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       } catch (e) {}
       setIsListening(false);
     } else {
-      if (currentAudioRef.current) {
+      primeAudio();
+      if (sharedAudioRef.current) {
         try {
-          currentAudioRef.current.pause();
-          currentAudioRef.current.currentTime = 0;
+          sharedAudioRef.current.pause();
+          sharedAudioRef.current.currentTime = 0;
         } catch (e) {}
-        currentAudioRef.current = null;
       }
       if (synthRef.current) {
         synthRef.current.cancel();
@@ -502,38 +527,38 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       const nextState: ConversationState = { ...current };
 
       if (lower.includes('iptal') || lower.includes('vazgeçtim') || lower.includes('kapat')) {
-        nextReply = 'Talebiniz iptal edildi. Yeni bir kurye çağırmak isterseniz mikrofona dokunarak bana seslenebilirsiniz. İyi günler dilerim!';
+        nextReply = 'Talebiniz iptal edildi. Dilediğiniz zaman mikrofona dokunarak bana seslenebilirsiniz, iyi günler dilerim!';
         nextState.step = 'greeting';
       } else if (current.step === 'ask_pickup' || !current.pickupAddress) {
         nextState.pickupAddress = userText;
         nextState.step = 'ask_destination';
-        nextReply = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+        nextReply = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
       } else if (current.step === 'ask_destination' || !current.destAddress) {
         nextState.destAddress = userText;
         nextState.step = 'ask_package_content';
-        nextReply = 'Paketin içeriği nedir?';
+        nextReply = 'Paketinizin içeriği nedir acaba?';
       } else if (current.step === 'ask_package_content' || !current.packageContent) {
         nextState.packageContent = userText.trim();
         nextState.step = 'ask_phone';
-        nextReply = "Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?";
+        nextReply = 'Kuryemizin size kolayca ulaşabilmesi için telefon numaranızı öğrenebilir miyim?';
       } else if (current.step === 'ask_phone' || !current.phone) {
         const digits = userText.replace(/\D/g, '');
         nextState.phone = digits.length >= 7 ? userText.trim() : '0500 000 00 00';
         nextState.step = 'confirm';
-        nextReply = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+        nextReply = 'Tüm bilgilerinizi aldım. Onaylıyorsanız hemen en yakın kuryemizi adresinize yönlendiriyorum.';
       } else if (current.step === 'confirm') {
         const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
         if (positiveWords.some((w) => lower.includes(w))) {
           nextState.step = 'completed';
-          nextReply = 'Harika! Siparişinizi hemen sisteme kaydettim, en yakın kuryemiz adresinize yönlendirildi. Takip kodunuz ekranınızda gösteriliyor. İyi günler dilerim!';
+          nextReply = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Takip detayları ekranınızda, iyi günler dilerim!';
           shouldCreate = true;
         } else {
-          nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilirsiniz ya da onaylıyorsanız "Evet" diyebilirsiniz.';
+          nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
         }
       } else {
         nextState.pickupAddress = userText;
         nextState.step = 'ask_destination';
-        nextReply = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+        nextReply = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
       }
 
       setState(nextState);
