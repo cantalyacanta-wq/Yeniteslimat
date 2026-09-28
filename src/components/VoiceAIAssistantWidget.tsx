@@ -204,7 +204,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Fallback Web Speech Synthesis (Fast & Energetic Male Voice)
+  // Fallback Web Speech Synthesis (Always Male Voice Tone)
   const speakWithLocalSynthesis = useCallback(
     (cleanSpeech: string) => {
       if (isAudioMuted || !synthRef.current || typeof window === 'undefined') return;
@@ -214,7 +214,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
         utterance.rate = 1.22; // Fast, energetic, fluent customer service cadence
-        utterance.pitch = 0.95;
 
         const voices = synthRef.current.getVoices();
         const trMaleVoice = voices.find(
@@ -227,9 +226,18 @@ export const VoiceAIAssistantWidget: React.FC = () => {
               v.name.toLowerCase().includes('cem') ||
               v.name.toLowerCase().includes('murat'))
         );
-        const trVoice = trMaleVoice || voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
-        if (trVoice) {
-          utterance.voice = trVoice;
+
+        if (trMaleVoice) {
+          utterance.voice = trMaleVoice;
+          utterance.pitch = 0.95;
+        } else {
+          // If the operating system (like Android/iOS) only has a female Turkish voice,
+          // pitch-shift down to 0.70 to guarantee an energetic, professional male tone!
+          const trVoice = voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
+          if (trVoice) {
+            utterance.voice = trVoice;
+          }
+          utterance.pitch = 0.70;
         }
 
         utterance.onstart = () => {
@@ -256,9 +264,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     [isAudioMuted]
   );
 
-  // High-Definition Neural Realistic Fast Male Voice (Ahmet)
+  // High-Definition Neural Realistic Fast Male Voice (Ahmet) with robust credentialed fetch
   const speakText = useCallback(
-    (textToSpeak: string) => {
+    async (textToSpeak: string) => {
       if (isAudioMuted || typeof window === 'undefined') return;
 
       // Stop any running speech
@@ -282,7 +290,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
       try {
         const audioUrl = `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(cleanSpeech)}`;
-        
+
         if (!sharedAudioRef.current && typeof Audio !== 'undefined') {
           sharedAudioRef.current = new Audio();
         }
@@ -293,7 +301,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           return;
         }
 
-        audio.src = audioUrl;
+        // Fetch as blob with credentials to safely bypass Cloud Run/auth cookie redirects
+        let finalSrc = audioUrl;
+        try {
+          const res = await fetch(audioUrl, { credentials: 'include' });
+          if (res.ok) {
+            const blob = await res.blob();
+            if (blob.type.includes('audio') || blob.size > 1000) {
+              finalSrc = URL.createObjectURL(blob);
+            }
+          }
+        } catch (fetchErr) {
+          console.debug('Direct blob fetch failed, falling back to direct URL:', fetchErr);
+        }
+
+        audio.src = finalSrc;
         audio.preload = 'auto';
 
         audio.onplay = () => {
@@ -307,14 +329,14 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         };
 
         audio.onerror = () => {
-          console.debug('Neural Voice playback error, using local speech');
+          console.debug('Neural Voice playback error, using local male speech fallback');
           speakWithLocalSynthesis(cleanSpeech);
         };
 
         const playPromise = audio.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
-            console.debug('Audio play failed, using local synthesis:', err);
+            console.debug('Audio play failed, using local male synthesis:', err);
             speakWithLocalSynthesis(cleanSpeech);
           });
         }
