@@ -11,8 +11,10 @@ import { AdminLoginGate } from './components/AdminLoginGate';
 import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { QuickCourierModal } from './components/QuickCourierModal';
+import { VoiceAIAssistantWidget } from './components/VoiceAIAssistantWidget';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
+import { UnassignedOrderTipModal } from './components/UnassignedOrderTipModal';
 import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
@@ -268,6 +270,12 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
 
       {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
       <QuickCourierModal />
+
+      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Sağ Alt Köşe) */}
+      <VoiceAIAssistantWidget />
+
+      {/* 5 Dakika Kurye Atanmadı Pop-up Bahşiş Ekranı */}
+      <UnassignedOrderTipModal />
 
       {/* Dedicated Standalone /pakettalebi Route View */}
       {isPaketTalebiRoute ? (

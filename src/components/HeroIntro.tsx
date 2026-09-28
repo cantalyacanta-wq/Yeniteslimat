@@ -906,14 +906,15 @@ export const HeroIntro: React.FC = () => {
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410] p-6 sm:p-10 lg:p-12 text-white relative">
         <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
           
-          {/* Logo and Brand Header */}
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-emerald-950/80 border border-emerald-700/60 shadow-lg">
+          {/* Fiyat Bilgilendirme Rozeti */}
+          <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-emerald-950/85 border border-emerald-600/70 shadow-lg">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0">
-              <Truck className="w-5 h-5" />
+              <Zap className="w-5 h-5 fill-white" />
             </div>
             <div className="text-left">
-              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Antalya Şehir İçi Teslimat</h2>
-              <p className="text-[10px] sm:text-xs text-emerald-300 font-medium">7/24 Jet Moto Kurye & Paket Sistemi</p>
+              <span className="text-sm sm:text-base font-extrabold text-amber-300 tracking-tight block">
+                10km ye kadar 100tl den baslayan fiyatlar
+              </span>
             </div>
           </div>
 

@@ -106,6 +106,7 @@ interface DeliveryContextType {
   acceptRequest: (requestId: string, courierOverride?: CourierInfo | string) => void;
   updateStatus: (requestId: string, nextStatus: DeliveryStatus) => { success: boolean; message?: string };
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
+  addTipToRequest: (requestId: string, extraTip: number) => { success: boolean; newPrice?: number; message?: string };
   cancelRequest: (requestId: string) => void;
   releaseRequestBackToPool: (requestId: string) => void;
   addDemoRequest: () => void;
@@ -1734,6 +1735,78 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }).catch((e) => console.warn('Failed to sync rating:', e));
   }, []);
 
+  // Add tip to unassigned or waiting request to incentivize couriers to pick it up faster
+  const addTipToRequest = useCallback(
+    (requestId: string, extraTip: number): { success: boolean; newPrice?: number; message?: string } => {
+      const tip = Math.max(0, Math.round(Number(extraTip) || 0));
+      if (tip <= 0) return { success: false, message: 'Lütfen geçerli bir bahşiş tutarı giriniz.' };
+
+      const targetReq = requests.find((r) => r.id === requestId);
+      if (!targetReq) return { success: false, message: 'Talep bulunamadı.' };
+
+      const now = new Date().toISOString();
+      const newTipAmount = (targetReq.tipAmount || 0) + tip;
+      const newPrice = targetReq.price + tip;
+      const newCourierEarnings = (targetReq.courierEarnings || targetReq.price) + tip;
+      const tipNoteTag = `[⚡ +${tip} TL Bahşiş Eklendi]`;
+      const updatedNote = targetReq.noteForCourier
+        ? `${targetReq.noteForCourier} ${tipNoteTag}`
+        : tipNoteTag;
+
+      const updates: Partial<DeliveryRequest> = {
+        price: newPrice,
+        courierEarnings: newCourierEarnings,
+        tipAmount: newTipAmount,
+        noteForCourier: updatedNote,
+        updatedAt: now,
+      };
+
+      setRequests((prev) => {
+        const updated = prev.map((req) => {
+          if (req.id === requestId) {
+            return {
+              ...req,
+              ...updates,
+            };
+          }
+          return req;
+        });
+        try {
+          const payload = JSON.stringify(updated);
+          localStorage.setItem(STORAGE_ORDERS_KEY, payload);
+          sessionStorage.setItem(STORAGE_ORDERS_KEY, payload);
+        } catch {}
+        return updated;
+      });
+
+      // Update in Cloud Firestore
+      updateRequestInFirestore(requestId, updates).catch(() => {});
+
+      // Synchronize with server backend PATCH /api/requests/:id
+      fetch(`/api/requests/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }).catch((e) => console.warn('Failed to sync tip to server:', e));
+
+      try {
+        playSuccessSound();
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.7 },
+        });
+      } catch {}
+
+      return {
+        success: true,
+        newPrice,
+        message: `Bahşiş başarıyla eklendi! Yeni talep tutarı ${newPrice} TL olarak güncellendi.`,
+      };
+    },
+    [requests]
+  );
+
   // Cancel order (by customer or admin)
   const cancelRequest = useCallback((requestId: string) => {
     const now = new Date().toISOString();
@@ -2052,6 +2125,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         acceptRequest,
         updateStatus,
         rateDelivery,
+        addTipToRequest,
         cancelRequest,
         releaseRequestBackToPool,
         addDemoRequest,

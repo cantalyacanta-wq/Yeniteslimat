@@ -12,6 +12,7 @@
         "packageName": { "type": "string" },
         "price": { "type": "number" },
         "courierEarnings": { "type": "number" },
+        "tipAmount": { "type": "number" },
         "paymentMethod": { "type": "string" },
         "urgency": { "type": "string" },
         "sender": { "type": "object" },

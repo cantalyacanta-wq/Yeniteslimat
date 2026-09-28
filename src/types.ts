@@ -108,6 +108,8 @@ export interface DeliveryRequest {
   price: number;
   courierEarnings: number;
   tipAmount?: number;
+  priceUpdatedAt?: string;
+  priceBoostCount?: number;
   paymentMethod: PaymentMethod;
   isPaid: boolean;
   

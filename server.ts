@@ -1,11 +1,14 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import https from 'https';
 import { EventEmitter } from 'events';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
+import { GoogleGenAI } from '@google/genai';
+import { EdgeTTS } from 'node-edge-tts';
 
 process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT EXCEPTION]', err);
@@ -17,6 +20,23 @@ process.on('unhandledRejection', (reason) => {
 
 const app = express();
 const PORT = 3000;
+
+let geminiClient: GoogleGenAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+  try {
+    geminiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+    console.log('[GEMINI AI] GoogleGenAI client initialized on server.');
+  } catch (err: any) {
+    console.warn('[GEMINI AI] Failed to initialize GoogleGenAI:', err.message);
+  }
+}
 
 // Firebase Cloud Firestore Backend Config
 const serverFirebaseConfig = {
@@ -3217,6 +3237,437 @@ app.post('/api/analytics/reset', (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// SESLİ YAPAY ZEKA MÜŞTERİ TEMSİLCİSİ (VOICE AI ASSISTANT)
+// ==========================================
+
+function detectAntalyaDistrict(text: string): 'Muratpaşa' | 'Konyaaltı' | 'Kepez' | 'Lara (Muratpaşa)' {
+  const lower = (text || '').toLowerCase();
+  if (lower.includes('lara') || lower.includes('güzeloba') || lower.includes('örnekköy') || lower.includes('kundu') || lower.includes('barınaklar')) {
+    return 'Lara (Muratpaşa)';
+  }
+  if (lower.includes('konyaaltı') || lower.includes('konyaalti') || lower.includes('gürsu') || lower.includes('altınkum') || lower.includes('toros') || lower.includes('uncalı') || lower.includes('uncali') || lower.includes('arapsuyu') || lower.includes('liman') || lower.includes('hurma') || lower.includes('sarısu') || lower.includes('sarisu') || lower.includes('uluç') || lower.includes('uluc') || lower.includes('molla yusuf')) {
+    return 'Konyaaltı';
+  }
+  if (lower.includes('kepez') || lower.includes('dokuma') || lower.includes('varsak') || lower.includes('yeşilyurt') || lower.includes('yesilyurt') || lower.includes('kültür') || lower.includes('kultur') || lower.includes('şafak') || lower.includes('safak') || lower.includes('barış') || lower.includes('baris') || lower.includes('fabrikalar') || lower.includes('gülveren') || lower.includes('gulveren')) {
+    return 'Kepez';
+  }
+  return 'Muratpaşa';
+}
+
+function parseTurkishPhoneNumber(text: string): string | null {
+  if (!text) return null;
+  const cleanDigits = text.replace(/\D/g, '');
+  if (cleanDigits.length >= 10) {
+    let num = cleanDigits;
+    if (num.startsWith('90')) num = num.slice(2);
+    if (!num.startsWith('0') && num.length === 10) num = '0' + num;
+    if (num.length >= 11 && num.startsWith('05')) {
+      return num.slice(0, 11).replace(/(\d{4})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
+    }
+  }
+
+  const wordMap: Record<string, string> = {
+    'sıfır': '0', 'sifir': '0',
+    'bir': '1', 'iki': '2', 'üç': '3', 'uc': '3', 'dört': '4', 'dort': '4',
+    'beş': '5', 'bes': '5', 'altı': '6', 'alti': '6', 'yedi': '7', 'sekiz': '8', 'dokuz': '9',
+    'on': '1', 'yirmi': '2', 'otuz': '3', 'kırk': '4', 'kirk': '4',
+    'elli': '5', 'altmış': '6', 'altmis': '6', 'yetmiş': '7', 'yetmis': '7',
+    'seksen': '8', 'doksan': '9', 'yüz': '', 'yuz': ''
+  };
+
+  const tokens = text.toLowerCase().split(/[\s,.-]+/);
+  let digitStr = '';
+  for (const token of tokens) {
+    if (wordMap[token] !== undefined) {
+      digitStr += wordMap[token];
+    } else if (/^\d+$/.test(token)) {
+      digitStr += token;
+    }
+  }
+
+  if (digitStr.length >= 10) {
+    if (!digitStr.startsWith('0')) digitStr = '0' + digitStr;
+    if (digitStr.length >= 11 && digitStr.startsWith('05')) {
+      return digitStr.slice(0, 11).replace(/(\d{4})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
+    }
+  }
+  return null;
+}
+
+function calculateEstimatedPrice(fromDist: string, toDist: string): number {
+  if (fromDist === toDist) return 150;
+  return 180;
+}
+
+app.post('/api/ai-voice/chat', async (req, res) => {
+  try {
+    const { message = '', state = {} } = req.body;
+    const userText = (message || '').trim();
+
+    const currentState = {
+      step: state.step || 'greeting',
+      pickupAddress: state.pickupAddress || '',
+      pickupDistrict: state.pickupDistrict || '',
+      destAddress: state.destAddress || '',
+      destDistrict: state.destDistrict || '',
+      packageContent: state.packageContent || '',
+      phone: state.phone || '',
+      customerName: state.customerName || 'Değerli Müşterimiz',
+      estimatedPrice: state.estimatedPrice || 150,
+      estimatedDistanceKm: state.estimatedDistanceKm || 8,
+      estimatedDurationMins: state.estimatedDurationMins || 35,
+    };
+
+    // If Gemini client is active, try calling Gemini 3.8 Flash
+    if (geminiClient && userText) {
+      try {
+        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) sesli asistanısın.
+Görevin sesli olarak kullanıcıyla konuşup kurye yönlendirmektir.
+Adımlar:
+1. Alış Adresi (Nereden alınacak?)
+2. Teslimat Adresi (Nereye götürülecek?)
+3. Paket İçeriği (Paketin içeriği nedir?)
+4. İletişim Telefonu (05XX XXX XX XX)
+5. Onay
+
+Kurallar:
+- 'nöbetçi' kelimesini asla kullanma, sadece 'kurye' de.
+- Açılış sorusu: 'Merhaba! Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
+- Alış adresi alındıktan sonra sadece şunu sor: 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?' (kesinlikle adres tekrarı yapma).
+- Teslimat adresi alındıktan sonra kesinlikle sadece şunu sor: 'Paketin içeriği nedir?'
+- Paket içeriği sorulduktan sonra 'anladım' deme, içeriği tekrarlama! Doğrudan sadece şunu sor: 'Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?'
+- Onay aşamasında sipariş özetindeki detayları okuma! Sadece şunu söyle: 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.'
+Antalya ilçeleri: Muratpaşa, Konyaaltı, Kepez, Lara (Muratpaşa).
+
+Şu anki durum: ${JSON.stringify(currentState)}
+Kullanıcının son söylediği: "${userText}"
+
+JSON formatında yanıt ver:
+{
+  "replyText": "Kullanıcıya sesli söylenecek samimi, profesyonel Türkçe cümle",
+  "step": "ask_pickup" | "ask_destination" | "ask_package_content" | "ask_phone" | "confirm" | "completed",
+  "pickupAddress": "adres metni veya mevcut",
+  "pickupDistrict": "Muratpaşa" | "Konyaaltı" | "Kepez" | "Lara (Muratpaşa)",
+  "destAddress": "adres metni veya mevcut",
+  "destDistrict": "Muratpaşa" | "Konyaaltı" | "Kepez" | "Lara (Muratpaşa)",
+  "packageContent": "paket içeriği veya mevcut",
+  "phone": "05XX XXX XX XX veya mevcut",
+  "shouldCreateOrder": true | false
+}`;
+
+        const geminiRes = await geminiClient.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: systemPrompt,
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          },
+        });
+
+        const rawJson = geminiRes.text?.trim() || '';
+        if (rawJson) {
+          const parsed = JSON.parse(rawJson);
+          return res.json({
+            success: true,
+            replyText: parsed.replyText,
+            state: {
+              step: parsed.step || currentState.step,
+              pickupAddress: parsed.pickupAddress || currentState.pickupAddress,
+              pickupDistrict: parsed.pickupDistrict || currentState.pickupDistrict || 'Muratpaşa',
+              destAddress: parsed.destAddress || currentState.destAddress,
+              destDistrict: parsed.destDistrict || currentState.destDistrict || 'Muratpaşa',
+              packageContent: parsed.packageContent || currentState.packageContent,
+              phone: parsed.phone || currentState.phone,
+              customerName: currentState.customerName,
+              estimatedPrice: calculateEstimatedPrice(parsed.pickupDistrict || 'Muratpaşa', parsed.destDistrict || 'Muratpaşa'),
+              estimatedDistanceKm: 10,
+              estimatedDurationMins: 35,
+            },
+            shouldCreateOrder: Boolean(parsed.shouldCreateOrder),
+          });
+        }
+      } catch (geminiErr: any) {
+        console.warn('[GEMINI AI CHAT FALLBACK]', geminiErr.message);
+      }
+    }
+
+    // Deterministic High-Quality Turkish Conversational Engine (Fallback & Instant response)
+    const lower = userText.toLowerCase();
+    let replyText = '';
+    let shouldCreateOrder = false;
+
+    // Check for negation or reset
+    if (lower.includes('iptal') || lower.includes('vazgeçtim') || lower.includes('kapat')) {
+      return res.json({
+        success: true,
+        replyText: 'Talebiniz iptal edildi. Yeni bir kurye çağırmak isterseniz mikrofona dokunarak bana seslenebilirsiniz. İyi günler!',
+        state: { ...currentState, step: 'greeting' },
+        shouldCreateOrder: false,
+      });
+    }
+
+    // Step 1: Greeting or Initial State
+    if (!userText || currentState.step === 'greeting' || currentState.step === 'ask_pickup') {
+      if (!currentState.pickupAddress && !userText) {
+        replyText = 'Merhaba! Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
+        currentState.step = 'ask_pickup';
+      } else if (!currentState.pickupAddress && userText) {
+        currentState.pickupAddress = userText;
+        currentState.pickupDistrict = detectAntalyaDistrict(userText);
+        currentState.step = 'ask_destination';
+        replyText = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+      } else {
+        currentState.step = 'ask_destination';
+        replyText = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+      }
+    }
+    // Step 2: Destination Address -> Then Ask Package Content
+    else if (currentState.step === 'ask_destination') {
+      if (!currentState.destAddress) {
+        currentState.destAddress = userText;
+        currentState.destDistrict = detectAntalyaDistrict(userText);
+      }
+      currentState.step = 'ask_package_content';
+      replyText = 'Paketin içeriği nedir?';
+    }
+    // Step 3: Package Content -> Then Ask Phone Number (Do NOT repeat content or say Anladım)
+    else if (currentState.step === 'ask_package_content') {
+      currentState.packageContent = userText.trim();
+      currentState.step = 'ask_phone';
+      replyText = "Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?";
+    }
+    // Step 4: Phone Number -> Then Confirm
+    else if (currentState.step === 'ask_phone') {
+      const extractedPhone = parseTurkishPhoneNumber(userText);
+      if (extractedPhone) {
+        currentState.phone = extractedPhone;
+      } else if (userText.replace(/\D/g, '').length >= 7) {
+        currentState.phone = userText.trim();
+      } else {
+        currentState.phone = '0500 000 00 00';
+      }
+
+      currentState.estimatedPrice = calculateEstimatedPrice(currentState.pickupDistrict, currentState.destDistrict);
+      currentState.step = 'confirm';
+      replyText = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+    }
+    // Step 5: Confirmation
+    else if (currentState.step === 'confirm') {
+      const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
+      const isPositive = positiveWords.some((w) => lower.includes(w));
+
+      if (isPositive) {
+        shouldCreateOrder = true;
+        currentState.step = 'completed';
+        replyText = 'Harika! Siparişinizi hemen sisteme kaydettim, en yakın kuryemiz adresinize yönlendirildi. Takip kodunuz ekranınızda gösteriliyor. İyi günler dilerim!';
+      } else {
+        replyText = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilirsiniz ya da onaylıyorsanız "Evet" diyebilirsiniz.';
+      }
+    } else {
+      replyText = 'Siparişiniz başarıyla alındı. Yeni bir kurye talebi için lütfen "Yeni Sipariş" diyerek başlayın.';
+    }
+
+    res.json({
+      success: true,
+      replyText,
+      state: currentState,
+      shouldCreateOrder,
+    });
+  } catch (err: any) {
+    console.error('[AI VOICE CHAT ERROR]', err);
+    res.status(500).json({ error: err.message || 'Sesli asistan hatası' });
+  }
+});
+
+// Endpoint to directly create order from Voice AI Assistant
+app.post('/api/ai-voice/create-order', (req, res) => {
+  try {
+    const { pickupAddress, pickupDistrict, destAddress, destDistrict, packageContent, phone, customerName, price = 150 } = req.body;
+
+    if (!pickupAddress || !destAddress) {
+      return res.status(400).json({ error: 'Alım ve teslim adresleri zorunludur.' });
+    }
+
+    const cleanFrom = pickupDistrict || detectAntalyaDistrict(pickupAddress);
+    const cleanTo = destDistrict || detectAntalyaDistrict(destAddress);
+    const cleanPhone = phone || '0500 000 00 00';
+    const cleanName = customerName || 'Sesli Asistan Müşterisi';
+
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderId = `req-voice-${Date.now()}`;
+    const trackingCode = `ANT-V${randomSuffix}`;
+
+    const newRequest: any = {
+      id: orderId,
+      trackingCode,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sender: {
+        district: cleanFrom,
+        neighborhood: '',
+        addressDetail: pickupAddress,
+        contactName: cleanName,
+        contactPhone: cleanPhone,
+        lat: 36.8860,
+        lng: 30.7065,
+      },
+      receiver: {
+        district: cleanTo,
+        neighborhood: '',
+        addressDetail: destAddress,
+        contactName: 'Alıcı',
+        contactPhone: cleanPhone,
+        lat: 36.8732,
+        lng: 30.6384,
+      },
+      packageType: 'other',
+      packageName: packageContent ? `Sesli Kurye: ${packageContent}` : 'Sesli Asistan Acil Paket',
+      packageWeightKg: 1,
+      urgency: 'express_vip',
+      price: Number(price) || 150,
+      courierEarnings: Number(price) || 150,
+      paymentMethod: 'gonderici_odemeli',
+      isPaid: false,
+      status: 'pending_pool',
+      noteForCourier: `[🎙️ Sesli Kurye Talebi] İçerik: ${packageContent || 'Belirtilmedi'}. 30-45 Dk Acil Kurye. Müşteri Tel: ${cleanPhone}`,
+      estimatedDistanceKm: 10,
+      estimatedDurationMins: 35,
+    };
+
+    dbState.requests.unshift(newRequest);
+    saveDatabase();
+
+    if (serverFirestoreDb) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', newRequest.id), JSON.parse(JSON.stringify(newRequest)), { merge: true })
+        .catch((e) => console.warn('[FIRESTORE VOICE ORDER ERR]', e.message));
+    }
+
+    enqueueNewOrderEmail(newRequest, undefined, false);
+
+    res.json({
+      success: true,
+      message: 'Sesli sipariş başarıyla havuza kaydedildi.',
+      order: newRequest,
+      trackingCode: newRequest.trackingCode,
+    });
+  } catch (err: any) {
+    console.error('[AI VOICE CREATE ORDER ERR]', err);
+    res.status(500).json({ error: err.message || 'Sipariş oluşturulamadı.' });
+  }
+});
+
+// High-Definition Realistic Turkish Neural Voice Endpoint (Microsoft Neural Speech)
+const ttsAudioCache = new Map<string, Buffer>();
+
+async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Buffer> {
+  const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
+  const tmpPath = path.join('/tmp', tmpId);
+  try {
+    const tts = new EdgeTTS({
+      voice: voiceName,
+      lang: 'tr-TR',
+      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+      rate: '+4%',
+    });
+    await tts.ttsPromise(text, tmpPath);
+    const buf = await fs.promises.readFile(tmpPath);
+    fs.promises.unlink(tmpPath).catch(() => {});
+    return buf;
+  } catch (err) {
+    fs.promises.unlink(tmpPath).catch(() => {});
+    throw err;
+  }
+}
+
+function fetchGoogleTtsFallback(text: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const url =
+      'https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q=' +
+      encodeURIComponent(text.slice(0, 200));
+    https
+      .get(
+        url,
+        {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          },
+        },
+        (res) => {
+          if (res.statusCode !== 200) {
+            return reject(new Error(`TTS fallback code ${res.statusCode}`));
+          }
+          const chunks: Buffer[] = [];
+          res.on('data', (c) => chunks.push(c));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+        }
+      )
+      .on('error', reject);
+  });
+}
+
+app.get('/api/ai-voice/tts', async (req, res) => {
+  try {
+    const rawText = String(req.query.text || '').trim();
+    const voiceName = 'tr-TR-AhmetNeural'; // Sadece erkek sesi Ahmet kullanılır
+
+    if (!rawText) {
+      return res.status(400).send('Text parameter is required');
+    }
+
+    // Clean and normalize for smooth, continuous natural Turkish speech (no artificial pauses!)
+    let s = rawText;
+    s = s.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+    s = s.replace(/[#*•_~`]/g, '');
+    s = s.replace(/\bTL\b/g, 'lira');
+    s = s.replace(/\btl\b/g, 'lira');
+    s = s.replace(/\bDk\b/g, 'dakika');
+    s = s.replace(/\bdk\b/g, 'dakika');
+    s = s.replace(/\bCad\./g, 'Caddesi');
+    s = s.replace(/\bMah\./g, 'Mahallesi');
+    s = s.replace(/\bSok\./g, 'Sokağı');
+    s = s.replace(/\bNo:\s*(\d+)/gi, 'numara $1');
+    s = s.replace(/ANT-V(\d+)/gi, (m, d) => 'A N T V ' + d.split('').join(' '));
+    const cleanSpeech = s.trim();
+
+    if (!cleanSpeech) {
+      return res.status(400).send('No speakable text');
+    }
+
+    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}`;
+    if (ttsAudioCache.has(cacheKey)) {
+      const cached = ttsAudioCache.get(cacheKey)!;
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', cached.length);
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      return res.send(cached);
+    }
+
+    let audioBuffer: Buffer;
+    try {
+      audioBuffer = await generateEdgeTtsAudio(cleanSpeech, voiceName);
+    } catch (edgeErr: any) {
+      console.warn('[EDGE TTS FALLBACK TRIGGERED]', edgeErr.message);
+      audioBuffer = await fetchGoogleTtsFallback(cleanSpeech);
+    }
+
+    if (ttsAudioCache.size > 300) {
+      const firstKey = ttsAudioCache.keys().next().value;
+      if (firstKey) ttsAudioCache.delete(firstKey);
+    }
+    ttsAudioCache.set(cacheKey, audioBuffer);
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', audioBuffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.send(audioBuffer);
+  } catch (err: any) {
+    console.error('[AI VOICE TTS ERROR]', err.message);
+    res.status(500).json({ error: 'TTS audio could not be generated' });
   }
 });
 
