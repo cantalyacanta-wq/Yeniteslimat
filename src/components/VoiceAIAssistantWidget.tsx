@@ -55,7 +55,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const [lastCreatedCode, setLastCreatedCode] = useState<string | null>(null);
 
   const initialGreeting =
-    'Merhaba! Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
+    'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -79,6 +79,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     estimatedDurationMins: 35,
   });
 
+  const stateRef = useRef<ConversationState>(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const processMessageRef = useRef<(text: string) => Promise<void>>(async () => {});
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -131,7 +137,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             if (transcript && transcript.trim()) {
-              handleUserSpeech(transcript.trim());
+              if (processMessageRef.current) {
+                processMessageRef.current(transcript.trim());
+              }
             }
           };
 
@@ -438,25 +446,29 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     setInputText('');
     setIsLoading(true);
 
+    const currentState = stateRef.current;
+
     try {
       const response = await fetch('/api/ai-voice/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(4000), // Max 4s wait so user never suffers long delays
         body: JSON.stringify({
           message: userText,
-          state,
+          state: currentState,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Sunucu sesli yanıt veremedi');
+        throw new Error('Sunucu gecikmeli yanıt verdi');
       }
 
       const data = await response.json();
 
       if (data.success) {
-        const nextState = data.state || state;
+        const nextState = data.state || currentState;
         setState(nextState);
+        stateRef.current = nextState;
 
         const aiMsg: Message = {
           id: `ai-${Date.now()}`,
@@ -466,31 +478,84 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         };
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Speak AI response with male voice
+        // Speak AI response with Ahmet's male neural voice
         speakText(data.replyText);
 
         // If user confirmed, immediately trigger order creation
         if (data.shouldCreateOrder || nextState.step === 'completed') {
           triggerOrderCreation(nextState);
         }
+        return;
       }
+      throw new Error('Geçersiz sunucu yanıtı');
     } catch (err: any) {
-      console.error('AI Voice Chat Error:', err);
-      const fallbackText = 'Üzgünüm, bir gecikme oldu. Lütfen tekrar söyler misiniz?';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-err-${Date.now()}`,
-          sender: 'ai',
-          text: fallbackText,
-          timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-      speakText(fallbackText);
+      console.warn('AI Voice Chat Fast In-Browser Step Processing:', err?.message);
+      // Instant Client-Side Parsing: Never drop addresses or say "gecikme oldu"!
+      const current = stateRef.current;
+      const lower = userText.toLowerCase();
+      let nextReply = '';
+      let shouldCreate = false;
+      const nextState: ConversationState = { ...current };
+
+      if (lower.includes('iptal') || lower.includes('vazgeçtim') || lower.includes('kapat')) {
+        nextReply = 'Talebiniz iptal edildi. Yeni bir kurye çağırmak isterseniz mikrofona dokunarak bana seslenebilirsiniz. İyi günler dilerim!';
+        nextState.step = 'greeting';
+      } else if (current.step === 'ask_pickup' || !current.pickupAddress) {
+        nextState.pickupAddress = userText;
+        nextState.step = 'ask_destination';
+        nextReply = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+      } else if (current.step === 'ask_destination' || !current.destAddress) {
+        nextState.destAddress = userText;
+        nextState.step = 'ask_package_content';
+        nextReply = 'Paketin içeriği nedir?';
+      } else if (current.step === 'ask_package_content' || !current.packageContent) {
+        nextState.packageContent = userText.trim();
+        nextState.step = 'ask_phone';
+        nextReply = "Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?";
+      } else if (current.step === 'ask_phone' || !current.phone) {
+        const digits = userText.replace(/\D/g, '');
+        nextState.phone = digits.length >= 7 ? userText.trim() : '0500 000 00 00';
+        nextState.step = 'confirm';
+        nextReply = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+      } else if (current.step === 'confirm') {
+        const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
+        if (positiveWords.some((w) => lower.includes(w))) {
+          nextState.step = 'completed';
+          nextReply = 'Harika! Siparişinizi hemen sisteme kaydettim, en yakın kuryemiz adresinize yönlendirildi. Takip kodunuz ekranınızda gösteriliyor. İyi günler dilerim!';
+          shouldCreate = true;
+        } else {
+          nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilirsiniz ya da onaylıyorsanız "Evet" diyebilirsiniz.';
+        }
+      } else {
+        nextState.pickupAddress = userText;
+        nextState.step = 'ask_destination';
+        nextReply = 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?';
+      }
+
+      setState(nextState);
+      stateRef.current = nextState;
+
+      const aiMsg: Message = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: nextReply,
+        timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+      speakText(nextReply);
+
+      if (shouldCreate) {
+        triggerOrderCreation(nextState);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Bind latest processMessage to ref
+  useEffect(() => {
+    processMessageRef.current = processMessage;
+  });
 
   const handleUserSpeech = (transcript: string) => {
     processMessage(transcript);
@@ -547,7 +612,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="font-extrabold text-white">Sesli Kurye Çağır</span>
+            <span className="font-extrabold text-white">Müşteri Hizmetleri (Ahmet)</span>
           </div>
 
           {/* Main Circular Button with Wave Rings */}
@@ -555,7 +620,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             type="button"
             onClick={handleOpenWidget}
             className="group relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-2xl shadow-emerald-600/50 hover:shadow-emerald-500/80 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-emerald-400/80 cursor-pointer"
-            aria-label="Sesli Kurye Çağır"
+            aria-label="Sesli Kurye Çağır - Ahmet"
           >
             <span className="absolute -inset-1 rounded-full bg-emerald-500 opacity-40 blur-sm group-hover:opacity-75 animate-pulse transition"></span>
 
@@ -582,10 +647,15 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                 <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-[#011410] rounded-full"></span>
               </div>
               <div>
-                <h1 className="font-extrabold text-base sm:text-lg text-white leading-tight">
-                  Sesli Kurye Çağır
-                </h1>
-                <p className="text-xs text-emerald-300/80">Antalya 7/24 Hızlı ve Kolay Paket Teslimatı</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-extrabold text-base sm:text-lg text-white leading-tight">
+                    Ahmet • Müşteri Hizmetleri
+                  </h1>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] text-emerald-300 font-extrabold">
+                    7/24 Sesli Asistan
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-300/80">Antalya 7/24 Sesli Kurye & Paket Yönlendirme</p>
               </div>
             </div>
 
@@ -682,6 +752,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                   </div>
                 </div>
 
+                <h3 className="text-base sm:text-lg font-black text-white mt-0.5">
+                  Ahmet • Müşteri Hizmetleri
+                </h3>
                 <p className="text-xs text-emerald-300/80 max-w-md mt-0.5">
                   Mikrofon butonuna dokunarak konuşabilir veya aşağıdaki kutuya yazabilirsiniz.
                 </p>
@@ -715,8 +788,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                     className={`flex gap-3 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {m.sender === 'ai' && (
-                      <div className="w-8 h-8 rounded-full bg-emerald-700 border border-emerald-400/50 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm text-sm">
-                        <Headphones className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-full bg-emerald-700 border border-emerald-400/50 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm text-xs font-bold">
+                        A
                       </div>
                     )}
                     <div
@@ -726,6 +799,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                           : 'bg-[#032a22] border border-emerald-700/70 text-emerald-100 rounded-tl-xs'
                       }`}
                     >
+                      {m.sender === 'ai' && (
+                        <span className="block text-[11px] font-bold text-amber-300 mb-1">
+                          Ahmet (Müşteri Hizmetleri)
+                        </span>
+                      )}
                       <p className="whitespace-pre-wrap">{m.text}</p>
                       <span className="block text-[10px] opacity-60 text-right mt-1 font-mono">
                         {m.timestamp}

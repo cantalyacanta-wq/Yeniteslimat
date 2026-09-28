@@ -3322,11 +3322,11 @@ app.post('/api/ai-voice/chat', async (req, res) => {
       estimatedDurationMins: state.estimatedDurationMins || 35,
     };
 
-    // If Gemini client is active, try calling Gemini 3.8 Flash
+    // If Gemini client is active, try calling Gemini 2.5 Flash with a fast 2.5s timeout
     if (geminiClient && userText) {
       try {
-        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) sesli asistanısın.
-Görevin sesli olarak kullanıcıyla konuşup kurye yönlendirmektir.
+        const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri asistanı Ahmet'sin.
+Görevin sesli olarak kullanıcıyla konuşup Antalya içinde moto kurye yönlendirmektir.
 Adımlar:
 1. Alış Adresi (Nereden alınacak?)
 2. Teslimat Adresi (Nereye götürülecek?)
@@ -3335,8 +3335,9 @@ Adımlar:
 5. Onay
 
 Kurallar:
+- Senin adın Ahmet (Müşteri Hizmetleri).
 - 'nöbetçi' kelimesini asla kullanma, sadece 'kurye' de.
-- Açılış sorusu: 'Merhaba! Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
+- Açılış sorusu: 'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
 - Alış adresi alındıktan sonra sadece şunu sor: 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?' (kesinlikle adres tekrarı yapma).
 - Teslimat adresi alındıktan sonra kesinlikle sadece şunu sor: 'Paketin içeriği nedir?'
 - Paket içeriği sorulduktan sonra 'anladım' deme, içeriği tekrarlama! Doğrudan sadece şunu sor: 'Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?'
@@ -3359,8 +3360,9 @@ JSON formatında yanıt ver:
   "shouldCreateOrder": true | false
 }`;
 
-        const geminiRes = await geminiClient.models.generateContent({
-          model: 'gemini-3.8-flash',
+        // Fast 2.5s timeout promise so user never experiences any delay or lag
+        const geminiPromise = geminiClient.models.generateContent({
+          model: 'gemini-2.5-flash',
           contents: systemPrompt,
           config: {
             responseMimeType: 'application/json',
@@ -3368,7 +3370,13 @@ JSON formatında yanıt ver:
           },
         });
 
-        const rawJson = geminiRes.text?.trim() || '';
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini timeout')), 2500)
+        );
+
+        const geminiRes: any = await Promise.race([geminiPromise, timeoutPromise]);
+
+        const rawJson = geminiRes?.text?.trim() || '';
         if (rawJson) {
           const parsed = JSON.parse(rawJson);
           return res.json({
@@ -3391,11 +3399,11 @@ JSON formatında yanıt ver:
           });
         }
       } catch (geminiErr: any) {
-        console.warn('[GEMINI AI CHAT FALLBACK]', geminiErr.message);
+        console.warn('[GEMINI AI CHAT FALLBACK TO DETERMINISTIC ENGINE]', geminiErr.message);
       }
     }
 
-    // Deterministic High-Quality Turkish Conversational Engine (Fallback & Instant response)
+    // Deterministic Instant Turkish Conversational Engine (0ms Delay, 100% Reliable)
     const lower = userText.toLowerCase();
     let replyText = '';
     let shouldCreateOrder = false;
@@ -3404,16 +3412,16 @@ JSON formatında yanıt ver:
     if (lower.includes('iptal') || lower.includes('vazgeçtim') || lower.includes('kapat')) {
       return res.json({
         success: true,
-        replyText: 'Talebiniz iptal edildi. Yeni bir kurye çağırmak isterseniz mikrofona dokunarak bana seslenebilirsiniz. İyi günler!',
+        replyText: 'Talebiniz iptal edildi. Yeni bir kurye çağırmak isterseniz mikrofona dokunarak bana seslenebilirsiniz. İyi günler dilerim!',
         state: { ...currentState, step: 'greeting' },
         shouldCreateOrder: false,
       });
     }
 
-    // Step 1: Greeting or Initial State
+    // Step 1: Greeting or Pickup Address
     if (!userText || currentState.step === 'greeting' || currentState.step === 'ask_pickup') {
       if (!currentState.pickupAddress && !userText) {
-        replyText = 'Merhaba! Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
+        replyText = 'Merhaba! Ben müşteri hizmetlerinden Ahmet. Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
         currentState.step = 'ask_pickup';
       } else if (!currentState.pickupAddress && userText) {
         currentState.pickupAddress = userText;
