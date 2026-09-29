@@ -29,6 +29,19 @@ interface Message {
   timestamp: string;
 }
 
+// Strict sanitizer to completely prevent 'harika' and 'acaba'
+const cleanAssistantSpeech = (text: string): string => {
+  if (!text) return text;
+  let res = text
+    .replace(/\b(harika|acaba)\b[.,!?]?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (res.length > 0) {
+    res = res.charAt(0).toUpperCase() + res.slice(1);
+  }
+  return res;
+};
+
 interface ConversationState {
   step: 'greeting' | 'ask_pickup' | 'ask_destination' | 'ask_package_content' | 'ask_phone' | 'confirm' | 'completed';
   pickupAddress: string;
@@ -91,6 +104,40 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const sharedAudioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const isSpeakingRef = useRef<boolean>(false);
+  const isListeningRef = useRef<boolean>(false);
+  const isOpenRef = useRef<boolean>(false);
+  const autoListenTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // Hands-free continuous recognition: starts mic automatically whenever AI speech ends
+  const autoStartListening = useCallback(() => {
+    if (autoListenTimerRef.current) {
+      clearTimeout(autoListenTimerRef.current);
+    }
+
+    autoListenTimerRef.current = setTimeout(() => {
+      // Don't auto-listen if modal is closed, order is already created, or speech is still active
+      if (!isOpenRef.current || stateRef.current.step === 'completed' || isSpeakingRef.current) {
+        return;
+      }
+      if (!recognitionRef.current) return;
+
+      try {
+        if (!isListeningRef.current) {
+          recognitionRef.current.start();
+        }
+      } catch (err: any) {
+        console.debug('autoStartListening status:', err?.message);
+      }
+    }, 320); // 320ms natural pause after assistant speaks so speaker echo does not feed back
+  }, []);
 
   // Preload initial greeting audio with male voice (Ahmet) and initialize audio element
   useEffect(() => {
@@ -134,6 +181,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
           recognition.onstart = () => {
             setIsListening(true);
+            isListeningRef.current = true;
           };
 
           recognition.onresult = (event: any) => {
@@ -148,10 +196,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           recognition.onerror = (event: any) => {
             console.debug('Speech recognition error:', event.error);
             setIsListening(false);
+            isListeningRef.current = false;
           };
 
           recognition.onend = () => {
             setIsListening(false);
+            isListeningRef.current = false;
           };
 
           recognitionRef.current = recognition;
@@ -165,6 +215,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }
 
     return () => {
+      if (autoListenTimerRef.current) {
+        clearTimeout(autoListenTimerRef.current);
+      }
       if (sharedAudioRef.current) {
         try {
           sharedAudioRef.current.pause();
@@ -248,20 +301,24 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         utterance.onend = () => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
+          autoStartListening();
         };
 
         utterance.onerror = () => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
+          autoStartListening();
         };
 
         synthRef.current.speak(utterance);
       } catch (err) {
         console.debug('Local TTS error:', err);
         setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        autoStartListening();
       }
     },
-    [isAudioMuted]
+    [isAudioMuted, autoStartListening]
   );
 
   // High-Definition Neural Realistic Fast Male Voice (Ahmet) with robust credentialed fetch
@@ -280,8 +337,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
       }
 
-      // Clean emojis and symbols for natural Turkish pronunciation
-      const cleanSpeech = textToSpeak
+      // Clean emojis, symbols, and remove forbidden words like 'harika' or 'acaba'
+      const cleanSpeech = cleanAssistantSpeech(textToSpeak)
         .replace(/[#*•_~`]/g, '')
         .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
         .trim();
@@ -326,6 +383,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         audio.onended = () => {
           setIsSpeaking(false);
           isSpeakingRef.current = false;
+          // When assistant finishes speaking, automatically start listening hands-free!
+          autoStartListening();
         };
 
         audio.onerror = () => {
@@ -345,23 +404,29 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         speakWithLocalSynthesis(cleanSpeech);
       }
     },
-    [isAudioMuted, speakWithLocalSynthesis]
+    [isAudioMuted, speakWithLocalSynthesis, autoStartListening]
   );
 
   // Open Fullscreen Widget
   const handleOpenWidget = () => {
     primeAudio();
     setIsOpen(true);
+    isOpenRef.current = true;
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';
     }
     if (messages.length === 1 && !isAudioMuted) {
       speakText(messages[0].text);
+    } else {
+      autoStartListening();
     }
   };
 
   // Close Fullscreen Widget
   const handleCloseWidget = () => {
+    if (autoListenTimerRef.current) {
+      clearTimeout(autoListenTimerRef.current);
+    }
     if (sharedAudioRef.current) {
       try {
         sharedAudioRef.current.pause();
@@ -370,9 +435,17 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     if (synthRef.current) {
       synthRef.current.cancel();
     }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (ignored) {}
+    }
     setIsSpeaking(false);
+    isSpeakingRef.current = false;
     setIsListening(false);
+    isListeningRef.current = false;
     setIsOpen(false);
+    isOpenRef.current = false;
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }
@@ -386,10 +459,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }
 
     if (isListening) {
+      if (autoListenTimerRef.current) clearTimeout(autoListenTimerRef.current);
       try {
         recognitionRef.current.stop();
       } catch (e) {}
       setIsListening(false);
+      isListeningRef.current = false;
     } else {
       primeAudio();
       if (sharedAudioRef.current) {
@@ -402,9 +477,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
       }
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
 
       try {
         recognitionRef.current.start();
+        setIsListening(true);
+        isListeningRef.current = true;
       } catch (e) {
         console.debug('Error starting recognition:', e);
       }
@@ -460,7 +538,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           trackingCode,
         }));
 
-        const successSpeech = `Harika! Siparişiniz oluşturuldu, takip kodunuz #${trackingCode}. En yakın kuryemiz hemen yönlendirildi, sizi müşteri panelinize aktarıyorum.`;
+        const successSpeech = `Siparişiniz oluşturuldu, takip kodunuz #${trackingCode}. En yakın kuryemiz hemen yönlendirildi, sizi müşteri panelinize aktarıyorum.`;
 
         setMessages((prev) => [
           ...prev,
@@ -525,16 +603,17 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         setState(nextState);
         stateRef.current = nextState;
 
+        const reply = cleanAssistantSpeech(data.replyText || '');
         const aiMsg: Message = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
-          text: data.replyText,
+          text: reply,
           timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Speak AI response with female neural voice (Emel)
-        speakText(data.replyText);
+        // Speak AI response with energetic male voice
+        speakText(reply);
 
         // If user confirmed, immediately trigger order creation
         if (data.shouldCreateOrder || nextState.step === 'completed') {
@@ -558,11 +637,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       } else if (current.step === 'ask_pickup' || !current.pickupAddress) {
         nextState.pickupAddress = userText;
         nextState.step = 'ask_destination';
-        nextReply = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
+        nextReply = 'Paketiniz nereye, hangi adrese teslim edilecek?';
       } else if (current.step === 'ask_destination' || !current.destAddress) {
         nextState.destAddress = userText;
         nextState.step = 'ask_package_content';
-        nextReply = 'Paketinizin içeriği nedir acaba?';
+        nextReply = 'Paketinizin içeriği nedir?';
       } else if (current.step === 'ask_package_content' || !current.packageContent) {
         nextState.packageContent = userText.trim();
         nextState.step = 'ask_phone';
@@ -576,7 +655,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
         if (positiveWords.some((w) => lower.includes(w))) {
           nextState.step = 'completed';
-          nextReply = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
+          nextReply = 'Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
           shouldCreate = true;
         } else {
           nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
@@ -584,9 +663,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       } else {
         nextState.pickupAddress = userText;
         nextState.step = 'ask_destination';
-        nextReply = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
+        nextReply = 'Paketiniz nereye, hangi adrese teslim edilecek?';
       }
 
+      nextReply = cleanAssistantSpeech(nextReply);
       setState(nextState);
       stateRef.current = nextState;
 

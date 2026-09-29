@@ -3344,9 +3344,10 @@ Adımlar:
 
 Kurallar:
 - 'nöbetçi' kelimesini asla kullanma, sadece 'kurye' de.
+- 'harika', 'acaba' kelimelerini KESİNLİKLE kullanma! Doğrudan, profesyonel, net ve kibar konuş.
 - Açılış sorusu: 'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
-- Alış adresi alındıktan sonra sadece şunu sor: 'Peki paket nereye, hangi adrese veya ilçeye teslim edilecek?' (kesinlikle adres tekrarı yapma).
-- Teslimat adresi alındıktan sonra kesinlikle sadece şunu sor: 'Paketin içeriği nedir?'
+- Alış adresi alındıktan sonra sadece şunu sor: 'Paketiniz nereye, hangi adrese teslim edilecek?' (kesinlikle adres tekrarı yapma).
+- Teslimat adresi alındıktan sonra kesinlikle sadece şunu sor: 'Paketinizin içeriği nedir?'
 - Paket içeriği sorulduktan sonra 'anladım' deme, içeriği tekrarlama! Doğrudan sadece şunu sor: 'Kuryemizin size ulaşabilmesi ve takip SMS'i için telefon numaranız nedir?'
 - Onay aşamasında sipariş özetindeki detayları okuma! Sadece şunu söyle: 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.'
 Antalya ilçeleri: Muratpaşa, Konyaaltı, Kepez, Lara (Muratpaşa).
@@ -3434,10 +3435,10 @@ JSON formatında yanıt ver:
         currentState.pickupAddress = userText;
         currentState.pickupDistrict = detectAntalyaDistrict(userText);
         currentState.step = 'ask_destination';
-        replyText = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
+        replyText = 'Paketiniz nereye, hangi adrese teslim edilecek?';
       } else {
         currentState.step = 'ask_destination';
-        replyText = 'Harika. Peki paketiniz nereye, hangi adrese teslim edilecek?';
+        replyText = 'Paketiniz nereye, hangi adrese teslim edilecek?';
       }
     }
     // Step 2: Destination Address -> Then Ask Package Content
@@ -3447,7 +3448,7 @@ JSON formatında yanıt ver:
         currentState.destDistrict = detectAntalyaDistrict(userText);
       }
       currentState.step = 'ask_package_content';
-      replyText = 'Paketinizin içeriği nedir acaba?';
+      replyText = 'Paketinizin içeriği nedir?';
     }
     // Step 3: Package Content -> Then Ask Phone Number (Do NOT repeat content or say Anladım)
     else if (currentState.step === 'ask_package_content') {
@@ -3478,12 +3479,24 @@ JSON formatında yanıt ver:
       if (isPositive) {
         shouldCreateOrder = true;
         currentState.step = 'completed';
-        replyText = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
+        replyText = 'Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
       } else {
         replyText = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
       }
     } else {
       replyText = 'Siparişiniz başarıyla alındı. Yeni bir kurye talebi için dilediğiniz zaman bana seslenebilirsiniz.';
+    }
+
+    // Strict sanitize: eliminate any occurrence of 'harika' or 'acaba'
+    if (replyText) {
+      let cleaned = replyText
+        .replace(/\b(harika|acaba)\b[.,!?]?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (cleaned.length > 0) {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+      replyText = cleaned;
     }
 
     res.json({
