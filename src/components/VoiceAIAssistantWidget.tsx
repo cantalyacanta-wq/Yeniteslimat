@@ -283,7 +283,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
-        utterance.rate = 1.18; // Fast, energetic, fluent customer service cadence
+        utterance.rate = 1.05; // Natural, authoritative customer service cadence
 
         const voices =
           availableVoicesRef.current.length > 0
@@ -314,15 +314,15 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
         if (trMaleVoice) {
           utterance.voice = trMaleVoice;
-          utterance.pitch = 0.95;
+          utterance.pitch = 0.85; // Warmer, deeper baritone tone
         } else {
           // If the operating system only has a female Turkish voice installed (e.g. Google Türkçe or Yelda),
-          // pitch-shift deeply down to 0.50 to turn it into an authentic, low-register male customer service tone!
+          // pitch-shift deeply down to 0.45 to turn it into an authentic, low-register male customer service tone!
           const trVoice = voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
           if (trVoice) {
             utterance.voice = trVoice;
           }
-          utterance.pitch = 0.50;
+          utterance.pitch = 0.45;
         }
 
         utterance.onstart = () => {

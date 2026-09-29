@@ -3592,7 +3592,12 @@ app.post('/api/ai-voice/create-order', (req, res) => {
 // High-Definition Realistic Turkish Neural Voice Endpoint (Microsoft Neural Speech)
 const ttsAudioCache = new Map<string, Buffer>();
 
-async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Buffer> {
+async function generateEdgeTtsAudio(
+  text: string,
+  voiceName: string,
+  pitch: string = '-8Hz',
+  rate: string = '+6%'
+): Promise<Buffer> {
   let lastError: any = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
@@ -3602,8 +3607,8 @@ async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Bu
         voice: voiceName,
         lang: 'tr-TR',
         outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-        rate: '+22%',
-        pitch: '+0Hz',
+        rate,
+        pitch,
         timeout: 12000,
       });
       await tts.ttsPromise(text, tmpPath);
@@ -3625,8 +3630,10 @@ app.get('/api/ai-voice/tts', async (req, res) => {
   try {
     const rawText = String(req.query.text || '').trim();
     const voiceParam = String(req.query.voice || '').toLowerCase();
-    // Daima Türkçe Erkek Ses: AhmetNeural
+    // Yeni tok, olgun, karizmatik erkek ses tonu (Derin Bariton & Doğal Hız)
     const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural';
+    const pitch = voiceParam === 'female' ? '+0Hz' : '-8Hz'; // Tok, güven veren erkek ses tonu
+    const rate = voiceParam === 'female' ? '+10%' : '+6%';   // Akıcı ve anlaşılır müşteri temsilcisi temposu
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
@@ -3653,7 +3660,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.status(400).send('No speakable text');
     }
 
-    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v4_male_only`;
+    const cacheKey = `${voiceName}:${pitch}:${rate}:${cleanSpeech.toLowerCase()}:v5_deep_baritone`;
     if (ttsAudioCache.has(cacheKey)) {
       const cached = ttsAudioCache.get(cacheKey)!;
       res.setHeader('Content-Type', 'audio/mpeg');
@@ -3662,7 +3669,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.send(cached);
     }
 
-    const audioBuffer = await generateEdgeTtsAudio(cleanSpeech, voiceName);
+    const audioBuffer = await generateEdgeTtsAudio(cleanSpeech, voiceName, pitch, rate);
 
     if (ttsAudioCache.size > 300) {
       const firstKey = ttsAudioCache.keys().next().value;
