@@ -107,6 +107,23 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const isListeningRef = useRef<boolean>(false);
   const isOpenRef = useRef<boolean>(false);
   const autoListenTimerRef = useRef<any>(null);
+  const availableVoicesRef = useRef<SpeechSynthesisVoice[]>([]);
+
+  // Listen to browser voice list updates so Turkish male voices (Tolga, Cem, Ahmet) are properly found
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const updateVoices = () => {
+        try {
+          const v = window.speechSynthesis.getVoices();
+          if (v && v.length > 0) {
+            availableVoicesRef.current = v;
+          }
+        } catch (e) {}
+      };
+      updateVoices();
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+  }, []);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -266,31 +283,46 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
-        utterance.rate = 1.22; // Fast, energetic, fluent customer service cadence
+        utterance.rate = 1.18; // Fast, energetic, fluent customer service cadence
 
-        const voices = synthRef.current.getVoices();
+        const voices =
+          availableVoicesRef.current.length > 0
+            ? availableVoicesRef.current
+            : synthRef.current.getVoices();
+
+        const trMaleKeywords = [
+          'tolga',
+          'cem',
+          'ahmet',
+          'baris',
+          'can',
+          'sinan',
+          'yusuf',
+          'onur',
+          'mert',
+          'male',
+          'erkek',
+          'x-dfz#male',
+          'x-efz#male',
+        ];
+
         const trMaleVoice = voices.find(
           (v) =>
             (v.lang.includes('tr') || v.lang.includes('TR')) &&
-            (v.name.toLowerCase().includes('ahmet') ||
-              v.name.toLowerCase().includes('male') ||
-              v.name.toLowerCase().includes('erkek') ||
-              v.name.toLowerCase().includes('tolga') ||
-              v.name.toLowerCase().includes('cem') ||
-              v.name.toLowerCase().includes('murat'))
+            trMaleKeywords.some((kw) => v.name.toLowerCase().includes(kw))
         );
 
         if (trMaleVoice) {
           utterance.voice = trMaleVoice;
           utterance.pitch = 0.95;
         } else {
-          // If the operating system (like Android/iOS) only has a female Turkish voice,
-          // pitch-shift down to 0.70 to guarantee an energetic, professional male tone!
+          // If the operating system only has a female Turkish voice installed (e.g. Google Türkçe or Yelda),
+          // pitch-shift deeply down to 0.50 to turn it into an authentic, low-register male customer service tone!
           const trVoice = voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
           if (trVoice) {
             utterance.voice = trVoice;
           }
-          utterance.pitch = 0.70;
+          utterance.pitch = 0.50;
         }
 
         utterance.onstart = () => {
@@ -358,46 +390,56 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           return;
         }
 
-        // Fetch as blob with credentials to safely bypass Cloud Run/auth cookie redirects
-        let finalSrc = audioUrl;
-        try {
-          const res = await fetch(audioUrl, { credentials: 'include' });
-          if (res.ok) {
-            const blob = await res.blob();
-            if (blob.type.includes('audio') || blob.size > 1000) {
-              finalSrc = URL.createObjectURL(blob);
+        // Fetch Neural Male MP3 directly with 2-attempt retry
+        let audioBlobUrl: string | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const res = await fetch(audioUrl, { credentials: 'include' });
+            if (res.ok) {
+              const blob = await res.blob();
+              if (blob.type.includes('audio') || blob.size > 1000) {
+                audioBlobUrl = URL.createObjectURL(blob);
+                break;
+              }
+            }
+          } catch (fetchErr) {
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 200));
             }
           }
-        } catch (fetchErr) {
-          console.debug('Direct blob fetch failed, falling back to direct URL:', fetchErr);
         }
 
-        audio.src = finalSrc;
-        audio.preload = 'auto';
+        if (audioBlobUrl) {
+          audio.src = audioBlobUrl;
+          audio.preload = 'auto';
 
-        audio.onplay = () => {
-          setIsSpeaking(true);
-          isSpeakingRef.current = true;
-        };
+          audio.onplay = () => {
+            setIsSpeaking(true);
+            isSpeakingRef.current = true;
+          };
 
-        audio.onended = () => {
-          setIsSpeaking(false);
-          isSpeakingRef.current = false;
-          // When assistant finishes speaking, automatically start listening hands-free!
-          autoStartListening();
-        };
+          audio.onended = () => {
+            setIsSpeaking(false);
+            isSpeakingRef.current = false;
+            // When assistant finishes speaking, automatically start listening hands-free!
+            autoStartListening();
+          };
 
-        audio.onerror = () => {
-          console.debug('Neural Voice playback error, using local male speech fallback');
-          speakWithLocalSynthesis(cleanSpeech);
-        };
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.debug('Audio play failed, using local male synthesis:', err);
+          audio.onerror = () => {
+            console.debug('Neural Voice playback error, using local male speech fallback');
             speakWithLocalSynthesis(cleanSpeech);
-          });
+          };
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.debug('Audio play failed, using local male synthesis:', err);
+              speakWithLocalSynthesis(cleanSpeech);
+            });
+          }
+        } else {
+          // If server Neural audio cannot be fetched, fall back to pitch-adjusted local male speech
+          speakWithLocalSynthesis(cleanSpeech);
         }
       } catch (err) {
         console.debug('Error initiating Neural TTS:', err);

@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import https from 'https';
 import { EventEmitter } from 'events';
 import { createServer as createViteServer } from 'vite';
@@ -3592,58 +3593,40 @@ app.post('/api/ai-voice/create-order', (req, res) => {
 const ttsAudioCache = new Map<string, Buffer>();
 
 async function generateEdgeTtsAudio(text: string, voiceName: string): Promise<Buffer> {
-  const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
-  const tmpPath = path.join('/tmp', tmpId);
-  try {
-    const tts = new EdgeTTS({
-      voice: voiceName,
-      lang: 'tr-TR',
-      outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate: '+22%',
-      pitch: '+0Hz',
-    });
-    await tts.ttsPromise(text, tmpPath);
-    const buf = await fs.promises.readFile(tmpPath);
-    fs.promises.unlink(tmpPath).catch(() => {});
-    return buf;
-  } catch (err) {
-    fs.promises.unlink(tmpPath).catch(() => {});
-    throw err;
+  let lastError: any = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
+    const tmpPath = path.join(os.tmpdir(), tmpId);
+    try {
+      const tts = new EdgeTTS({
+        voice: voiceName,
+        lang: 'tr-TR',
+        outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
+        rate: '+22%',
+        pitch: '+0Hz',
+        timeout: 12000,
+      });
+      await tts.ttsPromise(text, tmpPath);
+      const buf = await fs.promises.readFile(tmpPath);
+      fs.promises.unlink(tmpPath).catch(() => {});
+      return buf;
+    } catch (err: any) {
+      lastError = err;
+      fs.promises.unlink(tmpPath).catch(() => {});
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 250 * attempt));
+      }
+    }
   }
-}
-
-function fetchGoogleTtsFallback(text: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const url =
-      'https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q=' +
-      encodeURIComponent(text.slice(0, 200));
-    https
-      .get(
-        url,
-        {
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-          },
-        },
-        (res) => {
-          if (res.statusCode !== 200) {
-            return reject(new Error(`TTS fallback code ${res.statusCode}`));
-          }
-          const chunks: Buffer[] = [];
-          res.on('data', (c) => chunks.push(c));
-          res.on('end', () => resolve(Buffer.concat(chunks)));
-        }
-      )
-      .on('error', reject);
-  });
+  throw lastError || new Error('Edge TTS generation failed after 3 attempts');
 }
 
 app.get('/api/ai-voice/tts', async (req, res) => {
   try {
     const rawText = String(req.query.text || '').trim();
     const voiceParam = String(req.query.voice || '').toLowerCase();
-    const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural'; // Varsayılan hızlı erkek sesi (Ahmet)
+    // Daima Türkçe Erkek Ses: AhmetNeural
+    const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural';
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
@@ -3670,7 +3653,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.status(400).send('No speakable text');
     }
 
-    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v3_fast`;
+    const cacheKey = `${voiceName}:${cleanSpeech.toLowerCase()}:v4_male_only`;
     if (ttsAudioCache.has(cacheKey)) {
       const cached = ttsAudioCache.get(cacheKey)!;
       res.setHeader('Content-Type', 'audio/mpeg');
@@ -3679,13 +3662,7 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.send(cached);
     }
 
-    let audioBuffer: Buffer;
-    try {
-      audioBuffer = await generateEdgeTtsAudio(cleanSpeech, voiceName);
-    } catch (edgeErr: any) {
-      console.warn('[EDGE TTS FALLBACK TRIGGERED]', edgeErr.message);
-      audioBuffer = await fetchGoogleTtsFallback(cleanSpeech);
-    }
+    const audioBuffer = await generateEdgeTtsAudio(cleanSpeech, voiceName);
 
     if (ttsAudioCache.size > 300) {
       const firstKey = ttsAudioCache.keys().next().value;
