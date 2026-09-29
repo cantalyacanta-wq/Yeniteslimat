@@ -460,7 +460,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           trackingCode,
         }));
 
-        const successSpeech = `Harika! Siparişiniz oluşturuldu, takip kodunuz #${trackingCode}. En yakın kuryemiz adresinize yönlendirildi. Teşekkür ederiz!`;
+        const successSpeech = `Harika! Siparişiniz oluşturuldu, takip kodunuz #${trackingCode}. En yakın kuryemiz hemen yönlendirildi, sizi müşteri panelinize aktarıyorum.`;
 
         setMessages((prev) => [
           ...prev,
@@ -473,11 +473,17 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         ]);
 
         speakText(successSpeech);
+
+        // Misafir müşteri sipariş oluşturduktan sonra doğrudan müşteri paneline yönlendirilir
+        setTimeout(() => {
+          handleCloseWidget();
+          setCurrentView('home');
+        }, 2500);
       } catch (err: any) {
         console.error('Error creating voice request:', err);
       }
     },
-    [createNewRequest, currentUser, speakText]
+    [createNewRequest, currentUser, speakText, setCurrentView]
   );
 
   // Send message to AI and update conversation
@@ -570,7 +576,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
         if (positiveWords.some((w) => lower.includes(w))) {
           nextState.step = 'completed';
-          nextReply = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Takip detayları ekranınızda, iyi günler dilerim!';
+          nextReply = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
           shouldCreate = true;
         } else {
           nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
@@ -945,12 +951,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                         type="button"
                         onClick={() => {
                           handleCloseWidget();
-                          setCurrentView('tracker');
+                          setCurrentView('home');
                         }}
-                        className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <Clock className="w-4 h-4" />
-                        <span>Kuryeyi Canlı Haritada Takip Et</span>
+                        <Package className="w-4 h-4" />
+                        <span>Müşteri Paneline Git</span>
                       </button>
 
                       <button

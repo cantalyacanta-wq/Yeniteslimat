@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
-import { AntalyaMap } from './AntalyaMap';
 import { AnimatedCourierSpeechBubble } from './AnimatedCourierSpeechBubble';
 
 export const OrderTracker: React.FC = () => {
@@ -385,9 +384,6 @@ export const OrderTracker: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* Live Map Preview */}
-            <AntalyaMap highlightedOrderId={currentOrder.id} />
           </div>
 
           {/* Right 1 Column: Courier Info, Actions & Rating */}

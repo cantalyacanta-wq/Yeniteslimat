@@ -3470,7 +3470,7 @@ JSON formatında yanıt ver:
       if (isPositive) {
         shouldCreateOrder = true;
         currentState.step = 'completed';
-        replyText = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Takip detayları ekranınızda, iyi günler dilerim!';
+        replyText = 'Harika! Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
       } else {
         replyText = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
       }
