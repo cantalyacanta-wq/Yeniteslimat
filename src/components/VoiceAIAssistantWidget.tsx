@@ -82,7 +82,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
   const [state, setState] = useState<ConversationState>({
     step: 'ask_pickup',
-    pickupAddress: currentUser?.address || '',
+    pickupAddress: '',
     pickupDistrict: (currentUser?.district as DistrictName) || 'Muratpaşa',
     destAddress: '',
     destDistrict: 'Muratpaşa',
@@ -211,9 +211,19 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           };
 
           recognition.onerror = (event: any) => {
-            console.debug('Speech recognition error:', event.error);
+            console.debug('Speech recognition error:', event?.error);
             setIsListening(false);
             isListeningRef.current = false;
+            // If user paused or had brief silence, auto-restart listening if modal is still open and assistant not speaking
+            if (event?.error === 'no-speech' && isOpenRef.current && !isSpeakingRef.current) {
+              setTimeout(() => {
+                if (isOpenRef.current && !isSpeakingRef.current && !isListeningRef.current) {
+                  try {
+                    recognitionRef.current?.start();
+                  } catch (e) {}
+                }
+              }, 400);
+            }
           };
 
           recognition.onend = () => {
@@ -640,12 +650,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.replyText && data.replyText.trim()) {
         const nextState = data.state || currentState;
         setState(nextState);
         stateRef.current = nextState;
 
-        const reply = cleanAssistantSpeech(data.replyText || '');
+        const reply = cleanAssistantSpeech(data.replyText.trim());
         const aiMsg: Message = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
@@ -654,7 +664,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         };
         setMessages((prev) => [...prev, aiMsg]);
 
-        // Speak AI response with energetic male voice
+        // Speak AI response with male voice
         speakText(reply);
 
         // If user confirmed, immediately trigger order creation
@@ -663,10 +673,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         }
         return;
       }
-      throw new Error('Geçersiz sunucu yanıtı');
+      throw new Error('Geçersiz sunucu yanıtı veya boş metin');
     } catch (err: any) {
-      console.warn('AI Voice Chat Fast In-Browser Step Processing:', err?.message);
-      // Instant Client-Side Parsing: Never drop addresses or say "gecikme oldu"!
+      console.warn('AI Voice Chat Deterministic In-Browser Progression:', err?.message);
+      // Instant in-browser state machine progression: 100% reliable, zero delay
       const current = stateRef.current;
       const lower = userText.toLowerCase();
       let nextReply = '';
@@ -675,8 +685,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
       if (lower.includes('iptal') || lower.includes('vazgeçtim') || lower.includes('kapat')) {
         nextReply = 'Talebiniz iptal edildi. Dilediğiniz zaman mikrofona dokunarak bana seslenebilirsiniz, iyi günler dilerim!';
-        nextState.step = 'greeting';
-      } else if (current.step === 'ask_pickup' || !current.pickupAddress) {
+        nextState.step = 'ask_pickup';
+      } else if (current.step === 'ask_pickup' || current.step === 'greeting' || !current.pickupAddress) {
         nextState.pickupAddress = userText;
         nextState.step = 'ask_destination';
         nextReply = 'Paketiniz nereye, hangi adrese teslim edilecek?';
@@ -687,25 +697,25 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       } else if (current.step === 'ask_package_content' || !current.packageContent) {
         nextState.packageContent = userText.trim();
         nextState.step = 'ask_phone';
-        nextReply = 'Kuryemizin size kolayca ulaşabilmesi için telefon numaranızı öğrenebilir miyim?';
+        nextReply = 'Kuryemizin size kolayca ulaşabilmesi için telefon numaranızı söyler misiniz?';
       } else if (current.step === 'ask_phone' || !current.phone) {
         const digits = userText.replace(/\D/g, '');
-        nextState.phone = digits.length >= 7 ? userText.trim() : '0500 000 00 00';
+        nextState.phone = digits.length >= 7 ? userText.trim() : (current.phone || '0500 000 00 00');
         nextState.step = 'confirm';
-        nextReply = 'Tüm bilgilerinizi aldım. Onaylıyorsanız hemen en yakın kuryemizi adresinize yönlendiriyorum.';
+        nextReply = `Tüm bilgilerinizi aldım. Alış: ${nextState.pickupAddress}, Teslim: ${nextState.destAddress}. Onaylıyorsanız hemen kuryenizi yönlendiriyorum, onaylıyor musunuz?`;
       } else if (current.step === 'confirm') {
         const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
         if (positiveWords.some((w) => lower.includes(w))) {
           nextState.step = 'completed';
-          nextReply = 'Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
+          nextReply = 'Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi! Sizi müşteri panelinize aktarıyorum, iyi günler dilerim.';
           shouldCreate = true;
         } else {
-          nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi söyleyebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
+          nextReply = 'Anladım. Değiştirmek istediğiniz bilgiyi belirtebilir ya da onaylıyorsanız "Evet" diyebilirsiniz.';
         }
       } else {
-        nextState.pickupAddress = userText;
-        nextState.step = 'ask_destination';
-        nextReply = 'Paketiniz nereye, hangi adrese teslim edilecek?';
+        nextState.destAddress = userText;
+        nextState.step = 'ask_package_content';
+        nextReply = 'Paketinizin içeriği nedir?';
       }
 
       nextReply = cleanAssistantSpeech(nextReply);
@@ -1115,9 +1125,100 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             </div>
           </main>
 
-          {/* Bottom Fullscreen Controller Bar (Big Mic Button + Text Fallback) */}
+          {/* Bottom Fullscreen Controller Bar (Big Mic Button + Quick Chips + Text Fallback) */}
           <footer className="px-4 sm:px-8 py-4 bg-[#01120e] border-t border-emerald-900/80 shrink-0">
             <div className="max-w-4xl mx-auto flex flex-col items-center space-y-3">
+              {/* Quick Suggestion Chips based on current step */}
+              {state.step !== 'completed' && (
+                <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-2xl px-2">
+                  <span className="text-[11px] text-emerald-400/80 font-medium mr-1">Hızlı Seçim:</span>
+                  {(state.step === 'ask_pickup' || state.step === 'greeting' || !state.pickupAddress) && (
+                    <>
+                      {['Muratpaşa', 'Lara / Şirinyalı', 'Konyaaltı', 'Kepez', 'Antalya Merkez'].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => processMessage(chip)}
+                          className="px-2.5 py-1 rounded-xl bg-[#022a22] hover:bg-emerald-700/60 border border-emerald-600/50 text-emerald-200 text-xs font-medium transition cursor-pointer active:scale-95"
+                        >
+                          📍 {chip}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {state.step === 'ask_destination' && (
+                    <>
+                      {['Muratpaşa Işıklar', 'Lara Barınaklar', 'Konyaaltı Altınkum', 'Kepez', 'Havalimanı'].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => processMessage(chip)}
+                          className="px-2.5 py-1 rounded-xl bg-[#022a22] hover:bg-emerald-700/60 border border-emerald-600/50 text-emerald-200 text-xs font-medium transition cursor-pointer active:scale-95"
+                        >
+                          🏁 {chip}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {state.step === 'ask_package_content' && (
+                    <>
+                      {['Evrak / Dosya', 'Yemek Siparişi', 'Anahtar / Küçük Kutu', 'Hediye Paketi', 'İlaç'].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => processMessage(chip)}
+                          className="px-2.5 py-1 rounded-xl bg-[#022a22] hover:bg-emerald-700/60 border border-emerald-600/50 text-emerald-200 text-xs font-medium transition cursor-pointer active:scale-95"
+                        >
+                          📦 {chip}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {state.step === 'ask_phone' && (
+                    <>
+                      {currentUser?.phone ? (
+                        <button
+                          type="button"
+                          onClick={() => processMessage(currentUser.phone)}
+                          className="px-2.5 py-1 rounded-xl bg-[#022a22] hover:bg-emerald-700/60 border border-emerald-600/50 text-emerald-200 text-xs font-medium transition cursor-pointer active:scale-95"
+                        >
+                          📞 Kayıtlı Numaram: {currentUser.phone}
+                        </button>
+                      ) : (
+                        ['0555 123 45 67', 'Numaramı Yazacağım'].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => chip.startsWith('05') && processMessage(chip)}
+                            className="px-2.5 py-1 rounded-xl bg-[#022a22] hover:bg-emerald-700/60 border border-emerald-600/50 text-emerald-200 text-xs font-medium transition cursor-pointer active:scale-95"
+                          >
+                            📞 {chip}
+                          </button>
+                        ))
+                      )}
+                    </>
+                  )}
+                  {state.step === 'confirm' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => processMessage('Evet, onaylıyorum')}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition cursor-pointer active:scale-95"
+                      >
+                        ✅ Evet, Kurye Çağır
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleManualReset}
+                        className="px-3 py-1.5 rounded-xl bg-[#022a22] hover:bg-emerald-800 text-emerald-300 text-xs font-semibold border border-emerald-700 transition cursor-pointer"
+                      >
+                        🔄 Bilgileri Değiştir
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Primary Large Microphone Button */}
               <button
                 type="button"
