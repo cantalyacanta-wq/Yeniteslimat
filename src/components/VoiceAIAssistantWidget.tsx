@@ -314,15 +314,14 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
         if (trMaleVoice) {
           utterance.voice = trMaleVoice;
-          utterance.pitch = 0.85; // Warmer, deeper baritone tone
+          utterance.pitch = 0.88; // Natural, authoritative male tone
         } else {
-          // If the operating system only has a female Turkish voice installed (e.g. Google Türkçe or Yelda),
-          // pitch-shift deeply down to 0.45 to turn it into an authentic, low-register male customer service tone!
+          // If only a default voice is available, use clean natural frequency without robotic pitch distortion
           const trVoice = voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
           if (trVoice) {
             utterance.voice = trVoice;
           }
-          utterance.pitch = 0.45;
+          utterance.pitch = 0.80; // Calm and smooth
         }
 
         utterance.onstart = () => {
@@ -395,9 +394,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const res = await fetch(audioUrl, { credentials: 'include' });
-            if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
+            if (res.ok && !contentType.includes('html')) {
               const blob = await res.blob();
-              if (blob.type.includes('audio') || blob.size > 1000) {
+              if (blob.type.includes('audio') || contentType.includes('audio')) {
                 audioBlobUrl = URL.createObjectURL(blob);
                 break;
               }
@@ -775,8 +775,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     speakText(resetText);
   };
 
-  // Kurye panelinde veya kurye rolündeyken Müşteri Hizmetleri butonu gösterilmez
-  if (currentView === 'courier' || currentUser?.role === 'courier') {
+  // Kurye panelinde, kurye rolündeyken, /pakettalebi ekranında veya APK içindeyken Müşteri Hizmetleri butonu ASLA gösterilmez!
+  const isAndroidApk =
+    typeof window !== 'undefined' &&
+    Boolean((window as any).AndroidApp || navigator.userAgent.includes('AntalyaKuryeApp'));
+
+  const isPaketTalebi =
+    typeof window !== 'undefined' &&
+    (window.location.hash.includes('pakettalebi') || window.location.pathname.includes('pakettalebi'));
+
+  if (
+    currentView === 'courier' ||
+    currentUser?.role === 'courier' ||
+    isAndroidApk ||
+    isPaketTalebi
+  ) {
     return null;
   }
 

@@ -271,10 +271,13 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
       <QuickCourierModal />
 
-      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde gösterilmez) */}
-      {currentView !== 'courier' && currentUser.role !== 'courier' && (
-        <VoiceAIAssistantWidget />
-      )}
+      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde, APK'de veya /pakettalebi ekranında gösterilmez) */}
+      {!isPaketTalebiRoute &&
+        currentView !== 'courier' &&
+        currentUser.role !== 'courier' &&
+        !(typeof window !== 'undefined' && ((window as any).AndroidApp || navigator.userAgent.includes('AntalyaKuryeApp'))) && (
+          <VoiceAIAssistantWidget />
+        )}
 
       {/* 5 Dakika Kurye Atanmadı Pop-up Bahşiş Ekranı */}
       <UnassignedOrderTipModal />
