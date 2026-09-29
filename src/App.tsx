@@ -240,7 +240,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
 };
 
 const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
-  const { setCurrentView, recordSiteVisit, isImpersonating, returnToAdmin, currentUser } = useDelivery();
+  const { currentView, setCurrentView, recordSiteVisit, isImpersonating, returnToAdmin, currentUser } = useDelivery();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
   const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
 
@@ -271,8 +271,10 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
       <QuickCourierModal />
 
-      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Sağ Alt Köşe) */}
-      <VoiceAIAssistantWidget />
+      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde gösterilmez) */}
+      {currentView !== 'courier' && currentUser.role !== 'courier' && (
+        <VoiceAIAssistantWidget />
+      )}
 
       {/* 5 Dakika Kurye Atanmadı Pop-up Bahşiş Ekranı */}
       <UnassignedOrderTipModal />

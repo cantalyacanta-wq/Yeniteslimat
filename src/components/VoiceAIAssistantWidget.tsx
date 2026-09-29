@@ -57,7 +57,7 @@ interface ConversationState {
 }
 
 export const VoiceAIAssistantWidget: React.FC = () => {
-  const { createNewRequest, setCurrentView, currentUser } = useDelivery();
+  const { createNewRequest, setCurrentView, currentUser, currentView } = useDelivery();
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -774,6 +774,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     ]);
     speakText(resetText);
   };
+
+  // Kurye panelinde veya kurye rolündeyken Müşteri Hizmetleri butonu gösterilmez
+  if (currentView === 'courier' || currentUser?.role === 'courier') {
+    return null;
+  }
 
   return (
     <>
