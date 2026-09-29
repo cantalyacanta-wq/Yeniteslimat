@@ -19,7 +19,15 @@ process.on('unhandledRejection', (reason) => {
 });
 
 const app = express();
-const PORT = 3000;
+let PORT = 3000;
+if (process.env.PORT) {
+  PORT = parseInt(process.env.PORT, 10);
+} else {
+  const portArgIndex = process.argv.indexOf('--port');
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    PORT = parseInt(process.argv[portArgIndex + 1], 10);
+  }
+}
 
 let geminiClient: GoogleGenAI | null = null;
 if (process.env.GEMINI_API_KEY) {
