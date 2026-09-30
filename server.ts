@@ -3587,7 +3587,6 @@ app.post('/api/ai-voice/send-code', async (req, res) => {
 
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanCode = String(code).trim();
-    const mailDetails = getMailTransporter();
 
     const subject = `Antalya Kurye - 4 Haneli Güvenlik Kodunuz: ${cleanCode}`;
     const textContent = `Sayın Müşterimiz,\n\nMüşteri hizmetleri sesli asistanımız üzerinden oluşturduğunuz kurye talebini onaylamak için 4 haneli güvenlik kodunuz: ${cleanCode}\n\nBu kod 10 dakika süreyle geçerlidir.\n\nAntalya Şehir İçi Moto Kurye Teslimat 7/24`;
@@ -3600,7 +3599,7 @@ app.post('/api/ai-voice/send-code', async (req, res) => {
         </div>
         <div style="background: #032d23; border: 1px solid #10b981; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
           <p style="color: #a7f3d0; font-size: 14px; margin: 0 0 10px;">Sesli asistan kurye talebinizi onaylamak için 4 haneli güvenlik kodunuz:</p>
-          <div style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b;">
+          <div style="font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b;">
             ${cleanCode}
           </div>
           <p style="color: #94a3b8; font-size: 12px; margin: 10px 0 0;">Bu kod 10 dakika süreyle geçerlidir.</p>
@@ -3615,25 +3614,33 @@ app.post('/api/ai-voice/send-code', async (req, res) => {
       </div>
     `;
 
-    if (mailDetails.transporter && mailDetails.isConfigured) {
-      await mailDetails.transporter.sendMail({
-        from: mailDetails.fromAddress,
-        to: cleanEmail,
-        replyTo: 'kuryeantalyam@gmail.com',
-        subject,
-        text: textContent,
-        html: htmlContent,
-        priority: 'high',
-      });
-      console.log(`[AI VOICE CODE] Sent security code ${cleanCode} to ${cleanEmail}`);
-    } else {
-      console.log(`[AI VOICE CODE SIMULATED] Simulated code ${cleanCode} to ${cleanEmail}`);
-    }
+    // Direct high-reliability SSL dispatch via port 465
+    const senderUser = 'kuryeantalyam@gmail.com';
+    const senderPass = 'tlnsrezkaobytsvg';
+    const directTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: senderUser, pass: senderPass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+    });
 
+    const info = await directTransporter.sendMail({
+      from: `"Antalya Şehir İçi Teslimat 7/24" <${senderUser}>`,
+      to: cleanEmail,
+      replyTo: 'kuryeantalyam@gmail.com',
+      subject,
+      text: textContent,
+      html: htmlContent,
+      priority: 'high',
+    });
+
+    console.log(`[AI VOICE CODE REAL DISPATCH] ✅ Sent code ${cleanCode} to ${cleanEmail}. MessageId: ${info.messageId}`);
     return res.json({ success: true, message: `${cleanEmail} adresine 4 haneli güvenlik kodu gönderildi.` });
   } catch (err: any) {
     console.error('[AI VOICE SEND CODE ERROR]', err?.message);
-    return res.status(500).json({ error: 'Kod gönderilemedi' });
+    return res.status(500).json({ error: 'Kod gönderilemedi: ' + err?.message });
   }
 });
 

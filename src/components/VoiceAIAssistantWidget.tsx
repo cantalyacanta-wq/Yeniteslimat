@@ -156,8 +156,16 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }
 
     autoListenTimerRef.current = setTimeout(() => {
-      // Don't auto-listen if modal is closed, order is already created, or speech is still active
-      if (!isOpenRef.current || stateRef.current.step === 'completed' || isSpeakingRef.current) {
+      // Don't auto-listen if modal is closed, speech is active, or during email / code text steps!
+      if (
+        !isOpenRef.current ||
+        stateRef.current.step === 'completed' ||
+        stateRef.current.step === 'ask_email' ||
+        stateRef.current.step === 'ask_code' ||
+        isSpeakingRef.current
+      ) {
+        setIsListening(false);
+        isListeningRef.current = false;
         return;
       }
       if (!recognitionRef.current) return;
@@ -220,6 +228,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             if (transcript && transcript.trim()) {
+              // E-posta ve güvenlik kodu ses ile yazılmasın, metin kutuları kullanılsın!
+              if (stateRef.current.step === 'ask_email' || stateRef.current.step === 'ask_code') {
+                return;
+              }
               if (processMessageRef.current) {
                 processMessageRef.current(transcript.trim());
               }
@@ -230,10 +242,24 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             console.debug('Speech recognition error:', event?.error);
             setIsListening(false);
             isListeningRef.current = false;
-            // If user paused or had brief silence, auto-restart listening if modal is still open and assistant not speaking
-            if (event?.error === 'no-speech' && isOpenRef.current && !isSpeakingRef.current) {
+            // If user paused or had brief silence, auto-restart listening only if NOT in email/code text steps
+            if (
+              event?.error === 'no-speech' &&
+              isOpenRef.current &&
+              !isSpeakingRef.current &&
+              stateRef.current.step !== 'ask_email' &&
+              stateRef.current.step !== 'ask_code' &&
+              stateRef.current.step !== 'completed'
+            ) {
               setTimeout(() => {
-                if (isOpenRef.current && !isSpeakingRef.current && !isListeningRef.current) {
+                if (
+                  isOpenRef.current &&
+                  !isSpeakingRef.current &&
+                  !isListeningRef.current &&
+                  stateRef.current.step !== 'ask_email' &&
+                  stateRef.current.step !== 'ask_code' &&
+                  stateRef.current.step !== 'completed'
+                ) {
                   try {
                     recognitionRef.current?.start();
                   } catch (e) {}
@@ -683,6 +709,17 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         // Speak AI response with male voice
         speakText(reply);
 
+        // Mail adresi ve güvenlik kodu adımlarında mikrofon kesinlikle kapalı tutulsun
+        if (nextState.step === 'ask_email' || nextState.step === 'ask_code') {
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.stop();
+            } catch (e) {}
+          }
+          setIsListening(false);
+          isListeningRef.current = false;
+        }
+
         // If user confirmed, immediately trigger order creation
         if (data.shouldCreateOrder || nextState.step === 'completed') {
           triggerOrderCreation(nextState);
@@ -817,11 +854,129 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     processMessage(transcript);
   };
 
+  const handleSendSecurityCode = async (emailToUse: string) => {
+    const cleanEmail = emailToUse.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setCodeErrorMessage('Lütfen geçerli bir e-posta adresi yazınız (Örn: ahmet@gmail.com)');
+      return;
+    }
+
+    setIsLoading(true);
+    setCodeErrorMessage('');
+    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const nextState: ConversationState = {
+      ...stateRef.current,
+      email: cleanEmail,
+      verificationCode: randomCode,
+      isCodeSent: true,
+      step: 'ask_code',
+    };
+    setState(nextState);
+    stateRef.current = nextState;
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: cleanEmail,
+      timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const reply = `${cleanEmail} adresinize 4 haneli güvenlik kodunuz gönderildi. Lütfen gelen kodu ekrandaki kutucuklara yazınız.`;
+    const aiMsg: Message = {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      text: reply,
+      timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, userMsg, aiMsg]);
+    speakText(reply);
+
+    // Turn off mic
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    setIsListening(false);
+    isListeningRef.current = false;
+
+    try {
+      await fetch('/api/ai-voice/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: randomCode,
+          orderSummary: {
+            pickup: nextState.pickupAddress,
+            destination: nextState.destAddress,
+            price: nextState.estimatedPrice,
+          },
+        }),
+      });
+    } catch (err: any) {
+      console.warn('send-code error:', err?.message);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        pinInputRefs.current[0]?.focus();
+      }, 300);
+    }
+  };
+
+  const handleVerifySecurityCode = (codeEntered: string) => {
+    const cleanCode = codeEntered.trim();
+    if (cleanCode.length < 4) {
+      setCodeErrorMessage('Lütfen 4 haneli kodu eksiksiz giriniz.');
+      return;
+    }
+
+    if (cleanCode === stateRef.current.verificationCode) {
+      setCodeErrorMessage('');
+      const nextState: ConversationState = {
+        ...stateRef.current,
+        step: 'completed',
+      };
+      setState(nextState);
+      stateRef.current = nextState;
+
+      const reply =
+        'Güvenlik kodunuz onaylandı! Kurye talebiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
+      const aiMsg: Message = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: reply,
+        timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+      speakText(reply);
+      triggerOrderCreation(nextState);
+    } else {
+      setCodeErrorMessage('Girdiğiniz 4 haneli kod hatalı. Lütfen e-postanızı kontrol edip tekrar giriniz.');
+      setPinDigits(['', '', '', '']);
+      pinInputRefs.current[0]?.focus();
+      const failText = 'Girdiğiniz 4 haneli kod hatalı. Lütfen e-postanızı kontrol edip tekrar giriniz.';
+      speakText(failText);
+    }
+  };
+
   const handleSubmitText = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim()) {
-      processMessage(inputText.trim());
+    if (!inputText.trim()) return;
+    const text = inputText.trim();
+    setInputText('');
+
+    if (state.step === 'ask_email') {
+      handleSendSecurityCode(text);
+      return;
     }
+    if (state.step === 'ask_code') {
+      handleVerifySecurityCode(text);
+      return;
+    }
+    processMessage(text);
   };
 
   const handlePinChange = (index: number, val: string) => {
@@ -837,7 +992,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
     const fullCode = newDigits.join('');
     if (fullCode.length === 4) {
-      processMessage(fullCode);
+      handleVerifySecurityCode(fullCode);
     }
   };
 
@@ -969,7 +1124,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
       {/* FULLSCREEN Customer Screen (Ekrani Kaplayan Sesli Kurye Modu) */}
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] w-screen h-screen bg-[#011410] text-slate-100 flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] w-full h-[100dvh] max-h-[100dvh] bg-[#011410] text-slate-100 flex flex-col overflow-hidden animate-in fade-in duration-200">
           {/* Top Fullscreen Header Navigation Bar */}
           <header className="px-4 sm:px-8 py-3.5 bg-gradient-to-r from-[#021e17] via-[#043328] to-[#021e17] border-b border-emerald-800/80 flex items-center justify-between shrink-0 shadow-md">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -1148,77 +1303,91 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                   </div>
                 )}
 
-                {/* Email Collection Box (For guest customer verification) */}
+                {/* Email Collection Box (Text only, no voice) */}
                 {state.step === 'ask_email' && (
-                  <div className="p-4 sm:p-5 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-emerald-500/80 rounded-3xl space-y-3.5 shadow-2xl animate-in zoom-in-95">
-                    <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm">
-                      <Mail className="w-5 h-5 text-emerald-400" />
-                      <span>E-posta Doğrulaması (Misafir Müşteri)</span>
+                  <div className="p-5 sm:p-6 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-emerald-400 rounded-3xl space-y-4 shadow-2xl animate-in zoom-in-95">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm sm:text-base">
+                        <Mail className="w-5 h-5 text-emerald-400" />
+                        <span>E-posta Adresinizi Yazınız</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-300 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/40">
+                        Güvenlik Doğrulaması
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-300">
-                      Kurye talebinizi onaylamak ve takip linkinizi iletmek için lütfen e-posta adresinizi giriniz:
+
+                    <p className="text-xs sm:text-sm text-slate-200">
+                      Sipariş onayınız ve kurye takip linkinizin iletilmesi için lütfen e-posta adresinizi giriniz:
                     </p>
+
+                    {codeErrorMessage && (
+                      <div className="p-3 bg-rose-950/90 border border-rose-500 rounded-2xl text-xs sm:text-sm text-rose-300 font-bold animate-in shake">
+                        ⚠️ {codeErrorMessage}
+                      </div>
+                    )}
+
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (customEmailInput.includes('@')) {
-                          processMessage(customEmailInput);
-                          setCustomEmailInput('');
-                        }
+                        handleSendSecurityCode(customEmailInput);
                       }}
-                      className="flex flex-col sm:flex-row gap-2 pt-1"
+                      className="space-y-3"
                     >
                       <input
                         type="email"
+                        autoFocus
                         required
                         value={customEmailInput}
-                        onChange={(e) => setCustomEmailInput(e.target.value)}
+                        onChange={(e) => {
+                          setCustomEmailInput(e.target.value);
+                          setCodeErrorMessage('');
+                        }}
                         placeholder="ornek@gmail.com"
-                        className="flex-1 bg-[#011611] border border-emerald-600/70 rounded-2xl px-4 py-3 text-sm text-white placeholder-emerald-700 focus:outline-none focus:border-emerald-400 shadow-inner"
+                        className="w-full bg-[#011611] border-2 border-emerald-500/80 rounded-2xl px-4 py-3.5 text-sm sm:text-base text-white placeholder-emerald-700 focus:outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-400/20 shadow-inner"
                       />
                       <button
                         type="submit"
                         disabled={!customEmailInput.includes('@') || isLoading}
-                        className="py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
+                        className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
                       >
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Güvenlik Kodunu Gönder</span>
+                        <ShieldCheck className="w-5 h-5" />
+                        <span>{isLoading ? 'Kod Gönderiliyor...' : '4 Haneli Güvenlik Kodunu Gönder'}</span>
                       </button>
                     </form>
                   </div>
                 )}
 
-                {/* 4-Digit Security Code Box */}
+                {/* 4-Digit Security Code Box (Text PIN only, no voice) */}
                 {state.step === 'ask_code' && (
-                  <div className="p-4 sm:p-5 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-amber-500/90 rounded-3xl space-y-3.5 shadow-2xl animate-in zoom-in-95">
+                  <div className="p-5 sm:p-6 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-amber-400 rounded-3xl space-y-4 shadow-2xl animate-in zoom-in-95">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
+                      <div className="flex items-center gap-2 font-bold text-amber-300 text-sm sm:text-base">
                         <KeyRound className="w-5 h-5 text-amber-400" />
                         <span>4 Haneli Güvenlik Kodunu Giriniz</span>
                       </div>
-                      <span className="text-xs font-mono text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-700/80">
+                      <span className="text-xs font-mono text-emerald-300 bg-emerald-950/90 px-3 py-1 rounded-full border border-emerald-600">
                         {state.email}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-200">
-                      <strong className="text-amber-300">{state.email}</strong> adresinize gönderilen 4 haneli güvenlik kodunu mikrofona söyleyebilir veya kutulara yazabilirsiniz:
+                    <p className="text-xs sm:text-sm text-slate-200">
+                      <strong className="text-amber-300">{state.email}</strong> adresinize gönderilen 4 haneli kodu aşağıdaki kutucuklara yazınız:
                     </p>
 
                     {codeResentToast && (
-                      <div className="p-2.5 bg-emerald-950/90 border border-emerald-500/80 rounded-xl text-center text-xs text-emerald-300 font-bold animate-in fade-in">
-                        ✅ Yeni 4 haneli güvenlik kodu e-posta adresinize gönderildi!
+                      <div className="p-3 bg-emerald-950/90 border border-emerald-400 rounded-2xl text-center text-xs sm:text-sm text-emerald-300 font-bold animate-in fade-in">
+                        ✅ Yeni 4 haneli kod e-posta adresinize gönderildi! Lütfen gelen kutunuzu kontrol ediniz.
                       </div>
                     )}
 
                     {codeErrorMessage && (
-                      <div className="p-2.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-center text-xs text-rose-300 font-bold animate-in shake">
+                      <div className="p-3 bg-rose-950/90 border border-rose-500 rounded-2xl text-center text-xs sm:text-sm text-rose-300 font-bold animate-in shake">
                         ⚠️ {codeErrorMessage}
                       </div>
                     )}
 
                     {/* 4-Box PIN Input */}
-                    <div className="flex items-center justify-center gap-2.5 py-2">
+                    <div className="flex items-center justify-center gap-3 py-2">
                       {[0, 1, 2, 3].map((idx) => (
                         <input
                           key={idx}
@@ -1228,36 +1397,44 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                           type="text"
                           inputMode="numeric"
                           maxLength={1}
+                          autoFocus={idx === 0}
                           value={pinDigits[idx] || ''}
                           onChange={(e) => handlePinChange(idx, e.target.value)}
                           onKeyDown={(e) => handlePinKeyDown(idx, e)}
-                          className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-black rounded-2xl bg-[#011410] border-2 border-amber-500/80 text-amber-300 focus:border-emerald-400 focus:outline-none transition shadow-inner"
+                          className="w-14 h-16 sm:w-16 sm:h-18 text-center text-3xl font-black rounded-2xl bg-[#011410] border-2 border-amber-400 text-amber-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 focus:outline-none transition shadow-inner"
                         />
                       ))}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                       <button
                         type="button"
-                        onClick={() => {
-                          const code = pinDigits.join('');
-                          if (code.length === 4) {
-                            processMessage(code);
-                          }
-                        }}
+                        onClick={() => handleVerifySecurityCode(pinDigits.join(''))}
                         disabled={pinDigits.join('').length < 4 || isLoading}
-                        className="flex-1 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm rounded-2xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle2 className="w-5 h-5" />
                         <span>Kodu Onayla ve Kuryeyi Çağır</span>
                       </button>
                       <button
                         type="button"
                         onClick={handleResendCode}
-                        className="px-4 py-3 bg-[#021b15] hover:bg-[#032920] border border-emerald-700 text-emerald-300 text-xs font-semibold rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5"
+                        className="px-4 py-3.5 bg-[#021b15] hover:bg-[#032920] border border-emerald-700 text-emerald-300 text-xs font-semibold rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        <RotateCcw className="w-4 h-4" />
                         <span>Kodu Tekrar Gönder</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setState((prev) => ({ ...prev, step: 'ask_email' }));
+                          stateRef.current.step = 'ask_email';
+                          setPinDigits(['', '', '', '']);
+                          setCodeErrorMessage('');
+                        }}
+                        className="px-4 py-3.5 bg-[#021b15] hover:bg-[#032920] border border-slate-700 text-slate-300 text-xs font-semibold rounded-2xl transition cursor-pointer"
+                      >
+                        E-postayı Değiştir
                       </button>
                     </div>
                   </div>
@@ -1368,51 +1545,71 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             </div>
           </main>
 
-          {/* Bottom Fullscreen Controller Bar (Big Mic Button + Text Fallback) */}
-          <footer className="px-4 sm:px-8 py-4 bg-[#01120e] border-t border-emerald-900/80 shrink-0">
-            <div className="max-w-4xl mx-auto flex flex-col items-center space-y-3">
-              {/* Primary Large Microphone Button */}
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`relative flex items-center justify-center gap-3 px-8 sm:px-12 py-3.5 sm:py-4 rounded-full font-black text-sm sm:text-base transition-all shadow-2xl cursor-pointer ${
-                  isListening
-                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/60 ring-8 ring-rose-500/30 animate-pulse scale-105'
-                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-700/60 hover:scale-102 active:scale-95'
-                }`}
-              >
-                {isListening ? (
-                  <>
-                    <MicOff className="w-5 h-5 animate-spin" />
-                    <span>Dinliyorum, Konuşun... (Durdurmak İçin Dokunun)</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-5 h-5 text-amber-300 fill-amber-300" />
-                    <span>Konuşmak İçin Dokunun</span>
-                  </>
-                )}
-              </button>
-
-              {/* Text Input Row */}
+          {/* Bottom Fullscreen Controller Bar (Text Input Row on Top + Conditional Mic) */}
+          <footer className="px-4 sm:px-8 py-3 sm:py-3.5 bg-[#01120e] border-t-2 border-emerald-800/80 shrink-0 z-40 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl">
+            <div className="max-w-4xl mx-auto flex flex-col items-center space-y-2.5">
+              {/* Text Input Row - FIRST and ALWAYS VISIBLE */}
               <form onSubmit={handleSubmitText} className="w-full flex items-center gap-2 max-w-2xl">
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Veya klavyenizle buraya yazarak cevaplayın..."
-                  className="flex-1 bg-[#022019] border border-emerald-800/80 rounded-2xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-emerald-600/70 focus:outline-none focus:border-emerald-500 transition shadow-inner"
+                  placeholder={
+                    state.step === 'ask_email'
+                      ? 'E-posta adresinizi buraya yazabilirsiniz...'
+                      : state.step === 'ask_code'
+                      ? '4 haneli güvenlik kodunu buraya yazabilirsiniz...'
+                      : 'Klavyenizle buraya yazarak cevaplayabilirsiniz...'
+                  }
+                  className="flex-1 bg-[#022019] border-2 border-emerald-500/80 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white placeholder-emerald-400/60 focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/20 transition shadow-inner"
                 />
                 <button
                   type="submit"
                   disabled={!inputText.trim() || isLoading}
-                  className="px-4 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 shadow-lg active:scale-95 shrink-0"
                   title="Gönder"
                 >
                   <Send className="w-4 h-4" />
-                  <span className="hidden sm:inline">Gönder</span>
+                  <span>Gönder</span>
                 </button>
               </form>
+
+              {/* Primary Large Microphone Button - ONLY shown in voice steps */}
+              {state.step !== 'ask_email' && state.step !== 'ask_code' && state.step !== 'completed' && (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`relative flex items-center justify-center gap-2.5 px-6 sm:px-10 py-2.5 sm:py-3 rounded-full font-black text-xs sm:text-sm transition-all shadow-xl cursor-pointer ${
+                    isListening
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/60 ring-4 ring-rose-500/30 animate-pulse scale-102'
+                      : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-700/60 hover:scale-102 active:scale-95'
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff className="w-4 h-4 animate-spin" />
+                      <span>Dinliyorum, Konuşun... (Durdurmak İçin Dokunun)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-4 h-4 text-amber-300 fill-amber-300" />
+                      <span>Sesle Konuşmak İçin Dokunun</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Status info for text-only steps */}
+              {(state.step === 'ask_email' || state.step === 'ask_code') && (
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-amber-300 font-semibold py-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    {state.step === 'ask_email'
+                      ? 'Güvenlik için e-posta adresinizi yukarıdaki veya buradaki alana yazınız.'
+                      : '4 haneli güvenlik kodunu yukarıdaki kutucuklara yazınız.'}
+                  </span>
+                </div>
+              )}
             </div>
           </footer>
         </div>

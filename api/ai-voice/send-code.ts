@@ -22,9 +22,8 @@ export default async function handler(req: any, res: any) {
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanCode = String(code).trim();
 
-    const user = (process.env.SMTP_USER || process.env.GMAIL_USER || 'kuryeantalyam@gmail.com').trim();
-    const pass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || 'tlnsrezkaobytsvg').replace(/\s+/g, '').trim();
-    const fromAddress = `"Antalya Şehir İçi Teslimat 7/24" <${user}>`;
+    const senderUser = (process.env.SMTP_USER || process.env.GMAIL_USER || 'kuryeantalyam@gmail.com').trim();
+    const senderPass = (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || 'tlnsrezkaobytsvg').replace(/\s+/g, '').trim();
 
     const subject = `Antalya Kurye - 4 Haneli Güvenlik Kodunuz: ${cleanCode}`;
     const textContent = `Sayın Müşterimiz,\n\nMüşteri hizmetleri sesli asistanımız üzerinden oluşturduğunuz kurye talebini onaylamak için 4 haneli güvenlik kodunuz: ${cleanCode}\n\nBu kod 10 dakika süreyle geçerlidir.\n\nAntalya Şehir İçi Moto Kurye Teslimat 7/24`;
@@ -37,7 +36,7 @@ export default async function handler(req: any, res: any) {
         </div>
         <div style="background: #032d23; border: 1px solid #10b981; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
           <p style="color: #a7f3d0; font-size: 14px; margin: 0 0 10px;">Sesli asistan kurye talebinizi onaylamak için 4 haneli güvenlik kodunuz:</p>
-          <div style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b;">
+          <div style="font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b;">
             ${cleanCode}
           </div>
           <p style="color: #94a3b8; font-size: 12px; margin: 10px 0 0;">Bu kod 10 dakika süreyle geçerlidir.</p>
@@ -52,25 +51,26 @@ export default async function handler(req: any, res: any) {
       </div>
     `;
 
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-      });
+    const directTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: senderUser, pass: senderPass },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+    });
 
-      await transporter.sendMail({
-        from: fromAddress,
-        to: cleanEmail,
-        replyTo: 'kuryeantalyam@gmail.com',
-        subject,
-        text: textContent,
-        html: htmlContent,
-        priority: 'high',
-      });
-      console.log(`[VERCEL SEND CODE] Sent security code ${cleanCode} to ${cleanEmail}`);
-    } catch (mailErr: any) {
-      console.warn('[VERCEL SEND CODE MAIL ERROR]', mailErr?.message);
-    }
+    await directTransporter.sendMail({
+      from: `"Antalya Şehir İçi Teslimat 7/24" <${senderUser}>`,
+      to: cleanEmail,
+      replyTo: 'kuryeantalyam@gmail.com',
+      subject,
+      text: textContent,
+      html: htmlContent,
+      priority: 'high',
+    });
+
+    console.log(`[VERCEL SEND CODE REAL DISPATCH] ✅ Sent code ${cleanCode} to ${cleanEmail}`);
 
     return res.status(200).json({
       success: true,
@@ -78,6 +78,6 @@ export default async function handler(req: any, res: any) {
     });
   } catch (err: any) {
     console.error('[VERCEL SEND CODE ERROR]', err?.message);
-    return res.status(500).json({ error: 'Güvenlik kodu gönderilemedi' });
+    return res.status(500).json({ error: 'Güvenlik kodu gönderilemedi: ' + err?.message });
   }
 }
