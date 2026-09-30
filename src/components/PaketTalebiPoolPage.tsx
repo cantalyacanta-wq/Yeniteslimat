@@ -198,16 +198,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
-            <a
-              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-              download="Antalya-Kurye-Talep-Havuzu.apk"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-[11px] sm:text-xs transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
-              title="Antalya Kurye Mobil APK Uygulamasını İndirin"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>APK İndir</span>
-            </a>
-
             <button
               type="button"
               onClick={() => {

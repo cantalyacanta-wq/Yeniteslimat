@@ -48,6 +48,7 @@ import {
   QrCode,
   Share2,
   Copy,
+  XCircle,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
@@ -56,7 +57,7 @@ import { ReceiptModal } from './ReceiptModal';
 import { SiteVisitorCounter } from './SiteVisitorCounter';
 import { QRCodeView } from './QRCodeView';
 import { PWAInstallButton } from './PWAInstallButton';
-import { playCourierPoolSiren, playNewOrderSound } from '../utils/audio';
+import { playCourierPoolSiren, playNewOrderSound, playAdminVoiceAlert } from '../utils/audio';
 import { sendBrowserNotification, triggerHapticVibration } from '../services/notificationService';
 import { shouldHideApkButtons, markApkDownloaded } from '../utils/apkDetection';
 
@@ -77,6 +78,7 @@ export const AdminManagement: React.FC = () => {
     poolRequests,
     acceptRequest,
     cancelRequest,
+    approveRequestForPool,
     updateStatus,
     setSelectedTrackingId,
     setCurrentView,
@@ -90,8 +92,9 @@ export const AdminManagement: React.FC = () => {
     requestNotifications,
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'customers' | 'couriers' | 'orders' | 'emails' | 'apk' | 'system'>('customers');
+  const [activeTab, setActiveTab] = useState<'customers' | 'couriers' | 'orders' | 'emails' | 'apk' | 'system' | 'approvals'>('customers');
   const [apkLinkCopied, setApkLinkCopied] = useState(false);
+  const [adminApkLinkCopied, setAdminApkLinkCopied] = useState(false);
   const [apkTestSuccess, setApkTestSuccess] = useState<string | null>(null);
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
@@ -526,6 +529,39 @@ export const AdminManagement: React.FC = () => {
   const [assigningOrder, setAssigningOrder] = useState<DeliveryRequest | null>(null);
   const [selectedCourierForAssign, setSelectedCourierForAssign] = useState<string>('');
 
+  // Cancel Order Modal State
+  const [orderToCancel, setOrderToCancel] = useState<DeliveryRequest | null>(null);
+
+  // Orders waiting for Management Approval (Customer created -> must be approved before hitting courier pool)
+  const pendingAdminRequests = requests.filter((r) => r.status === 'pending_admin');
+
+  // Track alerted pending admin orders so siren & voice alert trigger on each new incoming customer request
+  const alertedAdminOrderIdsRef = React.useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (pendingAdminRequests.length === 0) return;
+
+    // Find any unalerted pending admin requests
+    const newUnalerted = pendingAdminRequests.filter((r) => !alertedAdminOrderIdsRef.current.has(r.id));
+
+    if (newUnalerted.length > 0) {
+      newUnalerted.forEach((r) => alertedAdminOrderIdsRef.current.add(r.id));
+
+      const latest = newUnalerted[0];
+
+      // 1. Play LOUD siren + Turkish Voice Speech Announcement + Native APK Alarm
+      playAdminVoiceAlert(latest);
+
+      // 2. Trigger haptic vibration
+      triggerHapticVibration([500, 200, 500, 200, 800]);
+
+      // 3. Send browser / OS push notification
+      sendBrowserNotification('🚨 Yeni Müşteri Siparişi Onayınızı Bekliyor!', {
+        body: `${latest.trackingCode}: ${latest.sender.district} ➔ ${latest.receiver.district} (${latest.price} TL). Onaylamak için dokunun.`,
+      });
+    }
+  }, [pendingAdminRequests]);
+
   // Handle Add Customer Form
   const handleAddCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -734,7 +770,11 @@ export const AdminManagement: React.FC = () => {
 
   // Filtered Orders
   const filteredOrders = requests.filter((req) => {
-    if (orderStatusFilter !== 'all' && req.status !== orderStatusFilter) return false;
+    if (orderStatusFilter === 'active') {
+      if (req.status === 'cancelled' || req.status === 'delivered') return false;
+    } else if (orderStatusFilter !== 'all' && req.status !== orderStatusFilter) {
+      return false;
+    }
     if (searchOrderQuery.trim()) {
       const q = searchOrderQuery.toLowerCase();
       const match =
@@ -817,78 +857,73 @@ export const AdminManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Kurye Android APK Hızlı Erişim & İndirme Linki Barı (APK içinde veya indirilmişse gizlenir) */}
+      {/* Yönetici Android APK İndirme & Hızlı Erişim Barı (Sadece Yönetici Panelinde Görüntülenir) */}
       {!shouldHideApkButtons() && (
-        <div className="bg-gradient-to-r from-red-950/80 via-[#261403]/90 to-amber-950/80 p-3 sm:p-4 rounded-3xl border border-amber-500/40 shadow-lg shadow-black/40 flex flex-col md:flex-row md:items-center justify-between gap-3 text-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center shrink-0">
-              <Smartphone className="w-5 h-5 text-amber-300 animate-pulse" />
+        <div className="bg-gradient-to-r from-red-950/90 via-[#2a0e05]/95 to-amber-950/90 p-4 rounded-3xl border-2 border-red-500/60 shadow-xl shadow-black/50 flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-600 to-amber-600 border border-amber-400/50 flex items-center justify-center shrink-0 shadow-md">
+              <Smartphone className="w-6 h-6 text-white animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-sm text-white flex items-center gap-1.5">
-                  <span>Antalya Kurye APK (Android v1.3.0)</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-600 text-white font-extrabold">RESMİ</span>
+                <span className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
+                  <span>Antalya Kurye Yönetim APK (v1.5.0)</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-black tracking-wider">YÖNETİCİ ÖZEL</span>
                 </span>
-                <span className="text-[11px] text-amber-300/90 font-semibold">• Siren, Titreşim & Canlı Havuz</span>
+                <span className="text-[11px] text-amber-300 font-bold">• 7/24 Sesli Talep Uyarısı & Anında Onay</span>
               </div>
-              <p className="text-xs text-amber-100/70 mt-0.5">
-                Kuryelerin arka planda ve ekran kapalıyken talep alması için resmi APK indirme linki.
+              <p className="text-xs text-amber-100/80 mt-0.5">
+                Müşteri taleplerinin ekran kapalıyken <strong>yüksek sesli siren ve konuşma anonsuyla</strong> telefonunuza gelmesi için Yönetim APK'sını kurun.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             <a
-              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-              download="Antalya-Kurye-Talep-Havuzu.apk"
+              href="/downloads/Antalya-Yonetim.apk"
+              download="Antalya-Yonetim.apk"
               onClick={markApkDownloaded}
-              className="px-3.5 py-2 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-red-950/50 cursor-pointer active:scale-95"
-              title="Antalya Kurye APK'yı İndir"
+              className="px-4 py-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs rounded-xl transition flex items-center gap-2 shadow-lg shadow-red-950/70 cursor-pointer active:scale-95 border border-amber-400/40"
+              title="Antalya Kurye Yönetim APK'sını İndir"
             >
               <Download className="w-4 h-4" />
-              <span>APK'yı İndir (.apk)</span>
+              <span>📲 Yönetim APK İndir (.apk)</span>
             </a>
 
             <button
               type="button"
               onClick={() => {
-                const url = window.location.origin + '/downloads/Antalya-Kurye-Talep-Havuzu.apk';
+                const url = window.location.origin + '/downloads/Antalya-Yonetim.apk';
                 navigator.clipboard.writeText(url);
-                setApkLinkCopied(true);
-                setTimeout(() => setApkLinkCopied(false), 3000);
+                setAdminApkLinkCopied(true);
+                setTimeout(() => setAdminApkLinkCopied(false), 3000);
               }}
-              className="px-3 py-2 bg-slate-900/80 hover:bg-slate-800 text-amber-300 hover:text-white border border-amber-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-              title="İndirme Linkini Kopyala"
+              className="px-3 py-2.5 bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-white border border-red-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              title="Yönetim APK Linkini Kopyala"
             >
-              {apkLinkCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{apkLinkCopied ? 'Kopyalandı!' : 'Linki Kopyala'}</span>
+              {adminApkLinkCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{adminApkLinkCopied ? 'Kopyalandı!' : 'Yönetim Linki'}</span>
             </button>
 
             <a
-              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                `🛵 Antalya Kurye Talep Havuzu Android Uygulaması (v1.3.0) Hazır!\n\nYeni siparişleri kaçırmamak için hemen APK'yı yükleyin:\n${
-                  typeof window !== 'undefined' ? window.location.origin : ''
-                }/downloads/Antalya-Kurye-Talep-Havuzu.apk`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-              title="WhatsApp Kurye Grubunda Paylaş"
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="px-3 py-2.5 bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-600/50 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              title="Kuryelere Gönderilecek Kurye APK'sını İndir"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">WhatsApp'a Gönder</span>
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Kurye APK'sı</span>
             </a>
 
             {activeTab !== 'apk' && (
               <button
                 type="button"
                 onClick={() => setActiveTab('apk')}
-                className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
-                title="QR Kod ve Detaylı APK Ayarları"
+                className="px-3 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                title="QR Kod ile Telefona Yükle & Detaylar"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>QR Kod & Detay</span>
+                <span>QR Kod</span>
               </button>
             )}
           </div>
@@ -921,6 +956,26 @@ export const AdminManagement: React.FC = () => {
         >
           <Bike className="w-4 h-4" />
           <span>Kurye Yönetimi ({courierUsers.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('approvals')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
+            activeTab === 'approvals'
+              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white border-amber-400 shadow-md ring-2 ring-red-400/50'
+              : pendingAdminRequests.length > 0
+              ? 'bg-red-950/90 text-amber-300 border-red-500/80 animate-pulse'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          }`}
+        >
+          <AlertTriangle className={`w-4 h-4 ${pendingAdminRequests.length > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-400'}`} />
+          <span>Yönetici Onayı Bekleyenler ({pendingAdminRequests.length})</span>
+          {pendingAdminRequests.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-black animate-ping">
+              !
+            </span>
+          )}
         </button>
 
         <button
@@ -962,7 +1017,7 @@ export const AdminManagement: React.FC = () => {
           }`}
         >
           <Smartphone className="w-4 h-4 text-amber-400 animate-bounce" />
-          <span>Kurye APK & Bildirim Hub</span>
+          <span>Mobil APK İndirme Merkezi</span>
           <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-extrabold">YENİ</span>
         </button>
 
@@ -979,6 +1034,231 @@ export const AdminManagement: React.FC = () => {
           <span>Sistem & Yedekleme</span>
         </button>
       </div>
+
+      {/* ===================================================================== */}
+      {/* 🚨 YÖNETİCİ ONAYI BEKLEYEN MÜŞTERİ SİPARİŞLERİ ALARM BANNER (HER SEKMEDE GÖRÜNÜR) */}
+      {/* ===================================================================== */}
+      {pendingAdminRequests.length > 0 && activeTab !== 'approvals' && (
+        <div className="bg-gradient-to-r from-[#2c0808] via-[#3a1006] to-[#240808] p-5 sm:p-6 rounded-3xl border-2 border-red-500/90 text-white space-y-4 shadow-2xl shadow-red-950/80 animate-in zoom-in-95">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-800/60 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-600/30 border-2 border-red-500 flex items-center justify-center text-red-300 shrink-0">
+                <AlertTriangle className="w-7 h-7 text-amber-300 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-black text-base sm:text-lg text-white tracking-wide">
+                    🚨 YÖNETİCİ ONAYI BEKLEYEN SİPARİŞ VAR ({pendingAdminRequests.length})
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-red-600 text-white animate-pulse">
+                    HAVUZA DÜŞMEDİ
+                  </span>
+                </div>
+                <p className="text-xs text-red-200/90 mt-0.5">
+                  Müşterilerden gelen bu talepler siz onaylayana kadar <strong>kurye havuzuna düşmez</strong> ve kuryelere iletilmez.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  playCourierPoolSiren();
+                  triggerHapticVibration([400, 200, 400]);
+                }}
+                className="px-3 py-2 bg-red-950/90 hover:bg-red-900 border border-red-500/80 text-amber-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                title="Acil siren sesini tekrar çal"
+              >
+                <Volume2 className="w-4 h-4 text-amber-400" />
+                <span>Siren Çal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('approvals')}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md"
+              >
+                Talepleri İncele ({pendingAdminRequests.length})
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {pendingAdminRequests.slice(0, 4).map((req) => (
+              <div
+                key={req.id}
+                className="bg-[#170404] p-4 rounded-2xl border border-red-600/60 hover:border-amber-400 transition space-y-2.5 shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-black bg-red-950 text-amber-300 px-2.5 py-1 rounded-lg border border-red-800/80">
+                    {req.trackingCode}
+                  </span>
+                  <span className="text-sm font-black text-amber-400">{req.price} ₺</span>
+                </div>
+
+                <div className="text-xs space-y-1 text-slate-200 bg-[#220707] p-2.5 rounded-xl border border-red-900/50">
+                  <p><strong>Alış:</strong> {req.sender.district} ({req.sender.contactName} - {req.sender.contactPhone})</p>
+                  <p><strong>Teslim:</strong> {req.receiver.district} ({req.receiver.contactName} - {req.receiver.contactPhone})</p>
+                  <p className="text-[11px] text-slate-400 truncate">📦 {req.packageName}</p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => approveRequestForPool(req.id)}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                    <span>Onayla & Havuza Düşür</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderToCancel(req)}
+                    className="px-3 py-2.5 bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/80 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    title="İptal Et / Reddet"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Reddet</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB: YÖNETİCİ ONAYI BEKLEYENLER (DEDICATED APPROVALS TAB) */}
+      {/* ===================================================================== */}
+      {activeTab === 'approvals' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-gradient-to-r from-[#2c0808] via-[#3a1006] to-[#240808] p-6 rounded-3xl border-2 border-red-500/90 text-white space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-red-800/60">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-600/30 border-2 border-red-500 flex items-center justify-center text-red-300 shrink-0">
+                  <AlertTriangle className="w-7 h-7 text-amber-300 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-white">Yönetici Onayı Bekleyen Siparişler</h3>
+                  <p className="text-xs text-red-200/90">
+                    Müşterilerin oluşturduğu bu talepler ilk olarak buraya sesli olarak düşer. Onay verdiğinizde kurye havuzuna aktarılır.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playCourierPoolSiren();
+                    triggerHapticVibration([400, 200, 400]);
+                  }}
+                  className="px-3 py-2 bg-red-950/90 hover:bg-red-900 border border-red-500/80 text-amber-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Volume2 className="w-4 h-4 text-amber-400" />
+                  <span>Siren Sesi Test</span>
+                </button>
+                {pendingAdminRequests.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pendingAdminRequests.forEach((r) => approveRequestForPool(r.id));
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Tümünü Onayla ({pendingAdminRequests.length})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {pendingAdminRequests.length === 0 ? (
+              <div className="p-12 text-center text-xs text-slate-300 space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                <p className="font-bold text-sm text-white">Şu anda onay bekleyen sipariş bulunmuyor.</p>
+                <p className="text-slate-400">Yeni bir müşteri sipariş oluşturduğunda anında sesli siren ve bildirimle buraya düşecektir.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {pendingAdminRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="bg-[#170404] p-5 rounded-2xl border-2 border-amber-500/70 hover:border-amber-400 transition space-y-3.5 shadow-xl flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-black bg-red-950 text-amber-300 px-3 py-1.5 rounded-lg border border-red-700/80">
+                          {req.trackingCode}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-lg font-black text-amber-400 block">{req.price} ₺</span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {req.paymentMethod === 'alici_odemeli' ? 'Alıcı Ödemeli' : 'Gönderici Ödemeli'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs space-y-2 bg-[#220707] p-3.5 rounded-xl border border-red-900/60">
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-400 font-bold shrink-0">📍 Alış:</span>
+                          <span className="text-slate-100 font-semibold">{req.sender.district}</span>
+                          <span className="text-slate-400 truncate">({req.sender.addressDetail || req.sender.neighborhood || 'Belirtildi'})</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-amber-400 font-bold shrink-0">🏁 Teslimat:</span>
+                          <span className="text-slate-100 font-semibold">{req.receiver.district}</span>
+                          <span className="text-slate-400 truncate">({req.receiver.addressDetail || req.receiver.neighborhood || 'Belirtildi'})</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-red-900/50 text-[11px] text-slate-300">
+                          <div><strong className="text-slate-400">Müşteri:</strong> {req.sender.contactName}</div>
+                          <div><strong className="text-slate-400">Telefon:</strong> {req.sender.contactPhone}</div>
+                          <div><strong className="text-slate-400">Paket:</strong> {req.packageName}</div>
+                          <div><strong className="text-slate-400">Saat:</strong> {new Date(req.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => approveRequestForPool(req.id)}
+                        className="flex-1 min-w-[150px] py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-950/60 transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                        <span>Onayla & Kurye Havuzuna Düşür</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssigningOrder(req);
+                          setSelectedCourierForAssign(courierUsers[0]?.id || '');
+                        }}
+                        className="py-3 px-3.5 bg-blue-900/90 hover:bg-blue-800 text-blue-200 border border-blue-600/70 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                        title="Doğrudan Kuryeye Ata"
+                      >
+                        <Bike className="w-4 h-4" />
+                        <span>Kuryeye Ata</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrderToCancel(req)}
+                        className="py-3 px-3.5 bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/80 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                        title="Talebi Reddet / İptal Et"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Reddet</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* TAB: MÜŞTERİ YÖNETİMİ (CUSTOMER MANAGEMENT) */}
@@ -1669,6 +1949,16 @@ export const AdminManagement: React.FC = () => {
                       >
                         İrsaliye
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrderToCancel(req)}
+                        title="Siparişi İptal Et"
+                        className="px-3 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-600/70 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                      >
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>İptal Et</span>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1706,6 +1996,7 @@ export const AdminManagement: React.FC = () => {
                 className="bg-[#011410] border border-emerald-700/60 rounded-xl px-3 py-1.5 text-xs text-emerald-200 outline-hidden font-semibold cursor-pointer"
               >
                 <option value="all">Tüm Durumlar ({requests.length})</option>
+                <option value="active">⚡ Aktif Siparişler ({requests.filter((r) => r.status !== 'cancelled' && r.status !== 'delivered').length})</option>
                 <option value="pending_pool">Havuzda Bekleyen ({poolRequests.length})</option>
                 <option value="courier_assigned">Kurye Atandı</option>
                 <option value="picked_up">Dağıtımda / Yolda</option>
@@ -1862,6 +2153,19 @@ export const AdminManagement: React.FC = () => {
                           <FileText className="w-3.5 h-3.5" />
                           <span>Fiş</span>
                         </button>
+
+                        {/* Aktif Siparişi İptal Et Butonu */}
+                        {req.status !== 'cancelled' && req.status !== 'delivered' && (
+                          <button
+                            type="button"
+                            onClick={() => setOrderToCancel(req)}
+                            title="Siparişi İptal Et"
+                            className="px-2.5 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-600/70 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                          >
+                            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                            <span>İptal Et</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2542,42 +2846,109 @@ export const AdminManagement: React.FC = () => {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB: KURYE MOBİL APK & ANLIK BİLDİRİM HUB */}
+      {/* TAB: MOBİL APK İNDİRME MERKEZİ (YÖNETİM & KURYE APK) */}
       {/* ===================================================================== */}
       {activeTab === 'apk' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Hero Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0e02] via-[#2d1804] to-[#120800] p-6 sm:p-8 border-2 border-amber-500/40 shadow-2xl text-white">
-            <div className="absolute -right-16 -top-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Card 1: Yönetim Paneli APK (ÖZEL: Yöneticiler İçin) */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1c0707] via-[#2f100a] to-[#160606] p-6 sm:p-8 border-2 border-red-500/80 shadow-2xl text-white">
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-red-600 text-white shadow-md shadow-red-900/40">
-                    RESMİ ANDROID APK
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-red-600 text-white shadow-md shadow-red-950/60 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" /> SADECE YÖNETİCİLER İÇİN
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40">
-                    Sürüm: v1.3.0 • 2026 Edition
+                    Sürüm: v1.5.0 • Yönetim APK
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> İmzalı & Doğrulandı (v1/v2/v3)
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Antalya Kurye Talep Havuzu — Mobil Uygulama Dağıtım Merkezi
+
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>📲 Antalya Kurye Yönetim APK (Yönetici Paneli Uygulaması)</span>
                 </h2>
-                <p className="text-xs sm:text-sm text-amber-100/85 leading-relaxed">
-                  Kuryeler bu APK'yı telefonlarına yükleyerek Muratpaşa, Konyaaltı, Kepez ve tüm Antalya'dan talep havuzuna düşen acil paket çağrılarını ekran kapalıyken bile <strong className="text-amber-300">acil siren sesi</strong>, <strong className="text-amber-300">titreşim</strong> ve <strong className="text-amber-300">anlık bildirim</strong> ile anında alırlar.
+
+                <p className="text-xs sm:text-sm text-amber-100/90 leading-relaxed">
+                  Bu APK'yı telefonunuza yükleyerek müşterilerden gelen yeni kurye taleplerini telefonunuzun ekranı kapalıyken bile <strong className="text-amber-300">acil siren sesi</strong>, <strong className="text-amber-300">sesli konuşma anonsu</strong> ve <strong className="text-amber-300">titreşimle</strong> anında alırsınız. Gelen talepleri tek dokunuşla onaylayıp kurye havuzuna düşürebilirsiniz.
                 </p>
 
-                {/* Primary Download & Share CTA Buttons */}
+                {/* Download & Copy Buttons */}
+                <div className="flex items-center gap-3 flex-wrap pt-2">
+                  <a
+                    href="/downloads/Antalya-Yonetim.apk"
+                    download="Antalya-Yonetim.apk"
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-sm shadow-xl shadow-red-950/60 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>Yönetim APK İndir (.apk - 296 KB)</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = window.location.origin + '/downloads/Antalya-Yonetim.apk';
+                      navigator.clipboard.writeText(url);
+                      setAdminApkLinkCopied(true);
+                      setTimeout(() => setAdminApkLinkCopied(false), 3000);
+                    }}
+                    className="px-4 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-200 hover:text-white border border-red-500/50 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer"
+                  >
+                    {adminApkLinkCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{adminApkLinkCopied ? 'Yönetim APK Linki Kopyalandı!' : 'Yönetim Linkini Kopyala'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Code Card */}
+              <div className="bg-[#0c0404] p-4 rounded-3xl border border-red-500/40 flex flex-col items-center text-center shrink-0 shadow-xl">
+                <span className="text-[11px] font-black text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-amber-400" /> Telefona Okut & İndir
+                </span>
+                <QRCodeView
+                  text={typeof window !== 'undefined' ? window.location.origin + '/downloads/Antalya-Yonetim.apk' : 'https://www.antalyateslimat.com/downloads/Antalya-Yonetim.apk'}
+                  size={160}
+                />
+                <span className="text-[10px] text-slate-300 mt-2 max-w-[170px] leading-tight font-medium">
+                  Yönetici telefonunuzun kamerasıyla okutup indirin
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Kurye Havuzu APK (Kuryelere Dağıtılacak Paket) */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#061e18] via-[#04281f] to-[#021813] p-6 sm:p-8 border-2 border-emerald-500/50 shadow-2xl text-white">
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-2xl">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-600 text-white shadow-md shadow-emerald-950/60 flex items-center gap-1.5">
+                    <Bike className="w-3.5 h-3.5" /> KURYE DAĞITIM PAKETİ
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                    Sürüm: v1.5.0 • Kurye Havuzu
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  🛵 Antalya Kurye Talep Havuzu — Kuryelere Dağıtılacak APK
+                </h2>
+
+                <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                  Yönetim tarafından onaylanan havuz taleplerini kuryelerinizin arka planda ve ekran kapalıyken acil siren sesiyle kapabilmesi için kuryelere göndereceğiniz resmi Android APK paketidir.
+                </p>
+
+                {/* Download & Share CTA Buttons */}
                 <div className="flex items-center gap-3 flex-wrap pt-2">
                   <a
                     href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
                     download="Antalya-Kurye-Talep-Havuzu.apk"
-                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-sm shadow-xl shadow-red-950/60 flex items-center gap-2.5 transition active:scale-95"
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-950/60 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
                   >
                     <Download className="w-5 h-5" />
-                    <span>Android APK İndir (.apk - 121 KB)</span>
+                    <span>Kurye APK İndir (.apk - 295 KB)</span>
                   </a>
 
                   <button
@@ -2588,10 +2959,10 @@ export const AdminManagement: React.FC = () => {
                       setApkLinkCopied(true);
                       setTimeout(() => setApkLinkCopied(false), 3000);
                     }}
-                    className="px-4 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-200 hover:text-white border border-amber-500/50 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer"
+                    className="px-4 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-200 hover:text-white border border-emerald-500/50 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer"
                   >
                     {apkLinkCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    <span>{apkLinkCopied ? 'İndirme Linki Kopyalandı!' : 'Linki Kopyala'}</span>
+                    <span>{apkLinkCopied ? 'Kurye APK Linki Kopyalandı!' : 'Linki Kopyala'}</span>
                   </button>
 
                   <a
@@ -2611,15 +2982,15 @@ export const AdminManagement: React.FC = () => {
               </div>
 
               {/* QR Code Card */}
-              <div className="bg-[#0b0601] p-4 rounded-3xl border border-amber-500/30 flex flex-col items-center text-center shrink-0 shadow-xl">
-                <span className="text-[11px] font-black text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <QrCode className="w-3.5 h-3.5 text-amber-400" /> Telefona Okut & İndir
+              <div className="bg-[#02130e] p-4 rounded-3xl border border-emerald-500/30 flex flex-col items-center text-center shrink-0 shadow-xl">
+                <span className="text-[11px] font-black text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-emerald-400" /> Telefona Okut & İndir
                 </span>
                 <QRCodeView
                   text={typeof window !== 'undefined' ? window.location.origin + '/downloads/Antalya-Kurye-Talep-Havuzu.apk' : 'https://www.antalyateslimat.com/downloads/Antalya-Kurye-Talep-Havuzu.apk'}
                   size={160}
                 />
-                <span className="text-[10px] text-slate-400 mt-2 max-w-[170px] leading-tight">
+                <span className="text-[10px] text-slate-300 mt-2 max-w-[170px] leading-tight">
                   Kuryeler kamerayla okutup doğrudan telefonuna indirebilir
                 </span>
               </div>
@@ -3105,6 +3476,83 @@ export const AdminManagement: React.FC = () => {
                 className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition cursor-pointer shadow-md"
               >
                 Görevi Ata
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: CANCEL ORDER CONFIRMATION MODAL */}
+      {/* ===================================================================== */}
+      {orderToCancel && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#021f19] rounded-3xl border-2 border-rose-500/80 p-6 max-w-md w-full text-white shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-rose-800/50 pb-3">
+              <div className="flex items-center gap-2 text-rose-300 font-extrabold text-sm sm:text-base">
+                <AlertTriangle className="w-5 h-5 text-rose-400" />
+                <span>Siparişi İptal Et</span>
+              </div>
+              <span className="font-mono text-xs font-black bg-[#011410] text-amber-300 px-2.5 py-1 rounded-lg border border-rose-800/60">
+                {orderToCancel.trackingCode}
+              </span>
+            </div>
+
+            <div className="bg-[#011410] p-4 rounded-2xl border border-emerald-900/60 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Paket:</span>
+                <span className="font-bold text-emerald-200">{orderToCancel.packageName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Güzergah:</span>
+                <span className="font-bold text-emerald-200">{orderToCancel.sender.district} ➔ {orderToCancel.receiver.district}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tutar:</span>
+                <span className="font-bold text-amber-400">{orderToCancel.price} ₺</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Müşteri:</span>
+                <span className="font-medium text-slate-200">{orderToCancel.sender.contactName} ({orderToCancel.sender.contactPhone})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Mevcut Durum:</span>
+                <span className="font-bold text-amber-300">
+                  {orderToCancel.status === 'pending_pool'
+                    ? '🛵 Havuzda Bekliyor'
+                    : orderToCancel.status === 'courier_assigned'
+                    ? '🏍️ Kurye Atandı'
+                    : orderToCancel.status === 'picked_up'
+                    ? '📦 Dağıtımda'
+                    : orderToCancel.status}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-rose-200/90 leading-relaxed">
+              Bu aktif kurye siparişini iptal etmek istediğinize emin misiniz? Sipariş kurye havuzundan kaldırılacak ve durumu <strong>"İptal Edildi"</strong> olarak güncellenecektir.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setOrderToCancel(null)}
+                className="px-4 py-2.5 bg-[#011410] hover:bg-[#02241d] border border-emerald-800 text-emerald-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (orderToCancel) {
+                    cancelRequest(orderToCancel.id);
+                    setOrderToCancel(null);
+                  }
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-black rounded-xl shadow-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Evet, Siparişi İptal Et</span>
               </button>
             </div>
           </div>

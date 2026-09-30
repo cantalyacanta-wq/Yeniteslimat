@@ -108,6 +108,7 @@ interface DeliveryContextType {
   rateDelivery: (requestId: string, rating: number, feedback: string) => void;
   addTipToRequest: (requestId: string, extraTip: number) => { success: boolean; newPrice?: number; message?: string };
   cancelRequest: (requestId: string) => void;
+  approveRequestForPool: (requestId: string) => void;
   releaseRequestBackToPool: (requestId: string) => void;
   addDemoRequest: () => void;
   exportDatabaseBackup: () => void;
@@ -338,7 +339,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       incoming.forEach((order) => {
         const prevOrder = prevMap.get(order.id);
         if (!prevOrder) {
-          if (order.status === 'pending_pool') {
+          if (order.status === 'pending_admin') {
+            dispatchOrderStatusNotification({
+              order,
+              newStatus: 'pending_admin',
+              currentUserId: currentUserRef.current.id,
+              userRole: currentUserRef.current.role,
+            });
+          } else if (order.status === 'pending_pool') {
             dispatchOrderStatusNotification({
               order,
               newStatus: 'pending_pool',
@@ -1435,7 +1443,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         senderUserId: effectiveUserId,
-        status: 'pending_pool', // ALWAYS starts in pool waiting for courier
+        status: 'pending_admin', // Initial customer request starts in pending_admin waiting for management approval!
         estimatedDistanceKm: finalDistanceKm,
         estimatedDurationMins: finalDurationMins,
         tipAmount: tip,
@@ -1472,7 +1480,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       dispatchOrderStatusNotification({
         order: newRequest,
-        newStatus: 'pending_pool',
+        newStatus: 'pending_admin',
         currentUserId: effectiveUserId,
         userRole: currentUser.role,
       });
@@ -1830,6 +1838,43 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }).catch((e) => console.warn('Failed to cancel request on server:', e));
   }, []);
 
+  // Manager approves order from pending_admin -> drops into courier pool
+  const approveRequestForPool = useCallback((requestId: string) => {
+    const now = new Date().toISOString();
+    let approvedOrder: DeliveryRequest | null = null;
+    setRequests((prev) =>
+      prev.map((req) => {
+        if (req.id === requestId) {
+          const updated = {
+            ...req,
+            status: 'pending_pool' as const,
+            approvedAt: now,
+            updatedAt: now,
+          };
+          approvedOrder = updated;
+          return updated;
+        }
+        return req;
+      })
+    );
+
+    if (approvedOrder) {
+      dispatchOrderStatusNotification({
+        order: approvedOrder,
+        previousStatus: 'pending_admin',
+        newStatus: 'pending_pool',
+        currentUserId: currentUser.id,
+        userRole: currentUser.role,
+      });
+    }
+
+    updateRequestInFirestore(requestId, { status: 'pending_pool', approvedAt: now, updatedAt: now }).catch(() => {});
+
+    fetch(`/api/requests/${requestId}/approve-pool`, {
+      method: 'POST',
+    }).catch((e) => console.warn('Failed to approve request for pool on server:', e));
+  }, [currentUser]);
+
   // Courier releases task before picking up -> drops back to pool
   const releaseRequestBackToPool = useCallback((requestId: string) => {
     const now = new Date().toISOString();
@@ -2127,6 +2172,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         rateDelivery,
         addTipToRequest,
         cancelRequest,
+        approveRequestForPool,
         releaseRequestBackToPool,
         addDemoRequest,
         exportDatabaseBackup,

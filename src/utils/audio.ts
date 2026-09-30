@@ -204,6 +204,64 @@ export function playCourierPoolSiren() {
 }
 
 /**
+ * 1.6 YÖNETİCİ SESLİ SİPARİŞ ALARMI (Admin Voice Announcement & Siren)
+ * Müşterilerden yeni bir sipariş geldiğinde Yönetim APK'sinde ve panelinde
+ * yüksek sesli siren + Türkçe sesli anons + titreşim çalar
+ */
+export function playAdminVoiceAlert(order?: {
+  trackingCode?: string;
+  sender?: { district?: string };
+  receiver?: { district?: string };
+  price?: number;
+}) {
+  if (!isSoundAlertsEnabled()) return;
+
+  // 1. Android Native APK Alarm (ekran kapalıyken bile ses ve titreşim)
+  if (typeof window !== 'undefined' && (window as any).AndroidApp?.playAlarmSound) {
+    try {
+      (window as any).AndroidApp.playAlarmSound();
+    } catch (e) {
+      console.debug('AndroidApp.playAlarmSound error:', e);
+    }
+  }
+
+  // 2. Acil siren çal
+  playCourierPoolSiren();
+
+  // 3. Türkçe sesli konuşma anonsu (Text-to-Speech)
+  const code = order?.trackingCode || 'Yeni Sipariş';
+  const from = order?.sender?.district || 'Alış Noktası';
+  const to = order?.receiver?.district || 'Teslimat Noktası';
+  const speechText = `Yönetici dikkat! Yeni müşteri siparişi onayınızı bekliyor. Takip kodu ${code}. ${from} adresinden ${to} adresine.`;
+
+  // A. Tarayıcı Yerel SpeechSynthesis API
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(speechText);
+      utter.lang = 'tr-TR';
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      console.debug('speechSynthesis speak error:', e);
+    }
+  }
+
+  // B. Sunucu Doğal Erkek Bariton Sesli Edge-TTS (Android WebView & Mobil için %100 Garantili)
+  try {
+    const audioUrl = `/api/ai-voice/tts?text=${encodeURIComponent(speechText)}&voice=male`;
+    const audio = new Audio(audioUrl);
+    audio.volume = 1.0;
+    audio.play().catch((err) => {
+      console.debug('Edge TTS audio playback note:', err);
+    });
+  } catch (e) {
+    console.debug('Edge TTS audio init error:', e);
+  }
+}
+
+/**
  * 2. KURYE ATANDI UYARI SESİ (Courier Assigned Alert Sound)
  * Hem kurye (görev atandığında) hem müşteri (kurye yola çıktığında) tarafında çalar:
  * Canlı, neşeli ve onaylayıcı 4 notalı yükselen melodi (C5 -> E5 -> G5 -> C6)

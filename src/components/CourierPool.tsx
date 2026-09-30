@@ -205,18 +205,8 @@ export const CourierPool: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Controls & Small APK Button */}
+        {/* Action Controls */}
         <div className="flex items-center justify-end gap-2 sm:gap-2.5 border-t sm:border-t-0 pt-3 sm:pt-0 border-emerald-800/40 flex-wrap">
-          <a
-            href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
-            download="Antalya-Kurye-Talep-Havuzu.apk"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs transition shadow-md shadow-amber-600/30 active:scale-95 cursor-pointer shrink-0"
-            title="Antalya Kurye Mobil APK Uygulamasını İndirin"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>APK İndir</span>
-          </a>
-
           <button
             type="button"
             onClick={() => setIsCourierOnline(!isCourierOnline)}

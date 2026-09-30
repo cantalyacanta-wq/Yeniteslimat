@@ -116,6 +116,7 @@ export const OrderTracker: React.FC = () => {
   // Status mapping for progress timeline
   const getStatusStepIndex = (status: DeliveryStatus) => {
     switch (status) {
+      case 'pending_admin':
       case 'pending_pool':
         return 0;
       case 'courier_assigned':
@@ -134,7 +135,10 @@ export const OrderTracker: React.FC = () => {
   const currentStep = currentOrder ? getStatusStepIndex(currentOrder.status) : 0;
 
   const steps = [
-    { title: 'Talep Alındı', desc: 'Kurye havuzunda eşleşiyor' },
+    {
+      title: 'Talep Alındı',
+      desc: currentOrder?.status === 'pending_admin' ? 'Yönetici onayında' : 'Kurye havuzunda eşleşiyor',
+    },
     { title: 'Kurye Atandı', desc: 'Paketi almaya gidiyor' },
     { title: 'Paket Alındı', desc: 'Teslimat adresine yolda' },
     { title: 'Adrese Ulaşıldı', desc: 'Kapıda teslim aşaması' },
@@ -206,6 +210,16 @@ export const OrderTracker: React.FC = () => {
                     {currentOrder.urgency === 'express_vip' && (
                       <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">
                         ⚡ VIP Jet Moto
+                      </span>
+                    )}
+                    {currentOrder.status === 'pending_admin' && (
+                      <span className="text-xs font-bold bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full animate-pulse">
+                        ⏳ Yönetici Onayı Bekleniyor
+                      </span>
+                    )}
+                    {currentOrder.status === 'pending_pool' && (
+                      <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full animate-pulse">
+                        ⏳ Havuzda Kurye Aranıyor
                       </span>
                     )}
                     {currentOrder.status === 'cancelled' && (

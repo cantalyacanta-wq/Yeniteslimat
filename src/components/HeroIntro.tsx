@@ -274,6 +274,12 @@ export const HeroIntro: React.FC = () => {
 
             {/* Status Pill */}
             <div>
+              {activeCustomerOrder.status === 'pending_admin' && (
+                <div className="flex items-center gap-2 px-3.5 py-1.5 bg-rose-950/80 text-rose-300 border border-rose-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+                  <span>Yönetici Onayı Bekleniyor</span>
+                </div>
+              )}
               {activeCustomerOrder.status === 'pending_pool' && (
                 <div className="flex items-center gap-2 px-3.5 py-1.5 bg-amber-950/80 text-amber-300 border border-amber-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
@@ -330,8 +336,8 @@ export const HeroIntro: React.FC = () => {
           {/* 4-Step Visual Progress Bar */}
           <div className="space-y-2">
             <div className="grid grid-cols-4 text-center text-[10px] sm:text-xs font-bold">
-              <span className={activeCustomerOrder.status === 'pending_pool' ? 'text-amber-400 font-black' : 'text-emerald-400'}>
-                1. Talep Alındı
+              <span className={['pending_admin', 'pending_pool'].includes(activeCustomerOrder.status) ? 'text-amber-400 font-black' : 'text-emerald-400'}>
+                1. Talep Alındı {activeCustomerOrder.status === 'pending_admin' && '(Onayda)'}
               </span>
               <span className={activeCustomerOrder.status === 'courier_assigned' ? 'text-amber-400 font-black' : ['picked_up', 'near_destination', 'delivered'].includes(activeCustomerOrder.status) ? 'text-emerald-400' : 'text-emerald-700'}>
                 2. Kurye Yolda (Alış)
@@ -349,7 +355,7 @@ export const HeroIntro: React.FC = () => {
                 className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
                 style={{
                   width:
-                    activeCustomerOrder.status === 'pending_pool'
+                    ['pending_admin', 'pending_pool'].includes(activeCustomerOrder.status)
                       ? '25%'
                       : activeCustomerOrder.status === 'courier_assigned'
                       ? '50%'

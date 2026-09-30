@@ -26,7 +26,8 @@ export type PaymentMethod =
   | 'bank_transfer';
 
 export type DeliveryStatus =
-  | 'pending_pool'      // Havuzda bekliyor (Kurye aranıyor)
+  | 'pending_admin'     // Yönetici onayı bekliyor (Yönetim APK'sine sesli düşer)
+  | 'pending_pool'      // Havuzda bekliyor (Yönetici onayladıktan sonra kurye havuzuna düşer)
   | 'courier_assigned'  // Kurye kabul etti, alış noktasına gidiyor
   | 'picked_up'         // Paket teslim alındı, varış noktasına yola çıktı
   | 'near_destination'  // Teslimat adresine yaklaştı
@@ -84,6 +85,7 @@ export interface DeliveryRequest {
   trackingCode: string; // e.g. "ANT-4821"
   createdAt: string;
   updatedAt: string;
+  approvedAt?: string;
   
   // Sender User info (if logged in)
   senderUserId?: string;

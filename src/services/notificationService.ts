@@ -3,6 +3,7 @@ import {
   playAcceptSound,
   playNewOrderSound,
   playCourierPoolSiren,
+  playAdminVoiceAlert,
   playSuccessSound,
   playStatusChime,
   playCourierAssignedSound,
@@ -340,6 +341,35 @@ export function dispatchOrderStatusNotification(params: {
   const senderDistrict = order.sender?.district || 'Antalya';
 
   switch (newStatus) {
+    case 'pending_admin': {
+      const isAdminRoute =
+        typeof window !== 'undefined' &&
+        (window.location.pathname.toLowerCase().includes('admin') ||
+          window.location.hash.toLowerCase().includes('admin') ||
+          window.location.hash.toLowerCase().includes('yonetim') ||
+          window.location.search.toLowerCase().includes('admin'));
+
+      if (isAdminRole || isAdminRoute) {
+        title = '🚨 YENİ MÜŞTERİ TALEBİ ONAY BEKLİYOR!';
+        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict} (${order.price} ₺). Onayınızın ardından kurye havuzuna düşecektir.`;
+        type = 'alert';
+        vibratePattern = [500, 200, 500, 200, 800];
+        playAdminVoiceAlert(order);
+      } else if (isCustomerOwner) {
+        title = '📋 Siparişiniz Alındı (Yönetim Onayında)';
+        body = `[${trackingCode}] Siparişiniz başarıyla alındı. Yönetici kontrolünün hemen ardından moto kurye havuzuna aktarılacaktır.`;
+        type = 'info';
+        vibratePattern = [120, 80, 120];
+        playNewOrderSound();
+      } else {
+        title = '📋 Yeni Talep Yönetici Onayı Bekliyor';
+        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict}`;
+        type = 'info';
+        vibratePattern = [150, 100, 150];
+      }
+      break;
+    }
+
     case 'pending_pool':
       const isPoolRoute = typeof window !== 'undefined' && (
         window.location.pathname.toLowerCase().includes('pakettalebi') ||

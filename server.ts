@@ -1701,9 +1701,9 @@ app.post('/api/requests', (req, res) => {
       return;
     }
 
-    // Ensure status is pending_pool for new order
+    // Ensure status is pending_admin for new customer order (requires manager approval before hitting courier pool)
     if (!newRequest.status) {
-      newRequest.status = 'pending_pool';
+      newRequest.status = 'pending_admin';
     }
     if (!newRequest.createdAt) {
       newRequest.createdAt = new Date().toISOString();
@@ -1735,12 +1735,15 @@ app.post('/api/requests', (req, res) => {
     }
 
     saveDatabase();
-    console.log(`[ORDER SAVED] ID: ${newRequest.id}, Tracking: ${newRequest.trackingCode}, Price: ${newRequest.price} TL`);
+    console.log(`[ORDER SAVED] ID: ${newRequest.id}, Tracking: ${newRequest.trackingCode}, Status: ${newRequest.status}, Price: ${newRequest.price} TL`);
 
-    // ASYNCHRONOUS NON-BLOCKING EMAIL QUEUE ENQUEUE
-    const queueResult = enqueueNewOrderEmail(newRequest, undefined, isAlreadyDispatched ? false : false);
+    // Only dispatch emails to couriers if already in pending_pool; pending_admin waits for manager approval!
+    let queueResult: any = { status: 'pending_admin_approval' };
+    if (newRequest.status === 'pending_pool') {
+      queueResult = enqueueNewOrderEmail(newRequest, undefined, isAlreadyDispatched ? false : false);
+    }
 
-    // Return response immediately (<10ms) without waiting for SMTP network handshake
+    // Return response immediately (<10ms)
     res.json({
       success: true,
       request: newRequest,
@@ -1749,7 +1752,9 @@ app.post('/api/requests', (req, res) => {
         success: true,
         status: queueResult.status || 'queued',
         isRealDelivery: true,
-        message: 'Sipariş kaydedildi ve kurye e-posta bildirimi kuyrukta anında iletiliyor.',
+        message: newRequest.status === 'pending_admin'
+          ? 'Sipariş yönetici onayına iletildi. Onaylandıktan sonra kurye havuzuna düşecektir.'
+          : 'Sipariş kurye havuzuna iletildi.',
       },
     });
   } catch (err: any) {
@@ -2476,6 +2481,43 @@ app.post('/api/requests/:id/release', (req, res) => {
     res.json({ success: true, request: updated });
   } catch (err: any) {
     console.error('Error releasing request:', err);
+    res.status(500).json({ error: err.message || 'Sunucu hatası' });
+  }
+});
+
+// Approve request by admin and drop into courier pool
+app.post('/api/requests/:id/approve-pool', (req, res) => {
+  try {
+    const { id } = req.params;
+    const reqIndex = dbState.requests.findIndex((r) => r.id === id || r.trackingCode === id);
+
+    if (reqIndex === -1) {
+      res.status(404).json({ error: 'Talep bulunamadı' });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...dbState.requests[reqIndex],
+      status: 'pending_pool',
+      approvedAt: now,
+      updatedAt: now,
+    };
+
+    dbState.requests[reqIndex] = updated;
+    saveDatabase();
+
+    // Now dispatch notification email to all registered couriers
+    enqueueNewOrderEmail(updated, undefined, false);
+
+    if (serverFirestoreDb && updated.id) {
+      setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
+    }
+
+    console.log(`[ORDER APPROVED TO POOL] ID: ${updated.id}, Tracking: ${updated.trackingCode}`);
+    res.json({ success: true, request: updated });
+  } catch (err: any) {
+    console.error('Error approving request for pool:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası' });
   }
 });
@@ -3693,7 +3735,7 @@ app.post('/api/ai-voice/create-order', (req, res) => {
       courierEarnings: Number(price) || 150,
       paymentMethod: 'gonderici_odemeli',
       isPaid: false,
-      status: 'pending_pool',
+      status: 'pending_admin',
       noteForCourier: `[🎙️ Sesli Kurye Talebi] İçerik: ${packageContent || 'Belirtilmedi'}. 30-45 Dk Acil Kurye. Müşteri Tel: ${cleanPhone}`,
       estimatedDistanceKm: 10,
       estimatedDurationMins: 35,
@@ -3707,11 +3749,9 @@ app.post('/api/ai-voice/create-order', (req, res) => {
         .catch((e) => console.warn('[FIRESTORE VOICE ORDER ERR]', e.message));
     }
 
-    enqueueNewOrderEmail(newRequest, undefined, false);
-
     res.json({
       success: true,
-      message: 'Sesli sipariş başarıyla havuza kaydedildi.',
+      message: 'Sesli sipariş başarıyla yönetici onayına iletildi.',
       order: newRequest,
       trackingCode: newRequest.trackingCode,
     });
@@ -3822,6 +3862,66 @@ app.get('/api/ai-voice/tts', async (req, res) => {
 // ==========================================
 // APK & MOBILE APP DISTRIBUTION
 // ==========================================
+app.get(
+  [
+    '/api/download-admin-apk',
+    '/downloads/Antalya-Yonetim.apk',
+    '/downloads/antalya-yonetim.apk',
+    '/downloads/Antalya-Kurye-Yonetim.apk',
+  ],
+  (req, res) => {
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'downloads', 'Antalya-Yonetim.apk'),
+      path.join(process.cwd(), 'dist', 'downloads', 'Antalya-Yonetim.apk'),
+    ];
+    let apkPath = '';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        apkPath = p;
+        break;
+      }
+    }
+
+    if (!apkPath) {
+      return res.status(404).send('Yönetim APK dosyası hazırlanıyor, lütfen birkaç saniye sonra tekrar deneyiniz.');
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="Antalya-Yonetim.apk"');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.sendFile(apkPath);
+  }
+);
+
+app.get('/api/admin-apk-info', (req, res) => {
+  const apkPath = path.join(process.cwd(), 'public', 'downloads', 'Antalya-Yonetim.apk');
+  let sizeMb = '0.29 MB';
+  let exists = false;
+  if (fs.existsSync(apkPath)) {
+    exists = true;
+    const stats = fs.statSync(apkPath);
+    sizeMb = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+  res.json({
+    success: true,
+    name: 'Antalya Kurye Yönetim APK',
+    version: '1.5.0',
+    versionCode: 15,
+    size: sizeMb,
+    exists,
+    downloadUrl: '/downloads/Antalya-Yonetim.apk',
+    directApiUrl: '/api/download-admin-apk',
+    releaseDate: '2026-09-30',
+    permissions: [
+      'POST_NOTIFICATIONS (Anlık Yönetici Onay Bildirimi)',
+      'VIBRATE (Acil Talep Titreşimi)',
+      'WAKE_LOCK (Ekran Kapalıyken Sesli Çağrı ve Uyanma)',
+      'INTERNET (7/24 Kesintisiz Yönetim Senkronizasyonu)',
+    ],
+  });
+});
+
 app.get(
   [
     '/api/download-apk',
