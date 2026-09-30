@@ -3325,6 +3325,9 @@ app.post('/api/ai-voice/chat', async (req, res) => {
       destDistrict: state.destDistrict || '',
       packageContent: state.packageContent || '',
       phone: state.phone || '',
+      email: state.email || '',
+      verificationCode: state.verificationCode || '',
+      isCodeSent: Boolean(state.isCodeSent),
       customerName: state.customerName || 'Değerli Müşterimiz',
       estimatedPrice: state.estimatedPrice || 150,
       estimatedDistanceKm: state.estimatedDistanceKm || 8,
@@ -3457,7 +3460,7 @@ JSON formatında yanıt ver:
       currentState.step = 'ask_phone';
       replyText = 'Kuryemizin size kolayca ulaşabilmesi için telefon numaranızı öğrenebilir miyim?';
     }
-    // Step 4: Phone Number -> Then Confirm
+    // Step 4: Phone Number -> Then Ask Email
     else if (currentState.step === 'ask_phone') {
       const extractedPhone = parseTurkishPhoneNumber(userText);
       if (extractedPhone) {
@@ -3469,10 +3472,72 @@ JSON formatında yanıt ver:
       }
 
       currentState.estimatedPrice = calculateEstimatedPrice(currentState.pickupDistrict, currentState.destDistrict);
-      currentState.step = 'confirm';
-      replyText = 'Tüm bilgilerinizi aldım. Onaylıyorsanız hemen en yakın kuryemizi adresinize yönlendiriyorum.';
+      currentState.step = 'ask_email';
+      replyText = 'Sipariş takip ve güvenlik onayınız için e-posta adresinizi söyler veya yazar mısınız?';
     }
-    // Step 5: Confirmation
+    // Step 5: Email Address -> Send 4-Digit Security Code
+    else if (currentState.step === 'ask_email') {
+      // Direct regex match or speech converter
+      let s = userText.trim().toLowerCase();
+      let emailMatch = s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (!emailMatch) {
+        s = s.replace(/\s*(et|at|@)\s*/g, '@').replace(/\s*(nokta|dot|\.)\s*/g, '.').replace(/\s+/g, '');
+        emailMatch = s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      }
+
+      if (emailMatch) {
+        const cleanEmail = emailMatch[0];
+        currentState.email = cleanEmail;
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        currentState.verificationCode = code;
+        currentState.isCodeSent = true;
+        currentState.step = 'ask_code';
+
+        // Send email asynchronously
+        try {
+          const mailDetails = getMailTransporter();
+          if (mailDetails.transporter && mailDetails.isConfigured) {
+            mailDetails.transporter.sendMail({
+              from: mailDetails.fromAddress,
+              to: cleanEmail,
+              replyTo: 'kuryeantalyam@gmail.com',
+              subject: `Antalya Kurye - 4 Haneli Güvenlik Kodunuz: ${code}`,
+              text: `Sayın Müşterimiz,\n\nMüşteri hizmetleri sesli asistanımız üzerinden oluşturduğunuz kurye talebini onaylamak için 4 haneli güvenlik kodunuz: ${code}\n\nBu kod 10 dakika süreyle geçerlidir.\n\nAntalya Şehir İçi Moto Kurye Teslimat 7/24`,
+              html: `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #021a14; color: #f8fafc; border-radius: 16px; border: 1px solid #059669; padding: 24px;"><h2 style="color: #34d399; margin: 0 0 10px;">🛵 Antalya Kurye</h2><p style="color: #a7f3d0; font-size: 14px;">Kurye talebinizi onaylamak için güvenlik kodunuz:</p><div style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b; margin: 12px 0;">${code}</div><p style="color: #94a3b8; font-size: 12px;">Bu kod 10 dakika süreyle geçerlidir.</p></div>`,
+              priority: 'high',
+            }).catch((e: any) => console.warn('[SEND CODE MAIL ERR]', e?.message));
+          }
+        } catch (mErr: any) {
+          console.warn('[MAIL ERROR]', mErr?.message);
+        }
+
+        replyText = `${cleanEmail} adresinize 4 haneli bir güvenlik kodu gönderdim. Lütfen gelen 4 haneli kodu söyler veya ekrana yazar mısınız?`;
+      } else {
+        replyText = 'Lütfen geçerli bir e-posta adresi belirtiniz. Örneğin ornek@gmail.com şeklinde yazabilir veya söyleyebilirsiniz.';
+      }
+    }
+    // Step 6: 4-Digit Code Verification
+    else if (currentState.step === 'ask_code') {
+      let codeInput = userText.toLowerCase();
+      const digitWords: Record<string, string> = {
+        'sıfır': '0', 'sifir': '0', 'bir': '1', 'iki': '2', 'üç': '3', 'uc': '3',
+        'dört': '4', 'dort': '4', 'beş': '5', 'bes': '5', 'altı': '6', 'alti': '6',
+        'yedi': '7', 'sekiz': '8', 'dokuz': '9'
+      };
+      for (const [w, d] of Object.entries(digitWords)) {
+        codeInput = codeInput.replaceAll(w, d);
+      }
+      const digits = codeInput.replace(/\D/g, '');
+
+      if (digits.length >= 4 && digits.slice(0, 4) === currentState.verificationCode) {
+        shouldCreateOrder = true;
+        currentState.step = 'completed';
+        replyText = 'Güvenlik kodunuz onaylandı! Kurye talebiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
+      } else {
+        replyText = 'Girdiğiniz 4 haneli güvenlik kodu hatalı. Lütfen e-postanızı kontrol edip 4 haneli kodu tekrar giriniz.';
+      }
+    }
+    // Step 7: Confirmation Fallback
     else if (currentState.step === 'confirm') {
       const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
       const isPositive = positiveWords.some((w) => lower.includes(w));
@@ -3509,6 +3574,66 @@ JSON formatında yanıt ver:
   } catch (err: any) {
     console.error('[AI VOICE CHAT ERROR]', err);
     res.status(500).json({ error: err.message || 'Sesli asistan hatası' });
+  }
+});
+
+// Endpoint to send 4-digit security code via email
+app.post('/api/ai-voice/send-code', async (req, res) => {
+  try {
+    const { email, code, orderSummary } = req.body || {};
+    if (!email || !code) {
+      return res.status(400).json({ error: 'E-posta ve güvenlik kodu zorunludur.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(code).trim();
+    const mailDetails = getMailTransporter();
+
+    const subject = `Antalya Kurye - 4 Haneli Güvenlik Kodunuz: ${cleanCode}`;
+    const textContent = `Sayın Müşterimiz,\n\nMüşteri hizmetleri sesli asistanımız üzerinden oluşturduğunuz kurye talebini onaylamak için 4 haneli güvenlik kodunuz: ${cleanCode}\n\nBu kod 10 dakika süreyle geçerlidir.\n\nAntalya Şehir İçi Moto Kurye Teslimat 7/24`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #021a14; color: #f8fafc; border-radius: 16px; border: 1px solid #059669; padding: 24px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: #34d399; margin: 0; font-size: 22px;">🛵 Antalya Kurye</h2>
+          <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0;">7/24 Şehir İçi Hızlı Moto Kurye Hizmeti</p>
+        </div>
+        <div style="background: #032d23; border: 1px solid #10b981; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
+          <p style="color: #a7f3d0; font-size: 14px; margin: 0 0 10px;">Sesli asistan kurye talebinizi onaylamak için 4 haneli güvenlik kodunuz:</p>
+          <div style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #fbbf24; background: #011611; padding: 12px 24px; border-radius: 10px; display: inline-block; border: 2px dashed #f59e0b;">
+            ${cleanCode}
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; margin: 10px 0 0;">Bu kod 10 dakika süreyle geçerlidir.</p>
+        </div>
+        ${orderSummary ? `
+        <div style="background: #011611; border-radius: 10px; padding: 14px; font-size: 13px; margin-bottom: 16px; color: #cbd5e1;">
+          <div style="margin-bottom: 6px;"><strong style="color: #34d399;">📍 Alış:</strong> ${orderSummary.pickup || 'Belirtildi'}</div>
+          <div style="margin-bottom: 6px;"><strong style="color: #fbbf24;">🏁 Teslim:</strong> ${orderSummary.destination || 'Belirtildi'}</div>
+          <div><strong style="color: #a7f3d0;">💰 Ücret:</strong> ${orderSummary.price || 150} TL</div>
+        </div>` : ''}
+        <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">Bu işlemi siz başlatmadıysanız bu e-postayı dikkate almayınız.</p>
+      </div>
+    `;
+
+    if (mailDetails.transporter && mailDetails.isConfigured) {
+      await mailDetails.transporter.sendMail({
+        from: mailDetails.fromAddress,
+        to: cleanEmail,
+        replyTo: 'kuryeantalyam@gmail.com',
+        subject,
+        text: textContent,
+        html: htmlContent,
+        priority: 'high',
+      });
+      console.log(`[AI VOICE CODE] Sent security code ${cleanCode} to ${cleanEmail}`);
+    } else {
+      console.log(`[AI VOICE CODE SIMULATED] Simulated code ${cleanCode} to ${cleanEmail}`);
+    }
+
+    return res.json({ success: true, message: `${cleanEmail} adresine 4 haneli güvenlik kodu gönderildi.` });
+  } catch (err: any) {
+    console.error('[AI VOICE SEND CODE ERROR]', err?.message);
+    return res.status(500).json({ error: 'Kod gönderilemedi' });
   }
 });
 
