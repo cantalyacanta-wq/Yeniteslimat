@@ -516,10 +516,26 @@ export const CustomerRequestForm: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Alış İlçesi *</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+                  {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSenderDistrict(d)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
+                        senderDistrict === d
+                          ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                          : 'bg-[#06120d] text-emerald-300/80 border-emerald-700/60 hover:bg-[#0c241b]'
+                      }`}
+                    >
+                      {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                    </button>
+                  ))}
+                </div>
                 <select
                   value={senderDistrict}
                   onChange={(e) => setSenderDistrict(e.target.value as DistrictName)}
-                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
                 >
                   {Object.keys(ANTALYA_DISTRICTS).map((d) => (
                     <option key={d} value={d} className="bg-[#0c1f19] text-white">{d}</option>
@@ -632,10 +648,26 @@ export const CustomerRequestForm: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-emerald-200 mb-1.5">Teslimat İlçesi *</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+                  {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setReceiverDistrict(d)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
+                        receiverDistrict === d
+                          ? 'bg-teal-600 text-white border-teal-400 shadow-sm'
+                          : 'bg-[#06120d] text-teal-300/80 border-emerald-700/60 hover:bg-[#0c241b]'
+                      }`}
+                    >
+                      {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                    </button>
+                  ))}
+                </div>
                 <select
                   value={receiverDistrict}
                   onChange={(e) => setReceiverDistrict(e.target.value as DistrictName)}
-                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
+                  className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2 text-xs font-bold text-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 outline-none transition"
                 >
                   {Object.keys(ANTALYA_DISTRICTS).map((d) => (
                     <option key={d} value={d} className="bg-[#0c1f19] text-white">{d}</option>

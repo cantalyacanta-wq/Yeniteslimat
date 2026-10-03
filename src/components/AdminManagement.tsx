@@ -53,7 +53,7 @@ import {
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
-import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
+import { ANTALYA_DISTRICTS, calculateDeliveryEstimate } from '../data/antalyaDistricts';
 import { ReceiptModal } from './ReceiptModal';
 import { SiteVisitorCounter } from './SiteVisitorCounter';
 import { QRCodeView } from './QRCodeView';
@@ -80,6 +80,8 @@ export const AdminManagement: React.FC = () => {
     acceptRequest,
     cancelRequest,
     approveRequestForPool,
+    releaseRequestBackToPool,
+    updateRequestDetails,
     updateStatus,
     setSelectedTrackingId,
     setCurrentView,
@@ -561,53 +563,54 @@ export const AdminManagement: React.FC = () => {
   // Cancel Order Modal State
   const [orderToCancel, setOrderToCancel] = useState<DeliveryRequest | null>(null);
 
-  // Track alerted pending admin orders so siren & voice alert trigger on each new incoming customer request
-  const alertedAdminOrderIdsRef = React.useRef<Set<string>>(new Set());
+  // Edit Order District & Address Modal State
+  const [orderToEditLocation, setOrderToEditLocation] = useState<DeliveryRequest | null>(null);
+  const [editOrderSenderDistrict, setEditOrderSenderDistrict] = useState<DistrictName>('Muratpaşa');
+  const [editOrderSenderAddress, setEditOrderSenderAddress] = useState<string>('');
+  const [editOrderReceiverDistrict, setEditOrderReceiverDistrict] = useState<DistrictName>('Muratpaşa');
+  const [editOrderReceiverAddress, setEditOrderReceiverAddress] = useState<string>('');
 
-  useEffect(() => {
-    if (pendingAdminRequests.length === 0) return;
+  const handleOpenEditLocation = (req: DeliveryRequest) => {
+    setOrderToEditLocation(req);
+    const sDist = (req.sender.district && req.sender.district in ANTALYA_DISTRICTS) ? req.sender.district : 'Muratpaşa';
+    const rDist = (req.receiver.district && req.receiver.district in ANTALYA_DISTRICTS) ? req.receiver.district : 'Muratpaşa';
+    setEditOrderSenderDistrict(sDist);
+    setEditOrderSenderAddress(req.sender.addressDetail || req.sender.neighborhood || '');
+    setEditOrderReceiverDistrict(rDist);
+    setEditOrderReceiverAddress(req.receiver.addressDetail || req.receiver.neighborhood || '');
+  };
 
-    // Filter unalerted requests that were not already alerted via global dispatcher
-    const newUnalerted = pendingAdminRequests.filter((r) => {
-      if (alertedAdminOrderIdsRef.current.has(r.id)) return false;
-      const key = `${r.id}:pending_admin`;
-      const codeKey = r.trackingCode ? `${r.trackingCode}:pending_admin` : '';
-      try {
-        const t1 = localStorage.getItem(`antalya_notif_guard_${key}`);
-        const t2 = codeKey ? localStorage.getItem(`antalya_notif_guard_${codeKey}`) : null;
-        const now = Date.now();
-        if ((t1 && now - Number(t1) < 15000) || (t2 && now - Number(t2) < 15000)) {
-          alertedAdminOrderIdsRef.current.add(r.id);
-          return false;
-        }
-      } catch {}
-      return true;
+  const handleSaveOrderLocation = () => {
+    if (!orderToEditLocation) return;
+    const estimate = calculateDeliveryEstimate(
+      editOrderSenderDistrict,
+      editOrderReceiverDistrict,
+      orderToEditLocation.packageType,
+      orderToEditLocation.urgency
+    );
+    const tip = orderToEditLocation.tipAmount || 0;
+    const newPrice = estimate.price + tip;
+    const newCourierEarnings = estimate.courierEarnings + tip;
+
+    updateRequestDetails(orderToEditLocation.id, {
+      sender: {
+        ...orderToEditLocation.sender,
+        district: editOrderSenderDistrict,
+        addressDetail: editOrderSenderAddress.trim(),
+      },
+      receiver: {
+        ...orderToEditLocation.receiver,
+        district: editOrderReceiverDistrict,
+        addressDetail: editOrderReceiverAddress.trim(),
+      },
+      price: newPrice,
+      courierEarnings: newCourierEarnings,
+      estimatedDistanceKm: estimate.distanceKm,
+      estimatedDurationMins: estimate.durationMins,
     });
 
-    if (newUnalerted.length > 0) {
-      newUnalerted.forEach((r) => {
-        alertedAdminOrderIdsRef.current.add(r.id);
-        try {
-          localStorage.setItem(`antalya_notif_guard_${r.id}:pending_admin`, String(Date.now()));
-          if (r.trackingCode) localStorage.setItem(`antalya_notif_guard_${r.trackingCode}:pending_admin`, String(Date.now()));
-        } catch {}
-      });
-
-      const latest = newUnalerted[0];
-
-      // 1. Play LOUD siren + Turkish Voice Speech Announcement + Native APK Alarm
-      playAdminVoiceAlert(latest);
-
-      // 2. Trigger haptic vibration
-      triggerHapticVibration([500, 200, 500, 200, 800]);
-
-      // 3. Send browser / OS push notification
-      sendBrowserNotification('🚨 Yeni Müşteri Siparişi Onayınızı Bekliyor!', {
-        body: `${latest.trackingCode}: ${latest.sender.district} ➔ ${latest.receiver.district} (${latest.price} TL). Onaylamak için dokunun.`,
-        tag: `admin-pending-${latest.id}`,
-      });
-    }
-  }, [pendingAdminRequests]);
+    setOrderToEditLocation(null);
+  };
 
   // Handle Add Customer Form
   const handleAddCustomerSubmit = (e: React.FormEvent) => {
@@ -1021,14 +1024,23 @@ export const AdminManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
                     onClick={() => approveRequestForPool(req.id)}
-                    className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                    className="flex-1 min-w-[140px] py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                   >
                     <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                     <span>Onayla & Kurye Havuzuna Aktar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditLocation(req)}
+                    className="px-3.5 py-3 bg-[#022820] hover:bg-[#03362b] text-emerald-300 border border-emerald-700/80 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    title="İlçe ve Adres Bilgilerini Düzenle"
+                  >
+                    <MapPin className="w-4 h-4 text-emerald-400" />
+                    <span>İlçe / Adres</span>
                   </button>
                   <button
                     type="button"
@@ -1324,6 +1336,16 @@ export const AdminManagement: React.FC = () => {
                       >
                         <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                         <span>Onayla & Kurye Havuzuna Düşür</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditLocation(req)}
+                        className="py-3 px-3.5 bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border border-emerald-600/70 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                        title="İlçe ve Adres Bilgilerini Düzenle"
+                      >
+                        <MapPin className="w-4 h-4 text-emerald-400" />
+                        <span>İlçe / Adres</span>
                       </button>
 
                       <button
@@ -3724,6 +3746,121 @@ export const AdminManagement: React.FC = () => {
               >
                 <XCircle className="w-4 h-4" />
                 <span>Evet, Siparişi İptal Et</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: EDIT ORDER DISTRICT & ADDRESS (Alım ve Teslimat İlçesi Düzenleme) */}
+      {/* ===================================================================== */}
+      {orderToEditLocation && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#02231c] rounded-3xl border border-emerald-500/70 p-5 sm:p-6 max-w-lg w-full text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-emerald-800/80">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-sm sm:text-base">
+                  Alım & Teslimat İlçesini Düzenle (#{orderToEditLocation.trackingCode})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOrderToEditLocation(null)}
+                className="text-emerald-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Alış (Nereden) */}
+            <div className="bg-[#011410] p-4 rounded-2xl border border-emerald-900/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-emerald-300">📍 Alış İlçesi (Nereden):</label>
+                <span className="text-xs font-black text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                  {editOrderSenderDistrict}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setEditOrderSenderDistrict(d)}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
+                      editOrderSenderDistrict === d
+                        ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                        : 'bg-[#021d17] text-emerald-300/80 border-emerald-800/80 hover:bg-[#032e24]'
+                    }`}
+                  >
+                    {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-300 font-medium block mb-1">Açık Alış Adresi:</label>
+                <textarea
+                  rows={2}
+                  value={editOrderSenderAddress}
+                  onChange={(e) => setEditOrderSenderAddress(e.target.value)}
+                  className="w-full bg-[#021d17] border border-emerald-700/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 resize-none"
+                  placeholder="Cadde, sokak, no, mahalle vb."
+                />
+              </div>
+            </div>
+
+            {/* Teslimat (Nereye) */}
+            <div className="bg-[#011410] p-4 rounded-2xl border border-teal-900/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-teal-300">🏁 Teslimat İlçesi (Nereye):</label>
+                <span className="text-xs font-black text-teal-400 bg-teal-950 px-2 py-0.5 rounded border border-teal-800">
+                  {editOrderReceiverDistrict}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setEditOrderReceiverDistrict(d)}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer border text-center ${
+                      editOrderReceiverDistrict === d
+                        ? 'bg-teal-600 text-white border-teal-400 shadow-sm'
+                        : 'bg-[#021d17] text-teal-300/80 border-teal-900/80 hover:bg-[#032e24]'
+                    }`}
+                  >
+                    {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-300 font-medium block mb-1">Açık Teslimat Adresi:</label>
+                <textarea
+                  rows={2}
+                  value={editOrderReceiverAddress}
+                  onChange={(e) => setEditOrderReceiverAddress(e.target.value)}
+                  className="w-full bg-[#021d17] border border-teal-700/60 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-400 resize-none"
+                  placeholder="Cadde, sokak, no, daire, alıcı vb."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setOrderToEditLocation(null)}
+                className="px-4 py-2.5 bg-[#011410] hover:bg-[#02241d] border border-emerald-800 text-emerald-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveOrderLocation}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl shadow-lg transition cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>Kaydet & Güncelle</span>
               </button>
             </div>
           </div>

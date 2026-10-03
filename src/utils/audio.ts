@@ -208,6 +208,9 @@ export function playCourierPoolSiren() {
   playNewOrderSound();
 }
 
+// Deduplication tracker for admin alerts to prevent double-firing in Android APK
+const recentAdminVoiceAlerts = new Map<string, number>();
+
 /**
  * 1.6 YÖNETİCİ SESLİ SİPARİŞ ALARMI (Admin Voice Announcement & Siren)
  * Müşterilerden yeni bir sipariş geldiğinde Yönetim APK'sinde ve panelinde
@@ -220,6 +223,14 @@ export function playAdminVoiceAlert(order?: {
   price?: number;
 }) {
   if (!isSoundAlertsEnabled()) return;
+
+  const dedupKey = order?.trackingCode || 'generic';
+  const now = Date.now();
+  const lastAlert = recentAdminVoiceAlerts.get(dedupKey);
+  if (lastAlert && now - lastAlert < 15000) {
+    return; // Prevent duplicate siren & voice alert within 15 seconds
+  }
+  recentAdminVoiceAlerts.set(dedupKey, now);
 
   // 1. Acil siren ve APK alarmını tek seferde çal (playCourierPoolSiren handles native alarm and siren)
   playCourierPoolSiren();

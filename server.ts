@@ -889,12 +889,14 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
 
   // 2. STALE ORDER GUARD - NEVER SEND EMAILS FOR ORDERS OLDER THAN 20 MINUTES
   // This completely eliminates "Dünkü talepler bugün geliyor"
-  if (!isForce && order.createdAt) {
-    const orderCreatedAtMs = new Date(order.createdAt).getTime();
-    if (!isNaN(orderCreatedAtMs)) {
-      const ageMs = Date.now() - orderCreatedAtMs;
+  // For pool orders, calculate freshness from when manager approved it into pool (order.approvedAt || order.createdAt)
+  const referenceTimeIso = order.approvedAt || order.createdAt;
+  if (!isForce && referenceTimeIso) {
+    const orderRefTimeMs = new Date(referenceTimeIso).getTime();
+    if (!isNaN(orderRefTimeMs)) {
+      const ageMs = Date.now() - orderRefTimeMs;
       if (ageMs > MAX_ORDER_EMAIL_AGE_MS) {
-        console.log(`[EMAIL GUARD] ⏰ Stale order #${trackingCode} (${orderId}) created ${Math.round(ageMs / 60000)}m ago. Skipping email dispatch.`);
+        console.log(`[EMAIL GUARD] ⏰ Stale order #${trackingCode} (${orderId}) created/approved ${Math.round(ageMs / 60000)}m ago. Skipping email dispatch.`);
         order.emailDispatched = true;
         order.emailDispatchedAt = order.emailDispatchedAt || 'stale_skipped';
         if (orderId) dispatchedEmailOrderIds.add(orderId);
@@ -907,6 +909,19 @@ function enqueueNewOrderEmail(order: any, specificRecipient?: string, isForce = 
         };
       }
     }
+  }
+
+  // 3. PENDING ADMIN APPROVAL GUARD:
+  // Courier notifications must NEVER be sent while an order is waiting for manager approval!
+  // Orders only get emailed to couriers AFTER the manager approves them into 'pending_pool'.
+  if (order.status === 'pending_admin' && !isForce) {
+    console.log(`[EMAIL GUARD] ⏳ Order #${trackingCode} (${orderId}) is waiting for manager approval ('pending_admin'). Skipping courier email until manager approves.`);
+    return {
+      success: true,
+      isRealDelivery: false,
+      status: 'pending_admin_approval',
+      message: 'Sipariş yönetici onayı bekliyor. Kuryelere mail gönderilmedi.',
+    };
   }
 
   // Prevent duplicate jobs for non-force real requests
@@ -1307,18 +1322,20 @@ function initFirestoreSync() {
             newOrUpdatedCount++;
           }
 
-          // Check if email needs to be dispatched (if not marked dispatched, fresh, and not test/fake)
+          // Check if email needs to be dispatched (ONLY for approved pool orders, never while pending_admin!)
           const isTest = isTestOrFakeOrder(fullOrder);
-          const orderAgeMs = fullOrder.createdAt ? (Date.now() - new Date(fullOrder.createdAt).getTime()) : Infinity;
+          const orderAgeRef = fullOrder.approvedAt || fullOrder.createdAt;
+          const orderAgeMs = orderAgeRef ? (Date.now() - new Date(orderAgeRef).getTime()) : Infinity;
           const isFresh = orderAgeMs <= MAX_ORDER_EMAIL_AGE_MS;
-          const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled === true;
-          const needsEmail = isOrderEmailsActive && !isTest && isFresh && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
+          const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled !== false;
+          const isApprovedPool = fullOrder.status === 'pending_pool';
+          const needsEmail = isOrderEmailsActive && !isTest && isFresh && isApprovedPool && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
 
           if (needsEmail) {
-            console.log(`[FIRESTORE SYNC] 📦 New fresh customer order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
+            console.log(`[FIRESTORE SYNC] 📦 Approved pool order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
             enqueueNewOrderEmail(fullOrder, undefined, false);
-          } else if (!isFresh) {
-            // Mark stale order as dispatched in memory so it never triggers
+          } else if (!isFresh && isApprovedPool) {
+            // ONLY mark stale in memory if it was an approved pool order that aged out
             dispatchedEmailOrderIds.add(docId);
             dispatchedEmailOrderIds.add(trackingCode);
           }
@@ -1451,9 +1468,10 @@ setInterval(() => {
       const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled === true;
       if (!isOrderEmailsActive) return;
 
-      const isUnsent = !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
+      const isApprovedPool = r.status === 'pending_pool';
+      const isUnsent = isApprovedPool && !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
-        console.log(`[AUTO SWEEP] 🚀 Auto-dispatching un-emailed fresh customer order #${r.trackingCode} (${r.id})...`);
+        console.log(`[AUTO SWEEP] 🚀 Auto-dispatching approved pool order #${r.trackingCode} (${r.id})...`);
         enqueueNewOrderEmail(r, undefined, false);
       }
     });
@@ -1846,13 +1864,13 @@ app.post('/api/requests/sync-batch', (req, res) => {
       if (idx >= 0) {
         const existing = dbState.requests[idx];
         dbState.requests[idx] = { ...existing, ...reqItem };
-        if (isFresh && !existing.emailDispatched && !reqItem.emailDispatched) {
+        if (isFresh && reqItem.status === 'pending_pool' && !existing.emailDispatched && !reqItem.emailDispatched) {
           enqueueNewOrderEmail(dbState.requests[idx], undefined, false);
           enqueuedCount++;
         }
       } else {
         dbState.requests.unshift(reqItem);
-        if (isFresh && !reqItem.emailDispatched) {
+        if (isFresh && reqItem.status === 'pending_pool' && !reqItem.emailDispatched) {
           enqueueNewOrderEmail(reqItem, undefined, false);
           enqueuedCount++;
         }
@@ -2511,15 +2529,19 @@ app.post('/api/requests/:id/approve-pool', (req, res) => {
     dbState.requests[reqIndex] = updated;
     saveDatabase();
 
-    // Now dispatch notification email to all registered couriers
-    enqueueNewOrderEmail(updated, undefined, false);
+    // Clear any previous dedup entries for this order so approval ALWAYS enqueues fresh courier email
+    if (updated.id) dispatchedEmailOrderIds.delete(updated.id);
+    if (updated.trackingCode) dispatchedEmailOrderIds.delete(updated.trackingCode);
+
+    // Now dispatch notification email to all registered couriers with isForce: true
+    const queueResult = enqueueNewOrderEmail(updated, undefined, true);
 
     if (serverFirestoreDb && updated.id) {
       setDoc(doc(serverFirestoreDb, 'delivery_requests', updated.id), JSON.parse(JSON.stringify(updated)), { merge: true }).catch(() => {});
     }
 
-    console.log(`[ORDER APPROVED TO POOL] ID: ${updated.id}, Tracking: ${updated.trackingCode}`);
-    res.json({ success: true, request: updated });
+    console.log(`[ORDER APPROVED TO POOL] ID: ${updated.id}, Tracking: ${updated.trackingCode}, Email Status: ${queueResult.status}`);
+    res.json({ success: true, request: updated, queueResult });
   } catch (err: any) {
     console.error('Error approving request for pool:', err);
     res.status(500).json({ error: err.message || 'Sunucu hatası' });

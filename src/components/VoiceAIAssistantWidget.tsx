@@ -91,7 +91,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   // Editing state for "Talebi Düzelt" button
   const [isEditingOrder, setIsEditingOrder] = useState<boolean>(false);
   const [editPickup, setEditPickup] = useState<string>('');
+  const [editPickupDistrict, setEditPickupDistrict] = useState<DistrictName>('Muratpaşa');
   const [editDest, setEditDest] = useState<string>('');
+  const [editDestDistrict, setEditDestDistrict] = useState<DistrictName>('Muratpaşa');
   const [editPhone, setEditPhone] = useState<string>('');
   const [editPackage, setEditPackage] = useState<string>('');
 
@@ -816,7 +818,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
 
   const handleStartEditOrder = () => {
     setEditPickup(state.pickupAddress || '');
+    setEditPickupDistrict(state.pickupDistrict || 'Muratpaşa');
     setEditDest(state.destAddress || '');
+    setEditDestDistrict(state.destDistrict || 'Muratpaşa');
     setEditPhone(state.phone || '');
     setEditPackage(state.packageContent || '');
     setIsEditingOrder(true);
@@ -828,14 +832,16 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     const updatedPhone = editPhone.trim() || state.phone;
     const updatedPackage = editPackage.trim() || state.packageContent;
 
-    const fromDist = state.pickupDistrict || 'Muratpaşa';
-    const toDist = state.destDistrict || 'Muratpaşa';
+    const fromDist = editPickupDistrict || state.pickupDistrict || 'Muratpaşa';
+    const toDist = editDestDistrict || state.destDistrict || 'Muratpaşa';
     const estimate = calculateDeliveryEstimate(fromDist, toDist, 'other', 'express_vip');
 
     const nextState: ConversationState = {
       ...state,
       pickupAddress: updatedPickup,
+      pickupDistrict: fromDist,
       destAddress: updatedDest,
+      destDistrict: toDist,
       phone: updatedPhone,
       packageContent: updatedPackage,
       estimatedPrice: estimate.price,
@@ -844,7 +850,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     stateRef.current = nextState;
     setIsEditingOrder(false);
 
-    const updateNotice = `Talebiniz güncellendi: ${updatedPickup} ➔ ${updatedDest} | İletişim: ${updatedPhone} | Paket: ${updatedPackage}.`;
+    const updateNotice = `Talebiniz güncellendi: [${fromDist}] ${updatedPickup} ➔ [${toDist}] ${updatedDest} | İletişim: ${updatedPhone} | Paket: ${updatedPackage}.`;
     setMessages((prev) => [
       ...prev,
       {
@@ -1142,22 +1148,62 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                           <Edit3 className="w-4 h-4" />
                           <span>Talebi Düzenle</span>
                         </h4>
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <div>
-                            <label className="text-[11px] text-emerald-300 font-bold block mb-1">📍 Alış Adresi (Nereden):</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] text-emerald-300 font-bold">📍 Alış İlçesi (Nereden):</label>
+                              <span className="text-[10px] text-emerald-400 font-bold">{editPickupDistrict}</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 mb-1.5">
+                              {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  onClick={() => setEditPickupDistrict(d)}
+                                  className={`py-1 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border text-center ${
+                                    editPickupDistrict === d
+                                      ? 'bg-emerald-600 text-white border-emerald-400'
+                                      : 'bg-[#021d17] text-emerald-300/80 border-emerald-800/80 hover:bg-[#032e24]'
+                                  }`}
+                                >
+                                  {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                                </button>
+                              ))}
+                            </div>
                             <input
                               type="text"
                               value={editPickup}
                               onChange={(e) => setEditPickup(e.target.value)}
+                              placeholder="Alış açık adresi"
                               className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white"
                             />
                           </div>
                           <div>
-                            <label className="text-[11px] text-amber-300 font-bold block mb-1">🏁 Teslimat Adresi (Nereye):</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] text-amber-300 font-bold">🏁 Teslimat İlçesi (Nereye):</label>
+                              <span className="text-[10px] text-amber-400 font-bold">{editDestDistrict}</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 mb-1.5">
+                              {(['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'] as DistrictName[]).map((d) => (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  onClick={() => setEditDestDistrict(d)}
+                                  className={`py-1 px-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border text-center ${
+                                    editDestDistrict === d
+                                      ? 'bg-amber-600 text-white border-amber-400'
+                                      : 'bg-[#021d17] text-amber-300/80 border-amber-900/60 hover:bg-[#032e24]'
+                                  }`}
+                                >
+                                  {d === 'Lara (Muratpaşa)' ? 'Lara' : d}
+                                </button>
+                              ))}
+                            </div>
                             <input
                               type="text"
                               value={editDest}
                               onChange={(e) => setEditDest(e.target.value)}
+                              placeholder="Teslimat açık adresi"
                               className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white"
                             />
                           </div>

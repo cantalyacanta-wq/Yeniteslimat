@@ -214,13 +214,30 @@ export function sendBrowserNotification(
     vibrate?: number[];
   }
 ): boolean {
-  // DEDUPLICATION: Prevent duplicate browser notifications within 10 seconds
-  const dedupKey = options.tag || `${title}:${options.body}`;
+  // DEDUPLICATION: Prevent duplicate browser and Android APK notifications within 15 seconds
+  // Extract order identifier (ANT-XXXX or req-XXXX) across data, tag, title, and body
+  const orderIdentifier =
+    options.data?.trackingCode ||
+    options.data?.orderId ||
+    (options.tag || '').match(/(req-[\w-]+|ANT-\d+)/i)?.[0] ||
+    (title + ' ' + options.body).match(/(ANT-\d+|req-[\w-]+)/i)?.[0];
+
+  const dedupKey = orderIdentifier ? `order:${orderIdentifier}` : (options.tag || `${title}:${options.body}`);
   const now = Date.now();
   const lastBrowserTime = recentBrowserNotifications.get(dedupKey);
-  if (lastBrowserTime && now - lastBrowserTime < 10000) {
+  if (lastBrowserTime && now - lastBrowserTime < 15000) {
     return false;
   }
+
+  // Cross-context deduplication via localStorage
+  try {
+    const storedLast = localStorage.getItem(`antalya_apk_notif_${dedupKey}`);
+    if (storedLast && now - Number(storedLast) < 15000) {
+      return false;
+    }
+    localStorage.setItem(`antalya_apk_notif_${dedupKey}`, String(now));
+  } catch {}
+
   recentBrowserNotifications.set(dedupKey, now);
 
   // If running inside Android APK native container, trigger native high-priority system notification:

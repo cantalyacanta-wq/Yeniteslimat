@@ -110,6 +110,7 @@ interface DeliveryContextType {
   cancelRequest: (requestId: string) => void;
   approveRequestForPool: (requestId: string) => void;
   releaseRequestBackToPool: (requestId: string) => void;
+  updateRequestDetails: (requestId: string, updates: Partial<DeliveryRequest>) => void;
   addDemoRequest: () => void;
   exportDatabaseBackup: () => void;
   importDatabaseBackup: (jsonString: string) => boolean;
@@ -1938,6 +1939,28 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
     }).catch((e) => console.warn('Failed to release request on server:', e));
   }, []);
 
+  // Update request details (address, district, price, notes, etc.)
+  const updateRequestDetails = useCallback((requestId: string, updates: Partial<DeliveryRequest>) => {
+    const now = new Date().toISOString();
+    setRequests((prev) =>
+      prev.map((req) => {
+        if (req.id === requestId) {
+          const merged = { ...req, ...updates, updatedAt: now };
+          return merged;
+        }
+        return req;
+      })
+    );
+
+    updateRequestInFirestore(requestId, { ...updates, updatedAt: now }).catch(() => {});
+
+    fetch(`/api/requests/${requestId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...updates, updatedAt: now }),
+    }).catch((e) => console.warn('Failed to patch request:', e));
+  }, []);
+
   // Add realistic demo request to test pool
   const addDemoRequest = useCallback(() => {
     const districts: DistrictName[] = ['Muratpaşa', 'Konyaaltı', 'Kepez', 'Lara (Muratpaşa)'];
@@ -2208,6 +2231,7 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         cancelRequest,
         approveRequestForPool,
         releaseRequestBackToPool,
+        updateRequestDetails,
         addDemoRequest,
         exportDatabaseBackup,
         importDatabaseBackup,
