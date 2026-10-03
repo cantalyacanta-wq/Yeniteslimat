@@ -197,6 +197,10 @@ export function emitInAppNotification(notification: AppNotification) {
   });
 }
 
+// Track recent dispatched notifications to prevent duplicate alerts (e.g. within 15 seconds across local, server and firestore sync)
+const recentDispatchedNotifications = new Map<string, number>();
+const recentBrowserNotifications = new Map<string, number>();
+
 /**
  * Send a native browser desktop / mobile notification
  */
@@ -210,13 +214,38 @@ export function sendBrowserNotification(
     vibrate?: number[];
   }
 ): boolean {
-  // If running inside Android APK native container, always fire native high-priority notification:
+  // DEDUPLICATION: Prevent duplicate browser notifications within 10 seconds
+  const dedupKey = options.tag || `${title}:${options.body}`;
+  const now = Date.now();
+  const lastBrowserTime = recentBrowserNotifications.get(dedupKey);
+  if (lastBrowserTime && now - lastBrowserTime < 10000) {
+    return false;
+  }
+  recentBrowserNotifications.set(dedupKey, now);
+
+  // If running inside Android APK native container, trigger native high-priority system notification:
   if (typeof window !== 'undefined' && (window as any).AndroidApp?.showSystemNotification) {
     try {
       (window as any).AndroidApp.showSystemNotification(title, options.body);
+      // IMPORTANT FIX: Return true immediately when handled by native AndroidApp!
+      // This prevents the WebView from firing a SECOND duplicate web notification.
+      return true;
     } catch (e) {
       console.debug('AndroidApp.showSystemNotification error:', e);
     }
+  }
+
+  // If inside APK container, prevent standard Web Notification fallback which causes double notifications
+  if (typeof window !== 'undefined') {
+    try {
+      if (
+        (window as any).AndroidApp ||
+        navigator.userAgent.includes('AntalyaKuryeApp') ||
+        localStorage.getItem('antalya_in_apk') === 'true'
+      ) {
+        return true;
+      }
+    } catch {}
   }
 
   if (!isNotificationSupported() || Notification.permission !== 'granted') {
@@ -306,6 +335,46 @@ export function dispatchOrderStatusNotification(params: {
   // Don't notify if status didn't change
   if (previousStatus && previousStatus === newStatus) return;
 
+  // DEDUPLICATION GUARD: Prevent duplicate sirens / toasts / APK push alerts for the same order and status within 15 seconds
+  const idKey = order.id ? `${order.id}:${newStatus}` : null;
+  const trackingKey = order.trackingCode ? `${order.trackingCode}:${newStatus}` : null;
+  const numKey = order.trackingCode ? `${order.trackingCode.replace(/\D/g, '')}:${newStatus}` : null;
+  const keysToCheck = Array.from(new Set([idKey, trackingKey, numKey].filter(Boolean))) as string[];
+
+  const now = Date.now();
+  for (const k of keysToCheck) {
+    const lastTime = recentDispatchedNotifications.get(k);
+    if (lastTime && now - lastTime < 15000) {
+      return; // Already notified within 15 seconds
+    }
+    try {
+      const stored = localStorage.getItem(`antalya_notif_guard_${k}`);
+      if (stored && now - Number(stored) < 15000) {
+        return; // Already notified in another context/tab/sync
+      }
+    } catch {}
+  }
+
+  // Register all keys
+  for (const k of keysToCheck) {
+    recentDispatchedNotifications.set(k, now);
+    try {
+      localStorage.setItem(`antalya_notif_guard_${k}`, String(now));
+    } catch {}
+  }
+
+  // Clean old deduplication entries after 60s
+  if (recentDispatchedNotifications.size > 100) {
+    for (const [k, t] of recentDispatchedNotifications.entries()) {
+      if (now - t > 60000) {
+        recentDispatchedNotifications.delete(k);
+        try {
+          localStorage.removeItem(`antalya_notif_guard_${k}`);
+        } catch {}
+      }
+    }
+  }
+
   let isCustomerOwner = false;
   if (typeof window !== 'undefined') {
     try {
@@ -342,6 +411,11 @@ export function dispatchOrderStatusNotification(params: {
 
   switch (newStatus) {
     case 'pending_admin': {
+      // Kuryelere YÖNETİCİ ONAYI BEKLEYEN sipariş hakkında KESİNLİKLE HİÇBİR BİLDİRİM / SES GİTMESİN!
+      if (isCourierRole) {
+        return; // Kurye rolü için sessizce çık, havuz bildirimi yalnızca onaylandıktan sonra gidecek
+      }
+
       const isAdminRoute =
         typeof window !== 'undefined' &&
         (window.location.pathname.toLowerCase().includes('admin') ||
@@ -362,10 +436,8 @@ export function dispatchOrderStatusNotification(params: {
         vibratePattern = [120, 80, 120];
         playNewOrderSound();
       } else {
-        title = '📋 Yeni Talep Yönetici Onayı Bekliyor';
-        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict}`;
-        type = 'info';
-        vibratePattern = [150, 100, 150];
+        // Kurye havuzuna düşene kadar diğer genel kullanıcılara da bildirim gönderilmez
+        return;
       }
       break;
     }

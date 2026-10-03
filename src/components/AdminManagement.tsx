@@ -49,6 +49,7 @@ import {
   Share2,
   Copy,
   XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { DistrictName, DeliveryRequest, DeliveryStatus, UserAccount } from '../types';
@@ -90,9 +91,37 @@ export const AdminManagement: React.FC = () => {
     resendOrderEmail,
     notificationPermission,
     requestNotifications,
+    syncWithServer,
+    createNewRequest,
   } = useDelivery();
 
-  const [activeTab, setActiveTab] = useState<'customers' | 'couriers' | 'orders' | 'emails' | 'apk' | 'system' | 'approvals'>('customers');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'orders' | 'customers' | 'couriers' | 'emails' | 'apk' | 'system'>('approvals');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  // Auto-sync with server on mount and every 3 seconds for instant order sync
+  useEffect(() => {
+    syncWithServer();
+    const interval = setInterval(() => {
+      syncWithServer();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [syncWithServer]);
+
+  // Orders waiting for Management Approval (Customer created -> must be approved before hitting courier pool)
+  const pendingAdminRequests = requests.filter(
+    (r) =>
+      r &&
+      r.status !== 'cancelled' &&
+      r.status !== 'delivered' &&
+      (r.status === 'pending_admin' || (r.status as string) === 'pending' || (!r.status && !r.assignedCourier))
+  );
+
+  // Auto switch to approvals if there are orders waiting for manager confirmation
+  useEffect(() => {
+    if (pendingAdminRequests.length > 0 && activeTab !== 'approvals') {
+      setActiveTab('approvals');
+    }
+  }, [pendingAdminRequests.length, activeTab]);
   const [apkLinkCopied, setApkLinkCopied] = useState(false);
   const [adminApkLinkCopied, setAdminApkLinkCopied] = useState(false);
   const [apkTestSuccess, setApkTestSuccess] = useState<string | null>(null);
@@ -219,7 +248,7 @@ export const AdminManagement: React.FC = () => {
   const [newExtraEmailInput, setNewExtraEmailInput] = useState('');
   const [isAddingExtraEmail, setIsAddingExtraEmail] = useState(false);
   const [extraEmailFeedback, setExtraEmailFeedback] = useState<string | null>(null);
-  const [newOrderEmailsEnabled, setNewOrderEmailsEnabled] = useState(false);
+  const [newOrderEmailsEnabled, setNewOrderEmailsEnabled] = useState(true);
   const [isTogglingOrderEmails, setIsTogglingOrderEmails] = useState(false);
 
   const handleToggleOrderEmails = async () => {
@@ -532,20 +561,37 @@ export const AdminManagement: React.FC = () => {
   // Cancel Order Modal State
   const [orderToCancel, setOrderToCancel] = useState<DeliveryRequest | null>(null);
 
-  // Orders waiting for Management Approval (Customer created -> must be approved before hitting courier pool)
-  const pendingAdminRequests = requests.filter((r) => r.status === 'pending_admin');
-
   // Track alerted pending admin orders so siren & voice alert trigger on each new incoming customer request
   const alertedAdminOrderIdsRef = React.useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (pendingAdminRequests.length === 0) return;
 
-    // Find any unalerted pending admin requests
-    const newUnalerted = pendingAdminRequests.filter((r) => !alertedAdminOrderIdsRef.current.has(r.id));
+    // Filter unalerted requests that were not already alerted via global dispatcher
+    const newUnalerted = pendingAdminRequests.filter((r) => {
+      if (alertedAdminOrderIdsRef.current.has(r.id)) return false;
+      const key = `${r.id}:pending_admin`;
+      const codeKey = r.trackingCode ? `${r.trackingCode}:pending_admin` : '';
+      try {
+        const t1 = localStorage.getItem(`antalya_notif_guard_${key}`);
+        const t2 = codeKey ? localStorage.getItem(`antalya_notif_guard_${codeKey}`) : null;
+        const now = Date.now();
+        if ((t1 && now - Number(t1) < 15000) || (t2 && now - Number(t2) < 15000)) {
+          alertedAdminOrderIdsRef.current.add(r.id);
+          return false;
+        }
+      } catch {}
+      return true;
+    });
 
     if (newUnalerted.length > 0) {
-      newUnalerted.forEach((r) => alertedAdminOrderIdsRef.current.add(r.id));
+      newUnalerted.forEach((r) => {
+        alertedAdminOrderIdsRef.current.add(r.id);
+        try {
+          localStorage.setItem(`antalya_notif_guard_${r.id}:pending_admin`, String(Date.now()));
+          if (r.trackingCode) localStorage.setItem(`antalya_notif_guard_${r.trackingCode}:pending_admin`, String(Date.now()));
+        } catch {}
+      });
 
       const latest = newUnalerted[0];
 
@@ -558,6 +604,7 @@ export const AdminManagement: React.FC = () => {
       // 3. Send browser / OS push notification
       sendBrowserNotification('🚨 Yeni Müşteri Siparişi Onayınızı Bekliyor!', {
         body: `${latest.trackingCode}: ${latest.sender.district} ➔ ${latest.receiver.district} (${latest.price} TL). Onaylamak için dokunun.`,
+        tag: `admin-pending-${latest.id}`,
       });
     }
   }, [pendingAdminRequests]);
@@ -772,6 +819,8 @@ export const AdminManagement: React.FC = () => {
   const filteredOrders = requests.filter((req) => {
     if (orderStatusFilter === 'active') {
       if (req.status === 'cancelled' || req.status === 'delivered') return false;
+    } else if (orderStatusFilter === 'pending_admin') {
+      if (req.status !== 'pending_admin' && (req.status as string) !== 'pending' && !(Boolean(!req.status && !req.assignedCourier))) return false;
     } else if (orderStatusFilter !== 'all' && req.status !== orderStatusFilter) {
       return false;
     }
@@ -833,6 +882,38 @@ export const AdminManagement: React.FC = () => {
             <strong className="text-sm font-black text-amber-400">{poolRequests.length} Sipariş</strong>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setActiveTab('approvals')}
+            className={`px-3 py-2 rounded-2xl border transition cursor-pointer flex flex-col items-start ${
+              pendingAdminRequests.length > 0
+                ? 'bg-red-950/90 text-amber-300 border-red-500 shadow-md animate-pulse ring-2 ring-red-400/50'
+                : 'bg-[#011410] border-emerald-800/60 text-emerald-300 hover:bg-[#02241d]'
+            }`}
+            title="Yönetici Onayı Bekleyen Siparişleri Gör"
+          >
+            <span className="text-[10px] block opacity-80">Onay Bekleyen</span>
+            <strong className="text-sm font-black text-amber-300 flex items-center gap-1.5">
+              <span>{pendingAdminRequests.length} Sipariş</span>
+              {pendingAdminRequests.length > 0 && <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />}
+            </strong>
+          </button>
+
+          <button
+            type="button"
+            disabled={isSyncing}
+            onClick={async () => {
+              setIsSyncing(true);
+              await syncWithServer();
+              setTimeout(() => setIsSyncing(false), 500);
+            }}
+            title="Sunucu ve Bulut Verilerini Yenile"
+            className="px-3 py-2.5 bg-[#011410] hover:bg-[#02241d] text-emerald-300 hover:text-white border border-emerald-800/60 rounded-2xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isSyncing ? 'Yenileniyor...' : 'Yenile'}</span>
+          </button>
+
           {/* Compact Live Site Counter */}
           <SiteVisitorCounter
             variant="compact"
@@ -856,6 +937,114 @@ export const AdminManagement: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 🚨 YÖNETİCİ ONAYI BEKLEYEN MÜŞTERİ SİPARİŞLERİ ALARM KARTI (EN TEPEDE VE HER EKRANDA) */}
+      {pendingAdminRequests.length > 0 && (
+        <div className="bg-gradient-to-r from-[#2c0808] via-[#3a1006] to-[#240808] p-5 sm:p-6 rounded-3xl border-2 border-red-500/90 text-white space-y-4 shadow-2xl shadow-red-950/80 animate-in zoom-in-95">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-800/60 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-600/30 border-2 border-red-500 flex items-center justify-center text-red-300 shrink-0">
+                <AlertTriangle className="w-7 h-7 text-amber-300 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-black text-base sm:text-lg text-white tracking-wide">
+                    🚨 YÖNETİCİ ONAYI BEKLEYEN SİPARİŞ VAR ({pendingAdminRequests.length})
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-red-600 text-white animate-pulse">
+                    HAVUZA DÜŞMEDİ
+                  </span>
+                </div>
+                <p className="text-xs text-red-200/90 mt-0.5">
+                  Müşterilerden gelen bu talepler siz onaylayana kadar <strong>kurye havuzuna düşmez</strong> ve kuryelere iletilmez.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  playAdminVoiceAlert(pendingAdminRequests[0]);
+                  triggerHapticVibration([400, 200, 400]);
+                }}
+                className="px-3 py-2 bg-red-950/90 hover:bg-red-900 border border-red-500/80 text-amber-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                title="Acil siren ve sesli anonsu tekrar dinle"
+              >
+                <Volume2 className="w-4 h-4 text-amber-400" />
+                <span>Sesli Anons Test</span>
+              </button>
+              {pendingAdminRequests.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    pendingAdminRequests.forEach((r) => approveRequestForPool(r.id));
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Tümünü Onayla ({pendingAdminRequests.length})</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingAdminRequests.map((req) => (
+              <div
+                key={req.id}
+                className="bg-[#170404] p-5 rounded-2xl border-2 border-red-600/70 hover:border-amber-400 transition space-y-3.5 shadow-xl flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-black bg-red-950 text-amber-300 px-3 py-1 rounded-lg border border-red-800/80">
+                      #{req.trackingCode}
+                    </span>
+                    <span className="text-base font-black text-amber-400">{req.price} ₺</span>
+                  </div>
+
+                  <div className="text-xs space-y-1.5 text-slate-200 bg-[#220707] p-3 rounded-xl border border-red-900/50">
+                    <p className="flex items-start gap-1.5">
+                      <strong className="text-emerald-400 shrink-0">📍 Alış (Nereden):</strong>
+                      <span className="font-medium text-white">{req.sender.addressDetail || req.sender.neighborhood} ({req.sender.district})</span>
+                    </p>
+                    <p className="flex items-start gap-1.5">
+                      <strong className="text-amber-400 shrink-0">🏁 Teslimat (Nereye):</strong>
+                      <span className="font-medium text-white">{req.receiver.addressDetail || req.receiver.neighborhood} ({req.receiver.district})</span>
+                    </p>
+                    <div className="pt-2 border-t border-red-900/60 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                      <p><strong>Müşteri:</strong> {req.sender.contactName}</p>
+                      <p><strong>İletişim Tel:</strong> <a href={`tel:${req.sender.contactPhone}`} className="text-amber-300 underline font-bold">{req.sender.contactPhone}</a></p>
+                      <p><strong>Alıcı Tel:</strong> {req.receiver.contactPhone}</p>
+                      <p><strong>İçerik:</strong> {req.packageName}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => approveRequestForPool(req.id)}
+                    className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                    <span>Onayla & Kurye Havuzuna Aktar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderToCancel(req)}
+                    className="px-3.5 py-3 bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/80 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                    title="İptal Et / Reddet"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Reddet</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Yönetici Android APK İndirme & Hızlı Erişim Barı (Sadece Yönetici Panelinde Görüntülenir) */}
       {!shouldHideApkButtons() && (
@@ -934,15 +1123,35 @@ export const AdminManagement: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           type="button"
-          onClick={() => setActiveTab('customers')}
+          onClick={() => setActiveTab('approvals')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 cursor-pointer border shrink-0 ${
+            activeTab === 'approvals'
+              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white border-amber-400 shadow-md ring-2 ring-red-400/50'
+              : pendingAdminRequests.length > 0
+              ? 'bg-red-950/90 text-amber-300 border-red-500/80 animate-pulse'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
+          }`}
+        >
+          <AlertTriangle className={`w-4 h-4 ${pendingAdminRequests.length > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-400'}`} />
+          <span>🚨 Yönetici Onayı Bekleyenler ({pendingAdminRequests.length})</span>
+          {pendingAdminRequests.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-black animate-ping">
+              {pendingAdminRequests.length} YENİ
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('orders')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
-            activeTab === 'customers'
+            activeTab === 'orders'
               ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
               : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>Müşteri Yönetimi ({customerUsers.length})</span>
+          <Package className="w-4 h-4" />
+          <span>Tüm Siparişler & Havuz ({requests.length})</span>
         </button>
 
         <button
@@ -960,35 +1169,15 @@ export const AdminManagement: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setActiveTab('approvals')}
+          onClick={() => setActiveTab('customers')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
-            activeTab === 'approvals'
-              ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white border-amber-400 shadow-md ring-2 ring-red-400/50'
-              : pendingAdminRequests.length > 0
-              ? 'bg-red-950/90 text-amber-300 border-red-500/80 animate-pulse'
-              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
-          }`}
-        >
-          <AlertTriangle className={`w-4 h-4 ${pendingAdminRequests.length > 0 ? 'text-amber-300 animate-bounce' : 'text-emerald-400'}`} />
-          <span>Yönetici Onayı Bekleyenler ({pendingAdminRequests.length})</span>
-          {pendingAdminRequests.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-600 text-white font-black animate-ping">
-              !
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('orders')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 cursor-pointer border shrink-0 ${
-            activeTab === 'orders'
+            activeTab === 'customers'
               ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
               : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
           }`}
         >
-          <Package className="w-4 h-4" />
-          <span>Tüm Siparişler & Havuz ({requests.length})</span>
+          <Users className="w-4 h-4" />
+          <span>Müşteri Yönetimi ({customerUsers.length})</span>
         </button>
 
         <button
@@ -1034,98 +1223,6 @@ export const AdminManagement: React.FC = () => {
           <span>Sistem & Yedekleme</span>
         </button>
       </div>
-
-      {/* ===================================================================== */}
-      {/* 🚨 YÖNETİCİ ONAYI BEKLEYEN MÜŞTERİ SİPARİŞLERİ ALARM BANNER (HER SEKMEDE GÖRÜNÜR) */}
-      {/* ===================================================================== */}
-      {pendingAdminRequests.length > 0 && activeTab !== 'approvals' && (
-        <div className="bg-gradient-to-r from-[#2c0808] via-[#3a1006] to-[#240808] p-5 sm:p-6 rounded-3xl border-2 border-red-500/90 text-white space-y-4 shadow-2xl shadow-red-950/80 animate-in zoom-in-95">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-800/60 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-red-600/30 border-2 border-red-500 flex items-center justify-center text-red-300 shrink-0">
-                <AlertTriangle className="w-7 h-7 text-amber-300 animate-bounce" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-black text-base sm:text-lg text-white tracking-wide">
-                    🚨 YÖNETİCİ ONAYI BEKLEYEN SİPARİŞ VAR ({pendingAdminRequests.length})
-                  </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-red-600 text-white animate-pulse">
-                    HAVUZA DÜŞMEDİ
-                  </span>
-                </div>
-                <p className="text-xs text-red-200/90 mt-0.5">
-                  Müşterilerden gelen bu talepler siz onaylayana kadar <strong>kurye havuzuna düşmez</strong> ve kuryelere iletilmez.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  playCourierPoolSiren();
-                  triggerHapticVibration([400, 200, 400]);
-                }}
-                className="px-3 py-2 bg-red-950/90 hover:bg-red-900 border border-red-500/80 text-amber-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                title="Acil siren sesini tekrar çal"
-              >
-                <Volume2 className="w-4 h-4 text-amber-400" />
-                <span>Siren Çal</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('approvals')}
-                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md"
-              >
-                Talepleri İncele ({pendingAdminRequests.length})
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {pendingAdminRequests.slice(0, 4).map((req) => (
-              <div
-                key={req.id}
-                className="bg-[#170404] p-4 rounded-2xl border border-red-600/60 hover:border-amber-400 transition space-y-2.5 shadow-lg"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-black bg-red-950 text-amber-300 px-2.5 py-1 rounded-lg border border-red-800/80">
-                    {req.trackingCode}
-                  </span>
-                  <span className="text-sm font-black text-amber-400">{req.price} ₺</span>
-                </div>
-
-                <div className="text-xs space-y-1 text-slate-200 bg-[#220707] p-2.5 rounded-xl border border-red-900/50">
-                  <p><strong>Alış:</strong> {req.sender.district} ({req.sender.contactName} - {req.sender.contactPhone})</p>
-                  <p><strong>Teslim:</strong> {req.receiver.district} ({req.receiver.contactName} - {req.receiver.contactPhone})</p>
-                  <p className="text-[11px] text-slate-400 truncate">📦 {req.packageName}</p>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => approveRequestForPool(req.id)}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                    <span>Onayla & Havuza Düşür</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOrderToCancel(req)}
-                    className="px-3 py-2.5 bg-red-950 hover:bg-red-900 text-red-300 border border-red-700/80 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
-                    title="İptal Et / Reddet"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    <span>Reddet</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ===================================================================== */}
       {/* TAB: YÖNETİCİ ONAYI BEKLEYENLER (DEDICATED APPROVALS TAB) */}
@@ -1848,6 +1945,80 @@ export const AdminManagement: React.FC = () => {
       {/* ===================================================================== */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
+
+          {/* Dedicated Pending Admin Orders Alert Box in Orders Tab */}
+          {pendingAdminRequests.length > 0 && (
+            <div className="bg-gradient-to-r from-[#2c0808] via-[#3a1006] to-[#240808] p-5 rounded-3xl border-2 border-red-500/90 text-white space-y-4 shadow-2xl animate-in zoom-in-95">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-800/60 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-600/30 border-2 border-red-500 flex items-center justify-center text-red-300 shrink-0">
+                    <AlertTriangle className="w-6 h-6 text-amber-300 animate-bounce" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm sm:text-base text-white">
+                      🚨 YÖNETİCİ ONAYI BEKLEYEN {pendingAdminRequests.length} SİPARİŞ BULUNUYOR
+                    </h3>
+                    <p className="text-xs text-red-200/90">
+                      Müşteriden yeni gelen bu talepler onayınızın ardından kurye havuzuna düşecek ve kuryelere iletilecektir.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('approvals')}
+                    className="px-3 py-2 bg-red-950 hover:bg-red-900 border border-red-500 text-amber-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Onaylar Ekranına Git
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pendingAdminRequests.forEach((r) => approveRequestForPool(r.id))}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Tümünü Onayla ({pendingAdminRequests.length})</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pendingAdminRequests.map((req) => (
+                  <div key={req.id} className="bg-[#170404] p-4 rounded-2xl border border-red-600/70 flex flex-col justify-between space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-black bg-red-950 text-amber-300 px-2.5 py-1 rounded-lg border border-red-800">
+                        #{req.trackingCode}
+                      </span>
+                      <span className="text-sm font-black text-amber-400">{req.price} ₺</span>
+                    </div>
+                    <div className="text-xs text-slate-200 space-y-1">
+                      <p><strong>Alış:</strong> {req.sender.addressDetail || req.sender.district} ({req.sender.contactPhone})</p>
+                      <p><strong>Teslim:</strong> {req.receiver.addressDetail || req.receiver.district} ({req.receiver.contactPhone})</p>
+                      <p><strong>Paket:</strong> {req.packageName}</p>
+                    </div>
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => approveRequestForPool(req.id)}
+                        className="flex-1 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Onayla & Havuza Düşür</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOrderToCancel(req)}
+                        className="px-3 py-2 bg-red-950 text-red-300 border border-red-700 rounded-xl text-xs"
+                      >
+                        Reddet
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Dedicated Live Pool Alert Box (Visible whenever there are orders waiting for courier) */}
           {poolRequests.length > 0 && (

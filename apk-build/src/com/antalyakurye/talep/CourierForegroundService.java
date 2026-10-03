@@ -138,18 +138,8 @@ public class CourierForegroundService extends Service {
                    .setContentIntent(pi)
                    .setDeleteIntent(hidePi)
                    .setOngoing(false)
+                   .setAutoCancel(true)
                    .setPriority(Notification.PRIORITY_LOW);
-
-            if (Build.VERSION.SDK_INT >= 20) {
-                Notification.Action hideAction = new Notification.Action.Builder(
-                    android.R.drawable.ic_menu_close_clear_cancel,
-                    "Bildirimi Kapat",
-                    hidePi
-                ).build();
-                builder.addAction(hideAction);
-            } else {
-                builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Bildirimi Kapat", hidePi);
-            }
 
             if (Build.VERSION.SDK_INT >= 21) {
                 builder.setVisibility(Notification.VISIBILITY_PUBLIC);

@@ -182,6 +182,8 @@ export function playNewOrderSound() {
   }
 }
 
+let lastSirenPlayTime = 0;
+
 /**
  * 1.5 ULTRA-LOUD KURYE HAVUZ SİRENİ (High Urgency Pool Dispatch Alarm)
  * Trafikte veya cepte olan kuryelerin yeni siparişi anında fark etmesi için
@@ -189,8 +191,11 @@ export function playNewOrderSound() {
  */
 export function playCourierPoolSiren() {
   if (!isSoundAlertsEnabled()) return;
+  const now = Date.now();
+  if (now - lastSirenPlayTime < 6000) return;
+  lastSirenPlayTime = now;
 
-  // If in Android native APK container, fire native loud alarm sound:
+  // If in Android native APK container, fire native loud alarm sound once:
   if (typeof window !== 'undefined' && (window as any).AndroidApp?.playAlarmSound) {
     try {
       (window as any).AndroidApp.playAlarmSound();
@@ -216,19 +221,10 @@ export function playAdminVoiceAlert(order?: {
 }) {
   if (!isSoundAlertsEnabled()) return;
 
-  // 1. Android Native APK Alarm (ekran kapalıyken bile ses ve titreşim)
-  if (typeof window !== 'undefined' && (window as any).AndroidApp?.playAlarmSound) {
-    try {
-      (window as any).AndroidApp.playAlarmSound();
-    } catch (e) {
-      console.debug('AndroidApp.playAlarmSound error:', e);
-    }
-  }
-
-  // 2. Acil siren çal
+  // 1. Acil siren ve APK alarmını tek seferde çal (playCourierPoolSiren handles native alarm and siren)
   playCourierPoolSiren();
 
-  // 3. Türkçe sesli konuşma anonsu (Text-to-Speech)
+  // 2. Türkçe sesli konuşma anonsu (Text-to-Speech)
   const code = order?.trackingCode || 'Yeni Sipariş';
   const from = order?.sender?.district || 'Alış Noktası';
   const to = order?.receiver?.district || 'Teslimat Noktası';

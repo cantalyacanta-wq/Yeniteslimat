@@ -724,8 +724,23 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
+    private static long lastNativeNotificationTime = 0;
+    private static String lastNativeNotificationKey = "";
+
     private void showNativeNotification(String title, String body) {
         try {
+            long now = System.currentTimeMillis();
+            String cleanTitle = title != null ? title.trim() : "";
+            String cleanBody = body != null ? body.trim() : "";
+            String notifKey = cleanTitle + "|||" + cleanBody;
+
+            // DEDUPLICATION: Ignore exact same notification if fired within 10 seconds (prevents double alert on APKs)
+            if (now - lastNativeNotificationTime < 10000 && notifKey.equals(lastNativeNotificationKey)) {
+                return;
+            }
+            lastNativeNotificationTime = now;
+            lastNativeNotificationKey = notifKey;
+
             createNotificationChannel();
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
@@ -786,8 +801,6 @@ public class MainActivity extends Activity {
                 builder.setCategory(Notification.CATEGORY_CALL);
             }
 
-            playNativeAlarm();
-
             try {
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 if (v != null) {
@@ -795,7 +808,9 @@ public class MainActivity extends Activity {
                 }
             } catch (Throwable ignored) {}
 
-            nm.notify((int) (System.currentTimeMillis() % 100000), builder.build());
+            // Stable notification ID ensures existing notifications are updated instead of duplicated
+            int notifId = Math.abs(notifKey.hashCode() % 10000) + 1000;
+            nm.notify(notifId, builder.build());
         } catch (Throwable ignored) {}
     }
 

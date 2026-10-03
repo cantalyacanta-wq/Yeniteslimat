@@ -337,7 +337,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (!isInitial) {
       incoming.forEach((order) => {
-        const prevOrder = prevMap.get(order.id);
+        if (!order || (!order.id && !order.trackingCode)) return;
+        const prevOrder = prevMap.get(order.id) || (order.trackingCode ? prevMap.get(order.trackingCode) : undefined);
         if (!prevOrder) {
           if (order.status === 'pending_admin') {
             dispatchOrderStatusNotification({
@@ -367,7 +368,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const newMap = new Map<string, DeliveryRequest>();
-    incoming.forEach((r) => newMap.set(r.id, r));
+    incoming.forEach((r) => {
+      if (r.id) newMap.set(r.id, r);
+      if (r.trackingCode) newMap.set(r.trackingCode, r);
+    });
     prevRequestsMapRef.current = newMap;
   }, []);
 
@@ -486,6 +490,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return false;
   }, [updateVisitorStatsState]);
 
+// Helper to safely merge order lists without losing newly created or pending orders
+const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: DeliveryRequest[]): DeliveryRequest[] => {
+  const map = new Map<string, DeliveryRequest>();
+  (existingList || []).forEach((r) => {
+    if (r && r.id) map.set(r.id, r);
+    if (r && r.trackingCode) map.set(r.trackingCode, r);
+  });
+  (incomingList || []).forEach((r) => {
+    if (r && r.id) {
+      const existing = map.get(r.id) || (r.trackingCode ? map.get(r.trackingCode) : undefined);
+      if (!existing) {
+        map.set(r.id, r);
+        if (r.trackingCode) map.set(r.trackingCode, r);
+      } else {
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const incomingTime = new Date(r.updatedAt || r.createdAt || 0).getTime();
+        const winner = incomingTime >= existingTime ? { ...existing, ...r } : { ...r, ...existing };
+        map.set(r.id, winner);
+        if (winner.trackingCode) map.set(winner.trackingCode, winner);
+      }
+    }
+  });
+  const unique = Array.from(new Set(Array.from(map.values())));
+  unique.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  return unique;
+};
+
   // 7. Full Server Sync Callback (Cross-Device API Polling & Sync)
   const syncWithServer = useCallback(async () => {
     try {
@@ -499,19 +530,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (Array.isArray(data.requests)) {
           processIncomingRequests(data.requests);
           setRequests((prev) => {
-            const serverIds = new Set(data.requests.map((r: any) => r.id));
-            const serverCodes = new Set(data.requests.map((r: any) => r.trackingCode));
-            
-            // Retain any pending local requests created in current session that are not yet in server list
-            const unsyncedLocals = prev.filter((r) => !serverIds.has(r.id) && !serverCodes.has(r.trackingCode));
-
-            const merged = [...data.requests];
-            unsyncedLocals.forEach((u) => {
-              if (!merged.some((m) => m.id === u.id || m.trackingCode === u.trackingCode)) {
-                merged.unshift(u);
-              }
-            });
-
+            const merged = mergeOrderLists(prev, data.requests);
             if (JSON.stringify(prev) !== JSON.stringify(merged)) {
               try {
                 localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(merged));
@@ -551,11 +570,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const unsubscribeRequests = subscribeToDeliveryRequests((cloudRequests) => {
       if (cloudRequests && cloudRequests.length > 0) {
         processIncomingRequests(cloudRequests);
-        setRequests(() => {
+        setRequests((prev) => {
+          const merged = mergeOrderLists(prev, cloudRequests);
           try {
-            localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(cloudRequests));
+            localStorage.setItem(STORAGE_ORDERS_KEY, JSON.stringify(merged));
           } catch {}
-          return cloudRequests;
+          return merged;
         });
 
         // Ensure only un-emailed fresh requests (under 20 min) from cloud are synced to backend email queue
@@ -1478,6 +1498,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch {}
       setSelectedTrackingId(newRequest.id);
 
+      if (newRequest.id) prevRequestsMapRef.current.set(newRequest.id, newRequest);
+      if (newRequest.trackingCode) prevRequestsMapRef.current.set(newRequest.trackingCode, newRequest);
+
       dispatchOrderStatusNotification({
         order: newRequest,
         newStatus: 'pending_admin',
@@ -1600,14 +1623,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const targetReq = requests.find((r) => r.id === requestId);
       if (targetReq) {
+        const assignedOrder = {
+          ...targetReq,
+          status: 'courier_assigned' as const,
+          assignedCourier: courierObj,
+          courier: courierObj,
+          updatedAt: now,
+        };
+        if (assignedOrder.id) prevRequestsMapRef.current.set(assignedOrder.id, assignedOrder);
+        if (assignedOrder.trackingCode) prevRequestsMapRef.current.set(assignedOrder.trackingCode, assignedOrder);
+
         dispatchOrderStatusNotification({
-          order: {
-            ...targetReq,
-            status: 'courier_assigned',
-            assignedCourier: courierObj,
-            courier: courierObj,
-            updatedAt: now,
-          },
+          order: assignedOrder,
           previousStatus: targetReq.status,
           newStatus: 'courier_assigned',
           currentUserId: currentUser.id,
@@ -1693,11 +1720,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       );
 
       // Local notification & haptic feedback dispatch
+      const updatedOrderObj = {
+        ...targetReq,
+        ...updates,
+      };
+      if (updatedOrderObj.id) prevRequestsMapRef.current.set(updatedOrderObj.id, updatedOrderObj);
+      if (updatedOrderObj.trackingCode) prevRequestsMapRef.current.set(updatedOrderObj.trackingCode, updatedOrderObj);
+
       dispatchOrderStatusNotification({
-        order: {
-          ...targetReq,
-          ...updates,
-        },
+        order: updatedOrderObj,
         previousStatus: targetReq.status,
         newStatus: nextStatus,
         currentUserId: currentUser.id,
@@ -1859,8 +1890,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     if (approvedOrder) {
+      const ao = approvedOrder as DeliveryRequest;
+      if (ao.id) prevRequestsMapRef.current.set(ao.id, ao);
+      if (ao.trackingCode) prevRequestsMapRef.current.set(ao.trackingCode, ao);
       dispatchOrderStatusNotification({
-        order: approvedOrder,
+        order: ao,
         previousStatus: 'pending_admin',
         newStatus: 'pending_pool',
         currentUserId: currentUser.id,

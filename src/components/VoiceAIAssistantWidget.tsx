@@ -16,9 +16,8 @@ import {
   Navigation,
   Phone,
   Package,
-  Mail,
-  KeyRound,
   ShieldCheck,
+  Edit3,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { calculateDeliveryEstimate } from '../data/antalyaDistricts';
@@ -46,7 +45,7 @@ const cleanAssistantSpeech = (text: string): string => {
 };
 
 interface ConversationState {
-  step: 'greeting' | 'ask_pickup' | 'ask_destination' | 'ask_package_content' | 'ask_phone' | 'ask_email' | 'ask_code' | 'confirm' | 'completed';
+  step: 'greeting' | 'ask_pickup' | 'ask_destination' | 'ask_package_content' | 'ask_phone' | 'confirm' | 'completed';
   pickupAddress: string;
   pickupDistrict: DistrictName;
   destAddress: string;
@@ -54,8 +53,6 @@ interface ConversationState {
   packageContent: string;
   phone: string;
   email: string;
-  verificationCode: string;
-  isCodeSent: boolean;
   customerName: string;
   estimatedPrice: number;
   estimatedDurationMins: number;
@@ -74,12 +71,12 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   const [speechSupported, setSpeechSupported] = useState<boolean>(true);
   const [lastCreatedCode, setLastCreatedCode] = useState<string | null>(null);
 
-  // Email and 4-digit security code PIN states
-  const [customEmailInput, setCustomEmailInput] = useState<string>('');
-  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '']);
-  const pinInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [codeResentToast, setCodeResentToast] = useState<boolean>(false);
-  const [codeErrorMessage, setCodeErrorMessage] = useState<string>('');
+  // Editing state for "Talebi Düzelt" button
+  const [isEditingOrder, setIsEditingOrder] = useState<boolean>(false);
+  const [editPickup, setEditPickup] = useState<string>('');
+  const [editDest, setEditDest] = useState<string>('');
+  const [editPhone, setEditPhone] = useState<string>('');
+  const [editPackage, setEditPackage] = useState<string>('');
 
   const initialGreeting =
     'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?';
@@ -102,8 +99,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     packageContent: '',
     phone: currentUser?.phone || '',
     email: currentUser?.email || '',
-    verificationCode: '',
-    isCodeSent: false,
     customerName: currentUser?.name || 'Değerli Müşterimiz',
     estimatedPrice: 150,
     estimatedDurationMins: 35,
@@ -156,12 +151,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }
 
     autoListenTimerRef.current = setTimeout(() => {
-      // Don't auto-listen if modal is closed, speech is active, or during email / code text steps!
+      // Don't auto-listen if modal is closed, completed, or speech is active!
       if (
         !isOpenRef.current ||
         stateRef.current.step === 'completed' ||
-        stateRef.current.step === 'ask_email' ||
-        stateRef.current.step === 'ask_code' ||
         isSpeakingRef.current
       ) {
         setIsListening(false);
@@ -228,10 +221,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             if (transcript && transcript.trim()) {
-              // E-posta ve güvenlik kodu ses ile yazılmasın, metin kutuları kullanılsın!
-              if (stateRef.current.step === 'ask_email' || stateRef.current.step === 'ask_code') {
-                return;
-              }
               if (processMessageRef.current) {
                 processMessageRef.current(transcript.trim());
               }
@@ -242,13 +231,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             console.debug('Speech recognition error:', event?.error);
             setIsListening(false);
             isListeningRef.current = false;
-            // If user paused or had brief silence, auto-restart listening only if NOT in email/code text steps
+            // If user paused or had brief silence, auto-restart listening
             if (
               event?.error === 'no-speech' &&
               isOpenRef.current &&
               !isSpeakingRef.current &&
-              stateRef.current.step !== 'ask_email' &&
-              stateRef.current.step !== 'ask_code' &&
               stateRef.current.step !== 'completed'
             ) {
               setTimeout(() => {
@@ -256,8 +243,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                   isOpenRef.current &&
                   !isSpeakingRef.current &&
                   !isListeningRef.current &&
-                  stateRef.current.step !== 'ask_email' &&
-                  stateRef.current.step !== 'ask_code' &&
                   stateRef.current.step !== 'completed'
                 ) {
                   try {
@@ -709,17 +694,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         // Speak AI response with male voice
         speakText(reply);
 
-        // Mail adresi ve güvenlik kodu adımlarında mikrofon kesinlikle kapalı tutulsun
-        if (nextState.step === 'ask_email' || nextState.step === 'ask_code') {
-          if (recognitionRef.current) {
-            try {
-              recognitionRef.current.stop();
-            } catch (e) {}
-          }
-          setIsListening(false);
-          isListeningRef.current = false;
-        }
-
         // If user confirmed, immediately trigger order creation
         if (data.shouldCreateOrder || nextState.step === 'completed') {
           triggerOrderCreation(nextState);
@@ -754,61 +728,15 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       } else if (current.step === 'ask_phone' || !current.phone) {
         const digits = userText.replace(/\D/g, '');
         nextState.phone = digits.length >= 7 ? userText.trim() : (current.phone || '0500 000 00 00');
-        nextState.step = 'ask_email';
-        nextReply = 'Sipariş takip ve güvenlik onayınız için e-posta adresinizi söyler veya yazar mısınız?';
-      } else if (current.step === 'ask_email' || !current.email) {
-        let s = userText.trim().toLowerCase();
-        let emailMatch = s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-        if (!emailMatch) {
-          s = s.replace(/\s*(et|at|@)\s*/g, '@').replace(/\s*(nokta|dot|\.)\s*/g, '.').replace(/\s+/g, '');
-          emailMatch = s.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-        }
-
-        if (emailMatch) {
-          const cleanEmail = emailMatch[0];
-          nextState.email = cleanEmail;
-          const code = Math.floor(1000 + Math.random() * 9000).toString();
-          nextState.verificationCode = code;
-          nextState.isCodeSent = true;
-          nextState.step = 'ask_code';
-
-          fetch('/api/ai-voice/send-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: cleanEmail,
-              code,
-              orderSummary: {
-                pickup: nextState.pickupAddress,
-                destination: nextState.destAddress,
-                price: nextState.estimatedPrice,
-              },
-            }),
-          }).catch(() => {});
-
-          nextReply = `${cleanEmail} adresinize 4 haneli bir güvenlik kodu gönderdim. Lütfen gelen 4 haneli kodu söyler veya ekrana yazar mısınız?`;
-        } else {
-          nextReply = 'Lütfen geçerli bir e-posta adresi belirtiniz. Örneğin ornek@gmail.com şeklinde yazabilir veya söyleyebilirsiniz.';
-        }
-      } else if (current.step === 'ask_code') {
-        let codeInput = userText.toLowerCase();
-        const digitWords: Record<string, string> = {
-          'sıfır': '0', 'sifir': '0', 'bir': '1', 'iki': '2', 'üç': '3', 'uc': '3',
-          'dört': '4', 'dort': '4', 'beş': '5', 'bes': '5', 'altı': '6', 'alti': '6',
-          'yedi': '7', 'sekiz': '8', 'dokuz': '9'
-        };
-        for (const [w, d] of Object.entries(digitWords)) {
-          codeInput = codeInput.replaceAll(w, d);
-        }
-        const digits = codeInput.replace(/\D/g, '');
-
-        if (digits.length >= 4 && digits.slice(0, 4) === current.verificationCode) {
-          shouldCreate = true;
-          nextState.step = 'completed';
-          nextReply = 'Güvenlik kodunuz onaylandı! Kurye talebiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi! Sizi müşteri panelinize aktarıyorum, iyi günler dilerim.';
-        } else {
-          nextReply = 'Girdiğiniz 4 haneli güvenlik kodu hatalı. Lütfen e-postanıza gelen 4 haneli kodu kontrol edip tekrar giriniz.';
-        }
+        const estimate = calculateDeliveryEstimate(
+          nextState.pickupDistrict || 'Muratpaşa',
+          nextState.destDistrict || 'Muratpaşa',
+          'other',
+          'express_vip'
+        );
+        nextState.estimatedPrice = estimate.price || 150;
+        nextState.step = 'confirm';
+        nextReply = 'Bilgilerinizi aldım. Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
       } else if (current.step === 'confirm') {
         const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
         if (positiveWords.some((w) => lower.includes(w))) {
@@ -854,182 +782,54 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     processMessage(transcript);
   };
 
-  const handleSendSecurityCode = async (emailToUse: string) => {
-    const cleanEmail = emailToUse.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setCodeErrorMessage('Lütfen geçerli bir e-posta adresi yazınız (Örn: ahmet@gmail.com)');
-      return;
-    }
-
-    setIsLoading(true);
-    setCodeErrorMessage('');
-    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-
-    const nextState: ConversationState = {
-      ...stateRef.current,
-      email: cleanEmail,
-      verificationCode: randomCode,
-      isCodeSent: true,
-      step: 'ask_code',
-    };
-    setState(nextState);
-    stateRef.current = nextState;
-
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      sender: 'user',
-      text: cleanEmail,
-      timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    const reply = `${cleanEmail} adresinize 4 haneli güvenlik kodunuz gönderildi. Lütfen gelen kodu ekrandaki kutucuklara yazınız.`;
-    const aiMsg: Message = {
-      id: `ai-${Date.now()}`,
-      sender: 'ai',
-      text: reply,
-      timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prev) => [...prev, userMsg, aiMsg]);
-    speakText(reply);
-
-    // Turn off mic
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-    setIsListening(false);
-    isListeningRef.current = false;
-
-    try {
-      await fetch('/api/ai-voice/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          code: randomCode,
-          orderSummary: {
-            pickup: nextState.pickupAddress,
-            destination: nextState.destAddress,
-            price: nextState.estimatedPrice,
-          },
-        }),
-      });
-    } catch (err: any) {
-      console.warn('send-code error:', err?.message);
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        pinInputRefs.current[0]?.focus();
-      }, 300);
-    }
-  };
-
-  const handleVerifySecurityCode = (codeEntered: string) => {
-    const cleanCode = codeEntered.trim();
-    if (cleanCode.length < 4) {
-      setCodeErrorMessage('Lütfen 4 haneli kodu eksiksiz giriniz.');
-      return;
-    }
-
-    if (cleanCode === stateRef.current.verificationCode) {
-      setCodeErrorMessage('');
-      const nextState: ConversationState = {
-        ...stateRef.current,
-        step: 'completed',
-      };
-      setState(nextState);
-      stateRef.current = nextState;
-
-      const reply =
-        'Güvenlik kodunuz onaylandı! Kurye talebiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!';
-      const aiMsg: Message = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: reply,
-        timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      speakText(reply);
-      triggerOrderCreation(nextState);
-    } else {
-      setCodeErrorMessage('Girdiğiniz 4 haneli kod hatalı. Lütfen e-postanızı kontrol edip tekrar giriniz.');
-      setPinDigits(['', '', '', '']);
-      pinInputRefs.current[0]?.focus();
-      const failText = 'Girdiğiniz 4 haneli kod hatalı. Lütfen e-postanızı kontrol edip tekrar giriniz.';
-      speakText(failText);
-    }
-  };
-
   const handleSubmitText = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
     const text = inputText.trim();
     setInputText('');
-
-    if (state.step === 'ask_email') {
-      handleSendSecurityCode(text);
-      return;
-    }
-    if (state.step === 'ask_code') {
-      handleVerifySecurityCode(text);
-      return;
-    }
     processMessage(text);
   };
 
-  const handlePinChange = (index: number, val: string) => {
-    const digit = val.replace(/\D/g, '').slice(-1);
-    const newDigits = [...pinDigits];
-    newDigits[index] = digit;
-    setPinDigits(newDigits);
-    setCodeErrorMessage('');
-
-    if (digit && index < 3) {
-      pinInputRefs.current[index + 1]?.focus();
-    }
-
-    const fullCode = newDigits.join('');
-    if (fullCode.length === 4) {
-      handleVerifySecurityCode(fullCode);
-    }
+  const handleStartEditOrder = () => {
+    setEditPickup(state.pickupAddress || '');
+    setEditDest(state.destAddress || '');
+    setEditPhone(state.phone || '');
+    setEditPackage(state.packageContent || '');
+    setIsEditingOrder(true);
   };
 
-  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
-      pinInputRefs.current[index - 1]?.focus();
-    }
-  };
+  const handleSaveOrderEdits = () => {
+    const updatedPickup = editPickup.trim() || state.pickupAddress;
+    const updatedDest = editDest.trim() || state.destAddress;
+    const updatedPhone = editPhone.trim() || state.phone;
+    const updatedPackage = editPackage.trim() || state.packageContent;
 
-  const handleResendCode = async () => {
-    if (!state.email) return;
-    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
-    setState((prev) => ({ ...prev, verificationCode: newCode }));
-    stateRef.current.verificationCode = newCode;
-    setPinDigits(['', '', '', '']);
-    setCodeErrorMessage('');
-    setCodeResentToast(true);
-    setTimeout(() => setCodeResentToast(false), 3500);
+    const fromDist = state.pickupDistrict || 'Muratpaşa';
+    const toDist = state.destDistrict || 'Muratpaşa';
+    const estimate = calculateDeliveryEstimate(fromDist, toDist, 'other', 'express_vip');
 
-    try {
-      await fetch('/api/ai-voice/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: state.email,
-          code: newCode,
-          orderSummary: {
-            pickup: state.pickupAddress,
-            destination: state.destAddress,
-            price: state.estimatedPrice,
-          },
-        }),
-      });
-    } catch (e) {}
+    const nextState: ConversationState = {
+      ...state,
+      pickupAddress: updatedPickup,
+      destAddress: updatedDest,
+      phone: updatedPhone,
+      packageContent: updatedPackage,
+      estimatedPrice: estimate.price,
+    };
+    setState(nextState);
+    stateRef.current = nextState;
+    setIsEditingOrder(false);
 
-    const resendSpeech = `${state.email} adresinize yeni bir 4 haneli güvenlik kodu gönderdim.`;
-    speakText(resendSpeech);
+    const updateNotice = `Talebiniz güncellendi: ${updatedPickup} ➔ ${updatedDest} | İletişim: ${updatedPhone} | Paket: ${updatedPackage}.`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `edit-msg-${Date.now()}`,
+        sender: 'ai',
+        text: updateNotice,
+        timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
   };
 
   const handleManualConfirm = () => {
@@ -1046,15 +846,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       packageContent: '',
       phone: currentUser?.phone || '',
       email: currentUser?.email || '',
-      verificationCode: '',
-      isCodeSent: false,
       customerName: currentUser?.name || 'Değerli Müşterimiz',
       estimatedPrice: 150,
       estimatedDurationMins: 35,
     });
-    setPinDigits(['', '', '', '']);
-    setCustomEmailInput('');
-    setCodeErrorMessage('');
     const resetText = 'Bilgileri sıfırladım. Paketiniz nereden, hangi adresten veya mahalleden alınacak?';
     setMessages((prev) => [
       ...prev,
@@ -1303,143 +1098,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                   </div>
                 )}
 
-                {/* Email Collection Box (Text only, no voice) */}
-                {state.step === 'ask_email' && (
-                  <div className="p-5 sm:p-6 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-emerald-400 rounded-3xl space-y-4 shadow-2xl animate-in zoom-in-95">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm sm:text-base">
-                        <Mail className="w-5 h-5 text-emerald-400" />
-                        <span>E-posta Adresinizi Yazınız</span>
-                      </div>
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/40">
-                        Güvenlik Doğrulaması
-                      </span>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-slate-200">
-                      Sipariş onayınız ve kurye takip linkinizin iletilmesi için lütfen e-posta adresinizi giriniz:
-                    </p>
-
-                    {codeErrorMessage && (
-                      <div className="p-3 bg-rose-950/90 border border-rose-500 rounded-2xl text-xs sm:text-sm text-rose-300 font-bold animate-in shake">
-                        ⚠️ {codeErrorMessage}
-                      </div>
-                    )}
-
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleSendSecurityCode(customEmailInput);
-                      }}
-                      className="space-y-3"
-                    >
-                      <input
-                        type="email"
-                        autoFocus
-                        required
-                        value={customEmailInput}
-                        onChange={(e) => {
-                          setCustomEmailInput(e.target.value);
-                          setCodeErrorMessage('');
-                        }}
-                        placeholder="ornek@gmail.com"
-                        className="w-full bg-[#011611] border-2 border-emerald-500/80 rounded-2xl px-4 py-3.5 text-sm sm:text-base text-white placeholder-emerald-700 focus:outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-400/20 shadow-inner"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!customEmailInput.includes('@') || isLoading}
-                        className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-                      >
-                        <ShieldCheck className="w-5 h-5" />
-                        <span>{isLoading ? 'Kod Gönderiliyor...' : '4 Haneli Güvenlik Kodunu Gönder'}</span>
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {/* 4-Digit Security Code Box (Text PIN only, no voice) */}
-                {state.step === 'ask_code' && (
-                  <div className="p-5 sm:p-6 bg-gradient-to-b from-[#03342a] to-[#012019] border-2 border-amber-400 rounded-3xl space-y-4 shadow-2xl animate-in zoom-in-95">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold text-amber-300 text-sm sm:text-base">
-                        <KeyRound className="w-5 h-5 text-amber-400" />
-                        <span>4 Haneli Güvenlik Kodunu Giriniz</span>
-                      </div>
-                      <span className="text-xs font-mono text-emerald-300 bg-emerald-950/90 px-3 py-1 rounded-full border border-emerald-600">
-                        {state.email}
-                      </span>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-slate-200">
-                      <strong className="text-amber-300">{state.email}</strong> adresinize gönderilen 4 haneli kodu aşağıdaki kutucuklara yazınız:
-                    </p>
-
-                    {codeResentToast && (
-                      <div className="p-3 bg-emerald-950/90 border border-emerald-400 rounded-2xl text-center text-xs sm:text-sm text-emerald-300 font-bold animate-in fade-in">
-                        ✅ Yeni 4 haneli kod e-posta adresinize gönderildi! Lütfen gelen kutunuzu kontrol ediniz.
-                      </div>
-                    )}
-
-                    {codeErrorMessage && (
-                      <div className="p-3 bg-rose-950/90 border border-rose-500 rounded-2xl text-center text-xs sm:text-sm text-rose-300 font-bold animate-in shake">
-                        ⚠️ {codeErrorMessage}
-                      </div>
-                    )}
-
-                    {/* 4-Box PIN Input */}
-                    <div className="flex items-center justify-center gap-3 py-2">
-                      {[0, 1, 2, 3].map((idx) => (
-                        <input
-                          key={idx}
-                          ref={(el) => {
-                            pinInputRefs.current[idx] = el;
-                          }}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          autoFocus={idx === 0}
-                          value={pinDigits[idx] || ''}
-                          onChange={(e) => handlePinChange(idx, e.target.value)}
-                          onKeyDown={(e) => handlePinKeyDown(idx, e)}
-                          className="w-14 h-16 sm:w-16 sm:h-18 text-center text-3xl font-black rounded-2xl bg-[#011410] border-2 border-amber-400 text-amber-300 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 focus:outline-none transition shadow-inner"
-                        />
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleVerifySecurityCode(pinDigits.join(''))}
-                        disabled={pinDigits.join('').length < 4 || isLoading}
-                        className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span>Kodu Onayla ve Kuryeyi Çağır</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleResendCode}
-                        className="px-4 py-3.5 bg-[#021b15] hover:bg-[#032920] border border-emerald-700 text-emerald-300 text-xs font-semibold rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        <span>Kodu Tekrar Gönder</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setState((prev) => ({ ...prev, step: 'ask_email' }));
-                          stateRef.current.step = 'ask_email';
-                          setPinDigits(['', '', '', '']);
-                          setCodeErrorMessage('');
-                        }}
-                        className="px-4 py-3.5 bg-[#021b15] hover:bg-[#032920] border border-slate-700 text-slate-300 text-xs font-semibold rounded-2xl transition cursor-pointer"
-                      >
-                        E-postayı Değiştir
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Confirmation Box (When all details are collected) */}
                 {state.step === 'confirm' && (
                   <div className="p-4 sm:p-5 bg-[#03342a] border-2 border-amber-500/90 rounded-3xl space-y-3.5 shadow-2xl animate-in zoom-in-95">
@@ -1453,24 +1111,100 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="text-xs sm:text-sm space-y-2 bg-[#011c16] p-3.5 rounded-2xl border border-emerald-800/80">
-                      <div className="flex items-start gap-2">
-                        <span className="text-emerald-400 font-bold shrink-0">📍 Alış Adresi:</span>
-                        <span className="text-slate-200">{state.pickupAddress}</span>
+                    {/* Talebi Düzeltme Modu */}
+                    {isEditingOrder ? (
+                      <div className="p-4 bg-[#011410] border-2 border-amber-400 rounded-2xl space-y-3 animate-in zoom-in-95">
+                        <h4 className="font-black text-amber-300 text-xs flex items-center gap-1.5">
+                          <Edit3 className="w-4 h-4" />
+                          <span>Talebi Düzenle</span>
+                        </h4>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[11px] text-emerald-300 font-bold block mb-1">📍 Alış Adresi (Nereden):</label>
+                            <input
+                              type="text"
+                              value={editPickup}
+                              onChange={(e) => setEditPickup(e.target.value)}
+                              className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-amber-300 font-bold block mb-1">🏁 Teslimat Adresi (Nereye):</label>
+                            <input
+                              type="text"
+                              value={editDest}
+                              onChange={(e) => setEditDest(e.target.value)}
+                              className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-teal-300 font-bold block mb-1">📞 İletişim Telefon Numarası:</label>
+                            <input
+                              type="text"
+                              value={editPhone}
+                              onChange={(e) => setEditPhone(e.target.value)}
+                              className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] text-purple-300 font-bold block mb-1">📦 Paket İçeriği:</label>
+                            <input
+                              type="text"
+                              value={editPackage}
+                              onChange={(e) => setEditPackage(e.target.value)}
+                              className="w-full bg-[#021d17] border border-emerald-600 rounded-xl px-3 py-2 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleSaveOrderEdits}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                          >
+                            Kaydet & Özete Dön
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingOrder(false)}
+                            className="px-3 py-2 bg-[#021b15] hover:bg-[#032920] border border-slate-700 text-slate-300 text-xs rounded-xl"
+                          >
+                            Vazgeç
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-amber-400 font-bold shrink-0">🏁 Teslimat Adresi:</span>
-                        <span className="text-slate-200">{state.destAddress}</span>
+                    ) : (
+                      <div className="text-xs sm:text-sm space-y-2 bg-[#011c16] p-3.5 rounded-2xl border border-emerald-800/80">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-emerald-800/80">
+                          <span className="font-bold text-emerald-300 text-xs">Teslimat & İletişim Detayları</span>
+                          <button
+                            type="button"
+                            onClick={handleStartEditOrder}
+                            className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                            title="Talebi Düzelt"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Talebi Düzelt</span>
+                          </button>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-400 font-bold shrink-0">📍 Alış Adresi (Nereden):</span>
+                          <span className="text-slate-200 font-semibold">{state.pickupAddress} ({state.pickupDistrict})</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-amber-400 font-bold shrink-0">🏁 Teslimat Adresi (Nereye):</span>
+                          <span className="text-slate-200 font-semibold">{state.destAddress} ({state.destDistrict})</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-teal-400 font-bold shrink-0">📞 İletişim Telefonu:</span>
+                          <span className="text-amber-300 font-bold font-mono">{state.phone}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-purple-400 font-bold shrink-0">📦 Paket İçeriği:</span>
+                          <span className="text-slate-200 font-semibold">{state.packageContent || 'Standart Paket'}</span>
+                        </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-purple-400 font-bold shrink-0">📦 Paket İçeriği:</span>
-                        <span className="text-slate-200 font-semibold">{state.packageContent || 'Standart Paket'}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-teal-400 font-bold shrink-0">📞 İletişim Telefonu:</span>
-                        <span className="text-slate-200">{state.phone}</span>
-                      </div>
-                    </div>
+                    )}
 
                     <p className="text-xs sm:text-sm text-amber-200 font-semibold">
                       Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.
@@ -1487,12 +1221,21 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                       </button>
                       <button
                         type="button"
+                        onClick={handleStartEditOrder}
+                        className="px-4 py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-bold rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5"
+                        title="Talebi Düzelt"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Talebi Düzelt</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={handleManualReset}
                         className="px-4 py-3 bg-[#021b15] hover:bg-[#032920] border border-emerald-700 text-emerald-300 text-xs font-semibold rounded-2xl transition cursor-pointer flex items-center justify-center gap-1.5"
-                        title="Bilgileri Düzelt"
+                        title="Yeniden Başla"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Bilgileri Değiştir</span>
+                        <span>Sıfırla</span>
                       </button>
                     </div>
                   </div>
@@ -1555,10 +1298,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={
-                    state.step === 'ask_email'
-                      ? 'E-posta adresinizi buraya yazabilirsiniz...'
-                      : state.step === 'ask_code'
-                      ? '4 haneli güvenlik kodunu buraya yazabilirsiniz...'
+                    state.step === 'confirm'
+                      ? 'Onaylamak için "Evet" yazabilir veya butona tıklayabilirsiniz...'
                       : 'Klavyenizle buraya yazarak cevaplayabilirsiniz...'
                   }
                   className="flex-1 bg-[#022019] border-2 border-emerald-500/80 rounded-2xl px-4 py-3 text-xs sm:text-sm text-white placeholder-emerald-400/60 focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/20 transition shadow-inner"
@@ -1574,8 +1315,8 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                 </button>
               </form>
 
-              {/* Primary Large Microphone Button - ONLY shown in voice steps */}
-              {state.step !== 'ask_email' && state.step !== 'ask_code' && state.step !== 'completed' && (
+              {/* Primary Large Microphone Button */}
+              {state.step !== 'completed' && (
                 <button
                   type="button"
                   onClick={toggleListening}
@@ -1599,15 +1340,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
                 </button>
               )}
 
-              {/* Status info for text-only steps */}
-              {(state.step === 'ask_email' || state.step === 'ask_code') && (
+              {/* Status info for confirmation step */}
+              {state.step === 'confirm' && (
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-amber-300 font-semibold py-0.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
-                    {state.step === 'ask_email'
-                      ? 'Güvenlik için e-posta adresinizi yukarıdaki veya buradaki alana yazınız.'
-                      : '4 haneli güvenlik kodunu yukarıdaki kutucuklara yazınız.'}
-                  </span>
+                  <span>Onaylamak için &quot;Evet&quot; diyebilir veya yukarıdaki &quot;Evet, Kurye Gönder&quot; butonuna dokunabilirsiniz.</span>
                 </div>
               )}
             </div>
