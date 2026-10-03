@@ -241,7 +241,15 @@ export function playAdminVoiceAlert(order?: {
   const to = order?.receiver?.district || 'Teslimat Noktası';
   const speechText = `Yönetici dikkat! Yeni müşteri siparişi onayınızı bekliyor. Takip kodu ${code}. ${from} adresinden ${to} adresine.`;
 
-  // A. Tarayıcı Yerel SpeechSynthesis API
+  // Clear MediaSession metadata to strictly prevent Android OS from creating a media notification card
+  if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.playbackState = 'none';
+      navigator.mediaSession.metadata = null;
+    } catch (e) {}
+  }
+
+  // A. Tarayıcı Yerel SpeechSynthesis API (En hafif ve en hızlı - sıfır medya bildirimi üretir)
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
@@ -250,21 +258,32 @@ export function playAdminVoiceAlert(order?: {
       utter.rate = 1.0;
       utter.pitch = 1.0;
       window.speechSynthesis.speak(utter);
+      return; // Yerel ses başarıyla tetiklendi, ikinci bir medya sesi başlatılmaz!
     } catch (e) {
-      console.debug('speechSynthesis speak error:', e);
+      console.debug('speechSynthesis speak error, falling back to Web Audio:', e);
     }
   }
 
-  // B. Sunucu Doğal Erkek Bariton Sesli Edge-TTS (Android WebView & Mobil için %100 Garantili)
+  // B. Web Audio API Edge-TTS Fallback (HTML5 Audio yerine Web Audio API kullanılır - Android durum çubuğunda bildirim oluşturmaz)
   try {
     const audioUrl = `/api/ai-voice/tts?text=${encodeURIComponent(speechText)}&voice=male`;
-    const audio = new Audio(audioUrl);
-    audio.volume = 1.0;
-    audio.play().catch((err) => {
-      console.debug('Edge TTS audio playback note:', err);
-    });
+    const ctx = getAudioContext();
+    if (ctx) {
+      fetch(audioUrl)
+        .then((res) => res.arrayBuffer())
+        .then((arrayBuffer) => ctx.decodeAudioData(arrayBuffer))
+        .then((audioBuffer) => {
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(ctx.destination);
+          source.start(0);
+        })
+        .catch(() => {
+          // Sessizce geç; bildirim kirliliği yaratma
+        });
+    }
   } catch (e) {
-    console.debug('Edge TTS audio init error:', e);
+    console.debug('Voice alert audio init error:', e);
   }
 }
 

@@ -381,6 +381,7 @@ public class MainActivity extends Activity {
 
     private static long lastNativeNotificationTime = 0;
     private static String lastNativeNotificationKey = "";
+    private static final int ORDER_ALERT_NOTIFICATION_ID = 8888;
 
     private void showNativeNotification(String title, String body) {
         try {
@@ -388,13 +389,6 @@ public class MainActivity extends Activity {
             String cleanTitle = title != null ? title.trim() : "";
             String cleanBody = body != null ? body.trim() : "";
             String notifKey = cleanTitle + "|||" + cleanBody;
-
-            // DEDUPLICATION: Ignore exact same notification if fired within 10 seconds (prevents double alert on APKs)
-            if (now - lastNativeNotificationTime < 10000 && notifKey.equals(lastNativeNotificationKey)) {
-                return;
-            }
-            lastNativeNotificationTime = now;
-            lastNativeNotificationKey = notifKey;
 
             createNotificationChannel();
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -417,6 +411,19 @@ public class MainActivity extends Activity {
                     setChannelMethod.invoke(builder, CHANNEL_ID);
                 } catch (Throwable ignored) {}
             }
+
+            // DEDUPLICATION: Ignore redundant second notification if fired within 10 seconds (prevents double notification in top bar)
+            if (now - lastNativeNotificationTime < 10000) {
+                builder.setContentTitle(title)
+                       .setContentText(body)
+                       .setSmallIcon(R.mipmap.ic_launcher)
+                       .setContentIntent(pi)
+                       .setAutoCancel(true);
+                nm.notify(ORDER_ALERT_NOTIFICATION_ID, builder.build());
+                return;
+            }
+            lastNativeNotificationTime = now;
+            lastNativeNotificationKey = notifKey;
 
             // Ekran kapaliysa veya telefon kilitliyse ekrani aninda aydinlat
             try {
@@ -463,9 +470,8 @@ public class MainActivity extends Activity {
                 }
             } catch (Throwable ignored) {}
 
-            // Stable notification ID ensures existing notifications are updated instead of duplicated
-            int notifId = Math.abs(notifKey.hashCode() % 10000) + 1000;
-            nm.notify(notifId, builder.build());
+            // Fixed single notification ID ensures incoming order notifications update the single notification card instead of creating a second notification
+            nm.notify(ORDER_ALERT_NOTIFICATION_ID, builder.build());
         } catch (Throwable ignored) {}
     }
 

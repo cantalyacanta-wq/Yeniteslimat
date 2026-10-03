@@ -238,6 +238,28 @@ export function sendBrowserNotification(
     localStorage.setItem(`antalya_apk_notif_${dedupKey}`, String(now));
   } catch {}
 
+  // Strict Manager Pending Order Alert Throttle:
+  // Prevents multiple notifications arriving within 10 seconds for admin pending orders
+  const isAdminPendingAlert =
+    title.toLowerCase().includes('onay') ||
+    title.toLowerCase().includes('talep') ||
+    options.body.toLowerCase().includes('onayınızın');
+
+  if (isAdminPendingAlert) {
+    const lastAdminGlobalTime = recentBrowserNotifications.get('global_admin_order_alert_lock');
+    if (lastAdminGlobalTime && now - lastAdminGlobalTime < 10000) {
+      return false; // Skip redundant second notification!
+    }
+    recentBrowserNotifications.set('global_admin_order_alert_lock', now);
+    try {
+      const storedLock = localStorage.getItem('antalya_last_admin_alert_lock');
+      if (storedLock && now - Number(storedLock) < 10000) {
+        return false;
+      }
+      localStorage.setItem('antalya_last_admin_alert_lock', String(now));
+    } catch {}
+  }
+
   recentBrowserNotifications.set(dedupKey, now);
 
   // If running inside Android APK native container, trigger native high-priority system notification:
@@ -441,8 +463,8 @@ export function dispatchOrderStatusNotification(params: {
           window.location.search.toLowerCase().includes('admin'));
 
       if (isAdminRole || isAdminRoute) {
-        title = '🚨 YENİ MÜŞTERİ TALEBİ ONAY BEKLİYOR!';
-        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict} (${order.price} ₺). Onayınızın ardından kurye havuzuna düşecektir.`;
+        title = '🚨 Yeni Sipariş Onayı Bekliyor';
+        body = `[${trackingCode}] ${senderDistrict} ➔ ${receiverDistrict} (${order.price} ₺). Yeni müşteri talebi onayınızı bekliyor.`;
         type = 'alert';
         vibratePattern = [500, 200, 500, 200, 800];
         playAdminVoiceAlert(order);
