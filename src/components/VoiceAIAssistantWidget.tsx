@@ -77,9 +77,16 @@ interface ConversationState {
 }
 
 export const VoiceAIAssistantWidget: React.FC = () => {
-  const { createNewRequest, setCurrentView, currentUser, currentView } = useDelivery();
+  const {
+    createNewRequest,
+    setCurrentView,
+    currentUser,
+    currentView,
+    isVoiceAssistantOpen,
+    setIsVoiceAssistantOpen,
+  } = useDelivery();
 
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(Boolean(isVoiceAssistantOpen));
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
@@ -510,6 +517,9 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     primeAudio();
     setIsOpen(true);
     isOpenRef.current = true;
+    if (setIsVoiceAssistantOpen) {
+      setIsVoiceAssistantOpen(true);
+    }
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';
     }
@@ -544,10 +554,43 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     isListeningRef.current = false;
     setIsOpen(false);
     isOpenRef.current = false;
+    if (setIsVoiceAssistantOpen) {
+      setIsVoiceAssistantOpen(false);
+    }
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }
   };
+
+  // Sync with context state & custom window events
+  useEffect(() => {
+    if (isVoiceAssistantOpen && !isOpen) {
+      handleOpenWidget();
+    } else if (!isVoiceAssistantOpen && isOpen) {
+      handleCloseWidget();
+    }
+  }, [isVoiceAssistantOpen]);
+
+  useEffect(() => {
+    const handleOpenEvent = () => {
+      handleOpenWidget();
+    };
+    const handleCloseEvent = () => {
+      handleCloseWidget();
+    };
+    if (typeof window !== 'undefined') {
+      (window as any).openVoiceAssistant = handleOpenWidget;
+      (window as any).closeVoiceAssistant = handleCloseWidget;
+      window.addEventListener('open-voice-assistant', handleOpenEvent);
+      window.addEventListener('close-voice-assistant', handleCloseEvent);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('open-voice-assistant', handleOpenEvent);
+        window.removeEventListener('close-voice-assistant', handleCloseEvent);
+      }
+    };
+  }, []);
 
   // Toggle voice recognition listening
   const toggleListening = () => {

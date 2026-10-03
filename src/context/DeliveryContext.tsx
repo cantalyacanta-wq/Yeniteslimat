@@ -62,6 +62,12 @@ interface DeliveryContextType {
   setIsQuickCourierOpen: (open: boolean) => void;
   openQuickCourierModal: () => void;
   closeQuickCourierModal: () => void;
+
+  // Voice Customer Services Controls (Sesli Müşteri Hizmetleri & Üyeliksiz Kurye Çağır)
+  isVoiceAssistantOpen: boolean;
+  setIsVoiceAssistantOpen: (open: boolean) => void;
+  openVoiceAssistant: () => void;
+  closeVoiceAssistant: () => void;
   requestPasswordReset: (identifier: string, role?: 'customer' | 'courier' | 'admin') => Promise<{
     success: boolean;
     message: string;
@@ -321,6 +327,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // 6. Global Quick Courier Modal State (Acil Kurye Çağır)
   const [isQuickCourierOpen, setIsQuickCourierOpen] = useState<boolean>(false);
+
+  // 7. Global Voice Assistant State (Sesli Müşteri Hizmetleri & Üyeliksiz Kurye Çağır)
+  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState<boolean>(false);
+  const openVoiceAssistant = useCallback(() => {
+    setIsVoiceAssistantOpen(true);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-voice-assistant'));
+    }
+  }, []);
+
+  const closeVoiceAssistant = useCallback(() => {
+    setIsVoiceAssistantOpen(false);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('close-voice-assistant'));
+    }
+  }, []);
 
   // Ref to track active user and requests for real-time notifications & vibration across devices
   const currentUserRef = React.useRef<UserAccount>(currentUser);
@@ -2212,6 +2234,10 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         setIsQuickCourierOpen,
         openQuickCourierModal,
         closeQuickCourierModal,
+        isVoiceAssistantOpen,
+        setIsVoiceAssistantOpen,
+        openVoiceAssistant,
+        closeVoiceAssistant,
         requestPasswordReset,
         requests,
         couriers,

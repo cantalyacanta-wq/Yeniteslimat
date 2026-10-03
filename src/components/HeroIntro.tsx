@@ -32,6 +32,9 @@ import {
   FileText,
   LogOut,
   Zap,
+  Headphones,
+  Mic,
+  UserCheck,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
@@ -52,6 +55,7 @@ export const HeroIntro: React.FC = () => {
     rateDelivery,
     logout,
     openQuickCourierModal,
+    openVoiceAssistant,
   } = useDelivery();
 
   // If a courier is logged in, directly show CourierPool and never customer interfaces
@@ -205,7 +209,7 @@ export const HeroIntro: React.FC = () => {
               <button
                 type="button"
                 onClick={logout}
-                className="px-4 py-3 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                className="px-3.5 py-2.5 bg-rose-950/70 hover:bg-rose-900 text-rose-200 border border-rose-700/60 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
                 title="Oturumu Kapat"
               >
                 <LogOut className="w-4 h-4 text-rose-400" />
@@ -214,11 +218,21 @@ export const HeroIntro: React.FC = () => {
             )}
             <button
               type="button"
+              onClick={openVoiceAssistant}
+              className="px-3.5 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-xs rounded-2xl transition shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 border border-amber-400/50"
+              title="Üyeliksiz Sesli Müşteri Hizmetleri ile Kurye Çağır"
+            >
+              <Headphones className="w-4 h-4 text-amber-200" />
+              <span>Sesli Kurye (Üyeliksiz)</span>
+            </button>
+            <button
+              type="button"
               onClick={openQuickCourierModal}
-              className="px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0"
+              className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 shrink-0 border border-emerald-300/40"
+              title="Üyelikli Hızlı Kurye Çağır"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Yeni Paket</span>
+              <span>+ Yeni Paket (Üyelikli)</span>
             </button>
           </div>
         </div>
@@ -532,31 +546,61 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* PRIMARY QUICK ACTION: ACİL KURYE ÇAĞIR (FORM DOLDURMADAN) */}
-          <button
-            type="button"
-            onClick={openQuickCourierModal}
-            className="w-full py-4 px-5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm sm:text-base rounded-2xl transition shadow-xl shadow-emerald-700/40 flex items-center justify-between gap-3 cursor-pointer active:scale-98 border border-emerald-300/40 group text-left"
-            title="Form doldurmadan kayıtlı adresinize hemen moto kurye çağırın"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center font-black shadow-md group-hover:scale-110 transition shrink-0">
-                <Zap className="w-6 h-6 fill-amber-950" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-white text-base sm:text-lg">Acil Kurye Çağır</span>
-                  <span className="text-[10px] px-2 py-0.5 bg-amber-400/20 text-amber-200 border border-amber-300/40 rounded-md font-bold uppercase tracking-wider">
-                    Form Doldurmadan
-                  </span>
+          {/* 2 KURYE ÇAĞIRMA BUTONU (ÜYELİKLİ & ÜYELİKSİZ SESLİ ASİSTAN) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Buton 1: ÜYELİKLİ KURYE ÇAĞIR */}
+            <button
+              type="button"
+              onClick={openQuickCourierModal}
+              className="py-4 px-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm rounded-2xl transition shadow-xl shadow-emerald-700/40 flex items-center justify-between gap-3 cursor-pointer active:scale-98 border border-emerald-300/40 group text-left"
+              title="Kayıtlı profil ve adresinizle hemen moto kurye çağırın"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-black shadow-md group-hover:scale-110 transition shrink-0">
+                  <UserCheck className="w-5 h-5 text-white" />
                 </div>
-                <p className="text-xs text-emerald-100/90 font-medium mt-0.5">
-                  Kayıtlı adresinize 30-45 dakikada anında moto kurye gelsin
-                </p>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-white text-sm sm:text-base">Üyelikli Kurye Çağır</span>
+                    <span className="text-[9px] px-1.5 py-0.5 bg-emerald-400/20 text-emerald-200 border border-emerald-300/40 rounded font-bold uppercase">
+                      Kayıtlı
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-100/90 font-medium mt-0.5">
+                    Profil ve adres bilgilerinizle jet kurye çağırın
+                  </p>
+                </div>
               </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-1 transition shrink-0 hidden sm:block" />
-          </button>
+              <ArrowRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-1 transition shrink-0 hidden sm:block" />
+            </button>
+
+            {/* Buton 2: ÜYELİKSİZ / SESLİ KURYE ÇAĞIR (DİREKT SESLİ MÜŞTERİ HİZMETLERİ) */}
+            <button
+              type="button"
+              onClick={openVoiceAssistant}
+              className="py-4 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-white font-black text-sm rounded-2xl transition shadow-xl shadow-amber-900/40 flex items-center justify-between gap-3 cursor-pointer active:scale-98 border border-amber-300/50 group text-left"
+              title="Üyeliksiz, form doldurmadan sesli yapay zeka asistanı ile kurye çağırın"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-950/40 text-amber-200 flex items-center justify-center font-black shadow-md group-hover:scale-110 transition shrink-0 relative">
+                  <Headphones className="w-5 h-5 text-white" />
+                  <Mic className="w-3 h-3 text-amber-300 absolute -bottom-0.5 -right-0.5 fill-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-white text-sm sm:text-base">Üyeliksiz Kurye Çağır</span>
+                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-400/25 text-amber-200 border border-amber-300/40 rounded font-bold uppercase animate-pulse">
+                      Sesli 7/24
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-100/90 font-medium mt-0.5">
+                    Formsuz sesli müşteri hizmetlerine bağlanın
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-amber-200 group-hover:translate-x-1 transition shrink-0 hidden sm:block" />
+            </button>
+          </div>
 
           {/* Full-width "Geçmiş Teslimatlarım" Button */}
           <button
@@ -937,22 +981,92 @@ export const HeroIntro: React.FC = () => {
             </p>
           </div>
 
-          {/* Action Button */}
-          <div className="flex items-center justify-center pt-2">
+          {/* 2 KURYE ÇAĞIRMA BUTONU (BİRİ ÜYELİKLİ, DİĞERİ ÜYELİKSİZ SESLİ ASİSTAN) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto pt-2 text-left">
+            {/* Buton 1: ÜYELİKLİ KURYE ÇAĞIRMA */}
             <button
               type="button"
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
                   openQuickCourierModal();
                 } else {
-                  openAuthModal('login', 'Paket göndermek ve kurye çağırmak için lütfen üye girişi yapınız veya ücretsiz kayıt olunuz.');
+                  openAuthModal('login', 'Üyelikli kurye çağırmak, kayıtlı adreslerinizi kullanmak ve siparişlerinizi canlı takip etmek için lütfen giriş yapın veya kayıt olun.');
                 }
               }}
-              className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+              className="relative group p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-500 hover:to-teal-700 text-white border-2 border-emerald-400/50 shadow-2xl shadow-emerald-950/70 hover:shadow-emerald-500/30 transition-all duration-300 cursor-pointer active:scale-98 flex flex-col justify-between overflow-hidden"
+              title="Üyelikli kurye çağır: Kayıtlı adresler, geçmiş teslimatlar ve canlı radar takibi"
             >
-              <Plus className="w-5 h-5" />
-              <span>Hemen Yeni Kurye Çağır & Paket Gönder</span>
-              <ArrowRight className="w-5 h-5" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-2xl group-hover:bg-emerald-400/20 transition-all"></div>
+              
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shadow-md group-hover:scale-110 transition shrink-0">
+                    <UserCheck className="w-6 h-6 text-emerald-200" />
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/40 text-emerald-100">
+                    {isUserLoggedIn ? 'Giriş Yapıldı' : 'Üye Girişi / Kayıt'}
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                    <span>Üyelikli Kurye Çağır</span>
+                  </h2>
+                  <p className="text-xs text-emerald-100/90 font-medium mt-1 leading-relaxed">
+                    Kayıtlı adreslerinizle tek tıkla çağrı yapın, sipariş geçmişinizi görüntüleyin ve kuryeyi canlı radarla takip edin.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 mt-2 border-t border-emerald-500/30 flex items-center justify-between text-xs font-black text-emerald-100 group-hover:text-white relative z-10">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                  <span>{isUserLoggedIn ? 'Kurye Çağır (Hızlı)' : 'Giriş Yap & Kurye Çağır'}</span>
+                </span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
+
+            {/* Buton 2: ÜYELİKSİZ KURYE ÇAĞIRMA (DİREKT SESLİ MÜŞTERİ HİZMETLERİNE YÖNLENDİRİR) */}
+            <button
+              type="button"
+              onClick={() => {
+                openVoiceAssistant();
+              }}
+              className="relative group p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700 hover:from-amber-400 hover:to-orange-500 text-white border-2 border-amber-300/60 shadow-2xl shadow-amber-950/70 hover:shadow-amber-500/40 transition-all duration-300 cursor-pointer active:scale-98 flex flex-col justify-between overflow-hidden"
+              title="Üyeliksiz kurye çağır: Doğrudan sesli müşteri hizmetlerine bağlanın"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-300/20 rounded-full blur-2xl group-hover:bg-amber-300/30 transition-all"></div>
+              
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-950/40 border border-amber-200/40 flex items-center justify-center text-amber-200 shadow-md group-hover:scale-110 transition shrink-0 relative">
+                    <Headphones className="w-6 h-6 text-white" />
+                    <Mic className="w-3.5 h-3.5 text-amber-300 absolute -bottom-0.5 -right-0.5 fill-amber-300" />
+                  </div>
+                  <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-400/25 border border-amber-300/50 text-amber-100 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-amber-300"></span>
+                    <span>Sesli Asistan 7/24</span>
+                  </span>
+                </div>
+
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                    <span>Üyeliksiz Kurye Çağır</span>
+                  </h2>
+                  <p className="text-xs text-amber-100/90 font-medium mt-1 leading-relaxed">
+                    Kayıt olmadan, form doldurmadan sesli müşteri hizmetlerimizle doğrudan konuşarak anında kurye çağırın.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 mt-2 border-t border-amber-400/30 flex items-center justify-between text-xs font-black text-amber-100 group-hover:text-white relative z-10">
+                <span className="flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                  <span>Sesli Müşteri Hizmetlerine Bağlan</span>
+                </span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
             </button>
           </div>
 
@@ -970,7 +1084,7 @@ export const HeroIntro: React.FC = () => {
             >
               <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
                 <Package className="w-4 h-4 text-emerald-400" />
-                <span>Antalya Paket Gönder</span>
+                <span>Antalya Paket Gönder (Üyelikli)</span>
               </div>
               <p className="text-[11px] text-emerald-200/80 leading-normal">
                 Evrak, koli, anahtar, çiçek ve hediyelikleri kapınızdan alıp Antalya içi dilediğiniz adrese teslim ediyoruz.
@@ -979,20 +1093,16 @@ export const HeroIntro: React.FC = () => {
 
             <div 
               onClick={() => {
-                if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
-                  openQuickCourierModal();
-                } else {
-                  openAuthModal('login', 'Kurye çağırmak için lütfen müşteri girişi yapınız.');
-                }
+                openVoiceAssistant();
               }}
-              className="p-4 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950/90 border border-emerald-700/50 hover:border-amber-500 space-y-1 shadow-sm transition cursor-pointer"
+              className="p-4 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950/90 border border-amber-500/50 hover:border-amber-400 space-y-1 shadow-sm transition cursor-pointer group"
             >
               <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-                <Bike className="w-4 h-4 text-amber-400" />
-                <span>Kurye Çağır (7/24)</span>
+                <Headphones className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
+                <span>Üyeliksiz Kurye Çağır (Sesli)</span>
               </div>
               <p className="text-[11px] text-emerald-200/80 leading-normal">
-                Tek tıkla konumunuza en yakın profesyonel moto kuryeyi çağırın, kuryeniz 15-20 dakikada kapınıza gelsin.
+                Kayıt olmadan tek tıkla sesli yapay zeka asistanımıza bağlanın, adresinizi söyleyerek kurye çağırın.
               </p>
             </div>
 
@@ -1140,7 +1250,7 @@ export const HeroIntro: React.FC = () => {
             <div className="space-y-1.5 p-3.5 rounded-xl bg-black/20 border border-white/5">
               <h4 className="font-bold text-emerald-300">📦 Antalya paket gönder: Paketimi nasıl gönderebilirim?</h4>
               <p className="text-slate-300 leading-relaxed">
-                Web sitemizden 'Hemen Yeni Kurye Çağır & Paket Gönder' butonuna basarak alıcı ve gönderici adres bilgilerini girin. Kuryemiz en kısa sürede adresinize gelerek paketi kapınızdan alır ve alıcıya teslim eder.
+                Web sitemizde 2 farklı seçenek sunulur: İster <strong>'Üyelikli Kurye Çağır'</strong> ile kayıtlı adreslerinizden hızlıca çağırabilir, isterseniz form doldurmadan <strong>'Üyeliksiz Kurye Çağır'</strong> butonuna basarak doğrudan 7/24 Sesli Müşteri Hizmetlerimizle konuşarak kuryenizi adresinize yönlendirebilirsiniz.
               </p>
             </div>
 
