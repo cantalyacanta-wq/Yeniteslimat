@@ -3371,13 +3371,42 @@ app.post('/api/ai-voice/chat', async (req, res) => {
       destDistrict: state.destDistrict || '',
       packageContent: state.packageContent || '',
       phone: state.phone || '',
-      email: state.email || '',
-      verificationCode: state.verificationCode || '',
-      isCodeSent: Boolean(state.isCodeSent),
       customerName: state.customerName || 'Değerli Müşterimiz',
       estimatedPrice: state.estimatedPrice || 150,
       estimatedDistanceKm: state.estimatedDistanceKm || 8,
       estimatedDurationMins: state.estimatedDurationMins || 35,
+    };
+
+    // Helper to strictly sanitize any response from asking for email or confirmation code
+    const cleanCustomerServiceSpeech = (rawText: string, step?: string): { text: string; step?: string } => {
+      if (!rawText) return { text: '' };
+      let cleaned = rawText
+        .replace(/\b(harika|acaba)\b[.,!?]?/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const lower = cleaned.toLowerCase();
+      // Filter out any phrase attempting to ask for email or confirmation codes
+      if (
+        lower.includes('mail') ||
+        lower.includes('e-posta') ||
+        lower.includes('eposta') ||
+        lower.includes('onay kodu') ||
+        lower.includes('güvenlik kodu') ||
+        lower.includes('doğrulama kodu') ||
+        lower.includes('kodunuz') ||
+        lower.includes('4 haneli') ||
+        lower.includes('kodu gir') ||
+        lower.includes('kodu söyle')
+      ) {
+        cleaned = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+        return { text: cleaned, step: 'confirm' };
+      }
+
+      if (cleaned.length > 0) {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+      return { text: cleaned, step };
     };
 
     // If Gemini client is active, try calling Gemini 2.5 Flash with a fast 2.5s timeout
@@ -3385,14 +3414,18 @@ app.post('/api/ai-voice/chat', async (req, res) => {
       try {
         const systemPrompt = `Sen Antalya Kurye (antalyateslimat.com) müşteri hizmetleri sesli temsilcisisin. Hızlı, dinamik ve profesyonel bir erkek müşteri temsilcisi olarak konuşursun.
 Görevin sesli olarak kullanıcıyla konuşup Antalya içinde moto kurye yönlendirmektir.
-Adımlar:
+Sipariş Adımları:
 1. Alış Adresi (Nereden alınacak?)
 2. Teslimat Adresi (Nereye götürülecek?)
 3. Paket İçeriği (Paketin içeriği nedir?)
 4. İletişim Telefonu (05XX XXX XX XX)
-5. Onay
+5. Onay ('Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.')
 
-Kurallar:
+KESİNLİKLE UYULMASI GEREKEN ZORUNLU KURALLAR:
+- ASLA VE KESİNLİKLE e-posta (email, mail adresi) İSTEME! E-posta sormak KESİNLİKLE YASAKTIR.
+- ASLA VE KESİNLİKLE onay kodu, güvenlik kodu, doğrulama kodu, SMS kodu veya PIN kodu SORMAMA VE İSTEMEME! Kod sormak KESİNLİKLE YASAKTIR.
+- Telefon numarası alındıktan sonra başka hiçbir şey sorma! Doğrudan sadece şunu söyle: 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.' ve step: 'confirm' yap.
+- Onay aşamasında kullanıcı 'evet', 'onaylıyorum', 'tamam', 'çağır', 'gönder' gibi bir onay verirse doğrudan: 'Siparişiniz oluşturuldu, en yakın kuryemiz hemen yönlendirildi. Sizi müşteri panelinize aktarıyorum, iyi günler dilerim!' de, shouldCreateOrder: true ve step: 'completed' yap.
 - 'nöbetçi' kelimesini asla kullanma, sadece 'kurye' de.
 - 'harika', 'acaba' kelimelerini KESİNLİKLE kullanma! Doğrudan, profesyonel, net ve kibar konuş.
 - Açılış sorusu: 'Adresinize hemen kurye gönderebilirim. Paketiniz nereden, hangi mahalle veya adresten alınacak?'
@@ -3437,11 +3470,20 @@ JSON formatında yanıt ver:
         const rawJson = geminiRes?.text?.trim() || '';
         if (rawJson) {
           const parsed = JSON.parse(rawJson);
+          let targetStep = parsed.step || currentState.step;
+          if (targetStep === 'ask_email' || targetStep === 'ask_code') {
+            targetStep = 'confirm';
+          }
+          const sanitized = cleanCustomerServiceSpeech(parsed.replyText, targetStep);
+          if (sanitized.step) {
+            targetStep = sanitized.step;
+          }
+
           return res.json({
             success: true,
-            replyText: parsed.replyText,
+            replyText: sanitized.text,
             state: {
-              step: parsed.step || currentState.step,
+              step: targetStep,
               pickupAddress: parsed.pickupAddress || currentState.pickupAddress,
               pickupDistrict: parsed.pickupDistrict || currentState.pickupDistrict || 'Muratpaşa',
               destAddress: parsed.destAddress || currentState.destAddress,
@@ -3453,7 +3495,7 @@ JSON formatında yanıt ver:
               estimatedDistanceKm: 10,
               estimatedDurationMins: 35,
             },
-            shouldCreateOrder: Boolean(parsed.shouldCreateOrder),
+            shouldCreateOrder: Boolean(parsed.shouldCreateOrder) || targetStep === 'completed',
           });
         }
       } catch (geminiErr: any) {
@@ -3523,6 +3565,7 @@ JSON formatında yanıt ver:
     }
     // Step 5: Confirmation (Direct voice or button confirmation)
     else if (currentState.step === 'confirm' || currentState.step === 'ask_email' || currentState.step === 'ask_code') {
+      currentState.step = 'confirm';
       const positiveWords = ['evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'tamamdır', 'tamamdir', 'olur', 'gönder', 'gonder', 'çağır', 'cagir', 'gelsin', 'yolla'];
       const isPositive = positiveWords.some((w) => lower.includes(w));
 
@@ -3537,16 +3580,11 @@ JSON formatında yanıt ver:
       replyText = 'Siparişiniz başarıyla alındı. Yeni bir kurye talebi için dilediğiniz zaman bana seslenebilirsiniz.';
     }
 
-    // Strict sanitize: eliminate any occurrence of 'harika' or 'acaba'
-    if (replyText) {
-      let cleaned = replyText
-        .replace(/\b(harika|acaba)\b[.,!?]?/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (cleaned.length > 0) {
-        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-      }
-      replyText = cleaned;
+    // Strict sanitize: eliminate any occurrence of 'harika', 'acaba', or email/code requests
+    const sanitized = cleanCustomerServiceSpeech(replyText, currentState.step);
+    replyText = sanitized.text;
+    if (sanitized.step) {
+      currentState.step = sanitized.step;
     }
 
     res.json({

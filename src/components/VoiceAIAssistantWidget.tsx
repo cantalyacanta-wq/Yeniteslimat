@@ -31,13 +31,30 @@ interface Message {
   timestamp: string;
 }
 
-// Strict sanitizer to completely prevent 'harika' and 'acaba'
+// Strict sanitizer to completely prevent 'harika', 'acaba', and any email/code mentions
 const cleanAssistantSpeech = (text: string): string => {
   if (!text) return text;
   let res = text
     .replace(/\b(harika|acaba)\b[.,!?]?/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  const lower = res.toLowerCase();
+  if (
+    lower.includes('mail') ||
+    lower.includes('e-posta') ||
+    lower.includes('eposta') ||
+    lower.includes('onay kodu') ||
+    lower.includes('güvenlik kodu') ||
+    lower.includes('doğrulama kodu') ||
+    lower.includes('kodunuz') ||
+    lower.includes('4 haneli') ||
+    lower.includes('kodu gir') ||
+    lower.includes('kodu söyle')
+  ) {
+    res = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+  }
+
   if (res.length > 0) {
     res = res.charAt(0).toUpperCase() + res.slice(1);
   }
@@ -678,11 +695,18 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       const data = await response.json();
 
       if (data.success && data.replyText && data.replyText.trim()) {
-        const nextState = data.state || currentState;
+        const nextState = { ...(data.state || currentState) };
+        if ((nextState.step as any) === 'ask_email' || (nextState.step as any) === 'ask_code') {
+          nextState.step = 'confirm';
+        }
         setState(nextState);
         stateRef.current = nextState;
 
-        const reply = cleanAssistantSpeech(data.replyText.trim());
+        let reply = cleanAssistantSpeech(data.replyText.trim());
+        if (nextState.step === 'confirm' && (reply.toLowerCase().includes('mail') || reply.toLowerCase().includes('kod'))) {
+          reply = 'Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
+        }
+
         const aiMsg: Message = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
