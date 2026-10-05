@@ -35,6 +35,8 @@ import {
   Headphones,
   Mic,
   UserCheck,
+  Flame,
+  Tag,
 } from 'lucide-react';
 import { useDelivery } from '../context/DeliveryContext';
 import { UserRole, DistrictName, DeliveryRequest, DeliveryStatus } from '../types';
@@ -546,6 +548,29 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
+          {/* Fırsat Tarifesi Banner */}
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-[#032d22] to-emerald-950/90 border border-amber-400/40 shadow-md flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-amber-950 flex items-center justify-center shrink-0 shadow-xs">
+                <Flame className="w-4 h-4 text-white fill-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs sm:text-sm font-black text-amber-300">
+                    10 km'ye Kadar Sadece 100 ₺'den Başlayan Fiyatlar!
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.2 bg-amber-400/20 text-amber-200 border border-amber-300/30 rounded font-bold uppercase hidden sm:inline-block">
+                    Avantajlı Tarife
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-200/80">Antalya şehir içi en avantajlı, sabit ve jet moto kurye hizmeti</p>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-600/50 px-2.5 py-1 rounded-xl shrink-0 hidden md:inline-block">
+              ⚡ 30-45 Dk Jet Teslimat
+            </span>
+          </div>
+
           {/* 2 KURYE ÇAĞIRMA BUTONU (ÜYELİKLİ & ÜYELİKSİZ SESLİ ASİSTAN) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Buton 1: ÜYELİKLİ KURYE ÇAĞIR */}
@@ -956,15 +981,50 @@ export const HeroIntro: React.FC = () => {
       <div className="w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/50 bg-gradient-to-br from-[#021d17] via-[#042820] to-[#011410] p-6 sm:p-10 lg:p-12 text-white relative">
         <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
           
-          {/* Fiyat Bilgilendirme Rozeti */}
-          <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-emerald-950/85 border border-emerald-600/70 shadow-lg">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shrink-0">
-              <Zap className="w-5 h-5 fill-white" />
-            </div>
-            <div className="text-left">
-              <span className="text-sm sm:text-base font-extrabold text-amber-300 tracking-tight block">
-                10km ye kadar 100tl den baslayan fiyatlar
-              </span>
+          {/* Fiyat Bilgilendirme Rozeti (Ultra Çekici, Prestijli & Modern Tasarım) */}
+          <div className="relative inline-block mx-auto group">
+            {/* Ambient Background Glow Effect */}
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-amber-500/25 via-emerald-500/35 to-teal-500/25 blur-lg opacity-85 group-hover:opacity-100 transition duration-500 animate-pulse pointer-events-none" />
+
+            <div className="relative flex flex-col sm:flex-row items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#021f19]/95 via-[#043328]/95 to-[#022018]/95 border-2 border-emerald-400/60 shadow-2xl backdrop-blur-md">
+              {/* Animated Flame Badge Icon */}
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 text-amber-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/30 shrink-0 transform group-hover:scale-105 transition-transform">
+                  <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white" />
+                </div>
+                <div className="sm:hidden flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/40 text-amber-300 font-black text-[10px] uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                  <span>Fırsat Tarifesi</span>
+                </div>
+              </div>
+
+              {/* Main Text Content */}
+              <div className="text-center sm:text-left space-y-1">
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/40 text-amber-300 font-extrabold text-[11px] uppercase tracking-wider shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                    <span>🔥 Antalya İçi Özel Fırsat</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-300/80 font-medium">
+                    Gizli masraf yok • Şeffaf kilometre tarifesi
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-800/80 text-white font-black border border-emerald-500/60 text-xs sm:text-sm shadow-inner">
+                    📍 10 km'ye Kadar
+                  </span>
+                  <span className="text-base sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 tracking-tight drop-shadow-md">
+                    Sadece <span className="underline decoration-amber-400/60 underline-offset-4">100 ₺</span>'den Başlayan Fiyatlar!
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Sparkle Accent */}
+              <div className="hidden lg:flex items-center pl-3 border-l border-emerald-700/60 text-amber-300 text-xs font-bold gap-1.5 shrink-0">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '8s' }} />
+                <span className="text-[11px] text-emerald-200/90 whitespace-nowrap">30-45 Dk Jet Teslimat</span>
+              </div>
             </div>
           </div>
 
