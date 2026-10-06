@@ -229,15 +229,20 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               <span>Yönetim</span>
             </button>
             <span className="text-emerald-800">•</span>
-            <a
-              href="https://wa.me/905077547484?text=Merhaba,%20Konyaalt%C4%B1%20panelvan%20par%C3%A7a%20e%C5%9Fya%20ta%C5%9F%C4%B1ma%20(900%20TL)%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
-              title="Konyaaltı Panelvan Parça Eşya Taşıma WhatsApp (0507 754 74 84)"
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentView('home');
+                setTimeout(() => {
+                  const el = document.getElementById('panelvan-nakliye');
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+              }}
+              className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer"
+              title="Konyaaltı Panelvan Parça Eşya Taşıma (900 ₺) Bilgilendirmesini Gör"
             >
               <span>🚚 Panelvan Nakliye (900 ₺)</span>
-            </a>
+            </button>
             <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />

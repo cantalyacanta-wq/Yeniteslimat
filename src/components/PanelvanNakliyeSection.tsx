@@ -9,18 +9,14 @@ import {
   MapPin,
   Clock,
   ShieldCheck,
-  ArrowRight,
-  Package,
 } from 'lucide-react';
 
 interface PanelvanNakliyeSectionProps {
   className?: string;
-  compact?: boolean;
 }
 
 export const PanelvanNakliyeSection: React.FC<PanelvanNakliyeSectionProps> = ({
   className = '',
-  compact = false,
 }) => {
   const whatsappNumber = '905077547484';
   const displayPhone = '0507 754 74 84';
@@ -33,7 +29,7 @@ export const PanelvanNakliyeSection: React.FC<PanelvanNakliyeSectionProps> = ({
   return (
     <section
       id="panelvan-nakliye"
-      className={`w-full max-w-5xl rounded-3xl overflow-hidden border-2 border-amber-500/50 bg-gradient-to-br from-[#021f19] via-[#042820] to-[#011611] p-5 sm:p-8 lg:p-10 text-white relative shadow-2xl shadow-emerald-950/80 ${className}`}
+      className={`w-full max-w-5xl rounded-3xl overflow-hidden border-2 border-amber-500/60 bg-gradient-to-br from-[#021f19] via-[#042820] to-[#011611] p-5 sm:p-8 lg:p-10 text-white relative shadow-2xl shadow-emerald-950/80 scroll-mt-6 ${className}`}
     >
       {/* Ambient Glow */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-amber-500/15 via-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -86,8 +82,8 @@ export const PanelvanNakliyeSection: React.FC<PanelvanNakliyeSectionProps> = ({
           <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
             <AlertTriangle className="w-5 h-5 text-amber-400" />
           </div>
-          <div className="space-y-1 text-xs">
-            <h4 className="font-black text-sm text-amber-300 flex items-center gap-1.5">
+          <div className="space-y-1 text-xs sm:text-sm">
+            <h4 className="font-black text-amber-300 text-sm sm:text-base flex items-center gap-1.5">
               <span>Önemli Bilgilendirme: Taşıma Kapsamı ve Araç Kapasitesi</span>
             </h4>
             <p className="text-amber-100/95 leading-relaxed font-medium">
