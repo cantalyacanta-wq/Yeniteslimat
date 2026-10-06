@@ -44,6 +44,7 @@ import { ANTALYA_DISTRICTS } from '../data/antalyaDistricts';
 import { ReceiptModal } from './ReceiptModal';
 import { CourierPool } from './CourierPool';
 import { AnimatedCourierSpeechBubble } from './AnimatedCourierSpeechBubble';
+import { PanelvanNakliyeSection } from './PanelvanNakliyeSection';
 
 export const HeroIntro: React.FC = () => {
   const {
@@ -548,27 +549,40 @@ export const HeroIntro: React.FC = () => {
             </div>
           </div>
 
-          {/* Fırsat Tarifesi Banner */}
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-[#032d22] to-emerald-950/90 border border-amber-400/40 shadow-md flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-amber-950 flex items-center justify-center shrink-0 shadow-xs">
-                <Flame className="w-4 h-4 text-white fill-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs sm:text-sm font-black text-amber-300">
-                    10 km'ye Kadar Sadece 100 ₺'den Başlayan Fiyatlar!
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.2 bg-amber-400/20 text-amber-200 border border-amber-300/30 rounded font-bold uppercase hidden sm:inline-block">
-                    Avantajlı Tarife
-                  </span>
+          {/* Fırsat Tarifesi Banner (Çekici, Şık & Dikkat Çekici) */}
+          <div className="relative group overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-amber-400/70 bg-gradient-to-r from-[#021f19] via-[#043328] to-[#022018] p-3.5 sm:p-4 shadow-xl shadow-amber-950/40">
+            {/* Ambient gold glow */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-emerald-500/25 to-yellow-500/20 blur-md opacity-75 group-hover:opacity-100 transition duration-500 pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 text-amber-950 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30 font-black">
+                  <Flame className="w-5 h-5 text-white fill-white" />
                 </div>
-                <p className="text-[11px] text-emerald-200/80">Antalya şehir içi en avantajlı, sabit ve jet moto kurye hizmeti</p>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-lg bg-emerald-800/90 text-white font-black text-xs border border-emerald-400/50 shadow-inner">
+                      📍 10 km'ye Kadar
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 drop-shadow-sm">
+                      Sadece <span className="underline decoration-amber-400 underline-offset-4">100 ₺</span>'den Başlayan Fiyatlar!
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-400/25 text-amber-200 border border-amber-300/40 rounded-full font-black uppercase tracking-wider animate-pulse">
+                      🔥 Avantajlı Tarife
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200/90 font-medium mt-0.5">
+                    Antalya şehir içi sabit kilometre garantisi • Gizli ek ücret yok • 30-45 dk jet teslimat
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <span className="text-xs font-black text-emerald-200 bg-emerald-900/80 border border-emerald-500/60 px-3 py-1.5 rounded-xl shadow-xs">
+                  ⚡ 30-45 Dk Jet Kurye
+                </span>
               </div>
             </div>
-            <span className="text-xs font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-600/50 px-2.5 py-1 rounded-xl shrink-0 hidden md:inline-block">
-              ⚡ 30-45 Dk Jet Teslimat
-            </span>
           </div>
 
           {/* 2 KURYE ÇAĞIRMA BUTONU (ÜYELİKLİ & ÜYELİKSİZ SESLİ ASİSTAN) */}
@@ -967,6 +981,9 @@ export const HeroIntro: React.FC = () => {
           </div>
         )}
 
+        {/* Konyaaltı Panelvan Parça Eşya Taşıma (900 TL) Bölümü */}
+        <PanelvanNakliyeSection className="mt-6" />
+
       </div>
     );
   }
@@ -982,48 +999,46 @@ export const HeroIntro: React.FC = () => {
         <div className="relative z-10 max-w-3xl mx-auto text-center space-y-8">
           
           {/* Fiyat Bilgilendirme Rozeti (Ultra Çekici, Prestijli & Modern Tasarım) */}
-          <div className="relative inline-block mx-auto group">
-            {/* Ambient Background Glow Effect */}
-            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-amber-500/25 via-emerald-500/35 to-teal-500/25 blur-lg opacity-85 group-hover:opacity-100 transition duration-500 animate-pulse pointer-events-none" />
+          <div className="relative inline-block mx-auto group w-full max-w-2xl">
+            {/* Ambient Multi-color Glowing Aura */}
+            <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-r from-amber-500/30 via-emerald-400/40 to-yellow-400/30 blur-xl opacity-90 group-hover:opacity-100 transition duration-500 animate-pulse pointer-events-none" />
 
-            <div className="relative flex flex-col sm:flex-row items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#021f19]/95 via-[#043328]/95 to-[#022018]/95 border-2 border-emerald-400/60 shadow-2xl backdrop-blur-md">
-              {/* Animated Flame Badge Icon */}
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 text-amber-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/30 shrink-0 transform group-hover:scale-105 transition-transform">
-                  <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white" />
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-5 sm:px-7 py-3.5 sm:py-4 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-[#021f19]/98 via-[#04362a]/98 to-[#02221a]/98 border-2 border-amber-400/80 shadow-2xl backdrop-blur-md">
+              {/* Flame Icon + Pulse Badge */}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-300 text-amber-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/40 shrink-0 transform group-hover:scale-105 transition-transform">
+                  <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white" />
                 </div>
-                <div className="sm:hidden flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/40 text-amber-300 font-black text-[10px] uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                  <span>Fırsat Tarifesi</span>
-                </div>
-              </div>
+                
+                <div className="text-left space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/25 border border-amber-300/50 text-amber-300 font-black text-[11px] uppercase tracking-wider shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                      <span>🔥 Fırsat Kampanyası</span>
+                    </span>
+                    <span className="text-[11px] text-emerald-300/90 font-semibold hidden sm:inline">
+                      Şeffaf Mesafe Tarifesi • Gizli Ek Ücret Yok
+                    </span>
+                  </div>
 
-              {/* Main Text Content */}
-              <div className="text-center sm:text-left space-y-1">
-                <div className="hidden sm:flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/40 text-amber-300 font-extrabold text-[11px] uppercase tracking-wider shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                    <span>🔥 Antalya İçi Özel Fırsat</span>
-                  </span>
-                  <span className="text-[11px] text-emerald-300/80 font-medium">
-                    Gizli masraf yok • Şeffaf kilometre tarifesi
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5">
-                  <span className="px-2.5 py-1 rounded-xl bg-emerald-800/80 text-white font-black border border-emerald-500/60 text-xs sm:text-sm shadow-inner">
-                    📍 10 km'ye Kadar
-                  </span>
-                  <span className="text-base sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 tracking-tight drop-shadow-md">
-                    Sadece <span className="underline decoration-amber-400/60 underline-offset-4">100 ₺</span>'den Başlayan Fiyatlar!
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-800 text-white font-black border border-emerald-400/70 text-xs sm:text-sm shadow-md flex items-center gap-1">
+                      <span>📍 10 km'ye Kadar</span>
+                    </span>
+                    <span className="text-lg sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 tracking-tight drop-shadow-md">
+                      Sadece <span className="underline decoration-amber-400 decoration-2 underline-offset-4">100 ₺</span>'den Başlayan Fiyatlar!
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Right Sparkle Accent */}
-              <div className="hidden lg:flex items-center pl-3 border-l border-emerald-700/60 text-amber-300 text-xs font-bold gap-1.5 shrink-0">
-                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '8s' }} />
-                <span className="text-[11px] text-emerald-200/90 whitespace-nowrap">30-45 Dk Jet Teslimat</span>
+              <div className="hidden md:flex flex-col items-end pl-3 border-l border-emerald-700/60 text-amber-300 text-xs font-bold gap-0.5 shrink-0">
+                <div className="flex items-center gap-1 text-emerald-300">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+                  <span className="text-xs font-extrabold text-white whitespace-nowrap">30-45 Dk</span>
+                </div>
+                <span className="text-[10px] text-emerald-300/80 uppercase tracking-wider">Jet Moto Kurye</span>
               </div>
             </div>
           </div>
@@ -1130,8 +1145,8 @@ export const HeroIntro: React.FC = () => {
             </button>
           </div>
 
-          {/* 3 Core Services Highlight (Google Target Keywords) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-left">
+          {/* 4 Core Services Highlight (Google Target Keywords) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 text-left">
             <div 
               onClick={() => {
                 if (currentUser && currentUser.role === 'customer' && currentUser.id !== 'user-guest-01') {
@@ -1144,7 +1159,7 @@ export const HeroIntro: React.FC = () => {
             >
               <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
                 <Package className="w-4 h-4 text-emerald-400" />
-                <span>Antalya Paket Gönder (Üyelikli)</span>
+                <span>Antalya Paket Gönder</span>
               </div>
               <p className="text-[11px] text-emerald-200/80 leading-normal">
                 Evrak, koli, anahtar, çiçek ve hediyelikleri kapınızdan alıp Antalya içi dilediğiniz adrese teslim ediyoruz.
@@ -1159,7 +1174,7 @@ export const HeroIntro: React.FC = () => {
             >
               <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
                 <Headphones className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
-                <span>Üyeliksiz Kurye Çağır (Sesli)</span>
+                <span>Üyeliksiz Kurye (Sesli)</span>
               </div>
               <p className="text-[11px] text-emerald-200/80 leading-normal">
                 Kayıt olmadan tek tıkla sesli yapay zeka asistanımıza bağlanın, adresinizi söyleyerek kurye çağırın.
@@ -1178,10 +1193,37 @@ export const HeroIntro: React.FC = () => {
             >
               <div className="flex items-center gap-2 text-teal-300 font-bold text-sm">
                 <Clock className="w-4 h-4 text-teal-400" />
-                <span>Acil Paket Gönder</span>
+                <span>30-45 Dk Jet Kurye</span>
               </div>
               <p className="text-[11px] text-emerald-200/80 leading-normal">
                 Gecikmeye tahammülü olmayan gönderileriniz için 30-45 dakikada süper ekspres jet teslimat.
+              </p>
+            </div>
+
+            {/* 4th Card: Panelvan Parça Eşya Taşıma 900 TL */}
+            <div 
+              onClick={() => {
+                const el = document.getElementById('panelvan-nakliye');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                  window.open('https://wa.me/905077547484?text=Merhaba,%20Konyaalt%C4%B1%20panelvan%20par%C3%A7a%20e%C5%9Fya%20ta%C5%9F%C4%B1ma%20(900%20TL)%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum.', '_blank');
+                }
+              }}
+              className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/80 to-[#1e1104] hover:from-amber-900/90 hover:to-[#2e1906] border-2 border-amber-500/70 hover:border-amber-400 space-y-1 shadow-md transition cursor-pointer group"
+              title="Konyaaltı Panelvan Uygun Nakliye (900 ₺)"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 text-amber-300 font-black text-sm">
+                  <Truck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
+                  <span>Panelvan Nakliye</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/25 text-amber-200 font-black border border-amber-300/40">
+                  900 ₺
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-100/90 leading-normal">
+                Konyaaltı parça eşya, koli, bavul ve beyaz eşya uygun nakliye. (Toplu ev eşyası taşınmaz).
               </p>
             </div>
           </div>
@@ -1214,6 +1256,9 @@ export const HeroIntro: React.FC = () => {
 
         </div>
       </div>
+
+      {/* DEDICATED PANELVAN PARÇA EŞYA TAŞIMA & KONYAALTI UYGUN NAKLİYE BÖLÜMÜ */}
+      <PanelvanNakliyeSection className="w-full mt-4" />
 
       {/* ========================================================================= */}
       {/* GOOGLE SEO & DISTRICTS LANDING SECTION */}
@@ -1346,6 +1391,15 @@ export const HeroIntro: React.FC = () => {
               <h4 className="font-bold text-emerald-300">📍 Hangi ilçelere kurye ve paket gönderimi yapılıyor?</h4>
               <p className="text-slate-300 leading-relaxed">
                 Muratpaşa, Kepez, Konyaaltı ve Lara bölgelerine kesintisiz 7/24 moto kurye ve hızlı teslimat hizmeti verilmektedir.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-gradient-to-r from-amber-950/40 to-[#021f19] border border-amber-500/50 col-span-1 md:col-span-2">
+              <h4 className="font-bold text-amber-300 flex items-center gap-2">
+                <span>🚚 Konyaaltı Panelvan Parça Eşya Taşıma (900 ₺) nasıl işler?</span>
+              </h4>
+              <p className="text-slate-200 leading-relaxed">
+                Konyaaltı'nda tekli beyaz eşya, koli, valiz, bekar veya öğrenci eşyası gibi parça yüklerinizi panelvan aracımızla <strong>900 ₺</strong>'den başlayan uygun fiyatla taşıyoruz. <strong>Önemli Kural:</strong> Toplu komple ev eşyası taşınmamaktadır; sadece panelvan araca sığabilecek parça eşyalar taşınır. WhatsApp üzerinden <strong>0507 754 74 84</strong> hattımıza eşyanızın fotoğrafını göndererek sığıp sığmayacağını teyit edebilir ve anında randevu oluşturabilirsiniz.
               </p>
             </div>
           </div>

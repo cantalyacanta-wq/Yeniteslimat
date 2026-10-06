@@ -734,8 +734,8 @@ public class MainActivity extends Activity {
             String cleanBody = body != null ? body.trim() : "";
             String notifKey = cleanTitle + "|||" + cleanBody;
 
-            // DEDUPLICATION: Ignore exact same notification if fired within 10 seconds (prevents double alert on APKs)
-            if (now - lastNativeNotificationTime < 10000 && notifKey.equals(lastNativeNotificationKey)) {
+            // DEDUPLICATION: Ignore redundant second notification if fired within 10 seconds (prevents double alert on APKs)
+            if (now - lastNativeNotificationTime < 10000) {
                 return;
             }
             lastNativeNotificationTime = now;

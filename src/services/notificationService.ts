@@ -240,10 +240,15 @@ export function sendBrowserNotification(
 
   // Strict Manager Pending Order Alert Throttle:
   // Prevents multiple notifications arriving within 10 seconds for admin pending orders
+  const lowerTitle = title.toLowerCase();
+  const lowerBody = (options.body || '').toLowerCase();
   const isAdminPendingAlert =
-    title.toLowerCase().includes('onay') ||
-    title.toLowerCase().includes('talep') ||
-    options.body.toLowerCase().includes('onayınızın');
+    lowerTitle.includes('onay') ||
+    lowerTitle.includes('talep') ||
+    lowerTitle.includes('sipariş') ||
+    lowerBody.includes('onay') ||
+    lowerBody.includes('talep') ||
+    lowerBody.includes('müşteri');
 
   if (isAdminPendingAlert) {
     const lastAdminGlobalTime = recentBrowserNotifications.get('global_admin_order_alert_lock');

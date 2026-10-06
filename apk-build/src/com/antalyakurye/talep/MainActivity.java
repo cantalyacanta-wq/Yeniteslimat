@@ -414,12 +414,6 @@ public class MainActivity extends Activity {
 
             // DEDUPLICATION: Ignore redundant second notification if fired within 10 seconds (prevents double notification in top bar)
             if (now - lastNativeNotificationTime < 10000) {
-                builder.setContentTitle(title)
-                       .setContentText(body)
-                       .setSmallIcon(R.mipmap.ic_launcher)
-                       .setContentIntent(pi)
-                       .setAutoCancel(true);
-                nm.notify(ORDER_ALERT_NOTIFICATION_ID, builder.build());
                 return;
             }
             lastNativeNotificationTime = now;
