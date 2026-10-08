@@ -16,6 +16,7 @@ import {
   playNewOrderSound,
   unlockAudioContext,
 } from '../utils/audio';
+import { isCustomerApk } from '../utils/apkDetection';
 
 export const Navbar: React.FC = () => {
   const {
@@ -30,11 +31,21 @@ export const Navbar: React.FC = () => {
 
   const [soundEnabled, setSoundEnabled] = useState<boolean>(isSoundAlertsEnabled);
   const [soundFeedback, setSoundFeedback] = useState<string | null>(null);
+  const [isCustomerApp, setIsCustomerApp] = useState<boolean>(() => isCustomerApk());
 
   useEffect(() => {
-    const handleSync = () => setSoundEnabled(isSoundAlertsEnabled());
+    const handleSync = () => {
+      setSoundEnabled(isSoundAlertsEnabled());
+      setIsCustomerApp(isCustomerApk());
+    };
     window.addEventListener('antalya_sound_toggle', handleSync);
-    return () => window.removeEventListener('antalya_sound_toggle', handleSync);
+    window.addEventListener('hashchange', handleSync);
+    window.addEventListener('popstate', handleSync);
+    return () => {
+      window.removeEventListener('antalya_sound_toggle', handleSync);
+      window.removeEventListener('hashchange', handleSync);
+      window.removeEventListener('popstate', handleSync);
+    };
   }, []);
 
   const handleTestOrToggleSound = (e: React.MouseEvent) => {
@@ -243,8 +254,11 @@ export const Navbar: React.FC = () => {
                   <span className="hidden md:inline text-[11px]">Çıkış</span>
                 </button>
               </>
+            ) : isCustomerApp ? (
+              /* Müşteri APK'sinde üst bardaki kurye girişi butonu tamamen kaldırıldı */
+              null
             ) : (
-              /* If Guest / Not Logged In -> Dedicated Courier Login Button in Header Banner */
+              /* If Guest / Not Logged In -> Dedicated Courier Login Button in Header Banner (Web / Kurye Modu) */
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
