@@ -147,7 +147,19 @@ function processClassesDex(rawDex) {
     idx += newUa.length;
   }
 
-  // 5. Recompute DEX Checksums (SHA-1 at 12..32, Adler32 at 8..12)
+  // 5. Completely disable native CourierForegroundService startup in Customer APK
+  // In MainActivity, startCourierForegroundService is at codeOff 12384.
+  // Placing Dalvik opcode 0x0e 0x00 (return-void) at the method start (12384 + 16)
+  // ensures the native delayed handler (1.5s) and permission callbacks immediately return
+  // without starting any foreground service or displaying "Paket talep havuzu dinleniyor" in the notification bar.
+  const codeOff = 12384;
+  if (dex.length > codeOff + 17) {
+    dex[codeOff + 16] = 0x0e;
+    dex[codeOff + 17] = 0x00;
+    console.log('Disabled native startCourierForegroundService with return-void at offset ' + (codeOff + 16));
+  }
+
+  // 6. Recompute DEX Checksums (SHA-1 at 12..32, Adler32 at 8..12)
   const sha1 = crypto.createHash('sha1').update(dex.slice(32)).digest();
   sha1.copy(dex, 12);
 

@@ -15,6 +15,7 @@ import { VoiceAIAssistantWidget } from './components/VoiceAIAssistantWidget';
 import { TermsOfUseModal } from './components/TermsOfUseModal';
 import { KvkkModal } from './components/KvkkModal';
 import { UnassignedOrderTipModal } from './components/UnassignedOrderTipModal';
+import { isCustomerApk } from './utils/apkDetection';
 import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
 
 const checkIsAdminRoute = (): boolean => {
@@ -39,11 +40,23 @@ const MainContent: React.FC = () => {
         if (typeof android.requestAllPermissions === 'function') {
           android.requestAllPermissions();
         }
-        if (typeof android.startForegroundService === 'function') {
-          android.startForegroundService(
-            '🛵 Antalya Kurye Aktif',
-            'Paket talep havuzu 7/24 dinleniyor. Yeni çağrılar anında bildirilir.'
-          );
+
+        // Müşteri APK'sinde ("Antalya Kurye Çağır") veya müşteri rolünde "Paket talep havuzu dinleniyor" üst bildirimi kesinlikle kapatılır.
+        const isCustomer = isCustomerApk() || currentUser.role !== 'courier';
+        if (isCustomer) {
+          if (typeof android.stopForegroundService === 'function') {
+            android.stopForegroundService();
+          }
+          if (typeof android.hideForegroundNotification === 'function') {
+            android.hideForegroundNotification();
+          }
+        } else if (currentUser.role === 'courier') {
+          if (typeof android.startForegroundService === 'function') {
+            android.startForegroundService(
+              '🛵 Antalya Kurye Aktif',
+              'Paket talep havuzu 7/24 dinleniyor. Yeni çağrılar anında bildirilir.'
+            );
+          }
         }
       } catch (e) {
         console.debug('AndroidApp foreground service startup error:', e);

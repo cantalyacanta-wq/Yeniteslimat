@@ -1,4 +1,5 @@
 import { DeliveryRequest, DeliveryStatus, UserRole } from '../types';
+import { isCustomerApk } from '../utils/apkDetection';
 import {
   playAcceptSound,
   playNewOrderSound,
@@ -116,6 +117,7 @@ export function dismissApkForegroundNotificationOnLogout(): void {
  */
 export function showApkStatusBarNotification(): void {
   if (typeof window === 'undefined') return;
+  if (isCustomerApk()) return;
   try {
     localStorage.removeItem('antalya_hide_apk_status_bar');
     if ((window as any).AndroidApp?.startForegroundService) {
