@@ -3864,6 +3864,70 @@ app.get('/api/ai-voice/tts', async (req, res) => {
 // ==========================================
 // APK & MOBILE APP DISTRIBUTION
 // ==========================================
+// Customer Courier Request APK (Antalya Kurye Çağır - Google Play Store Ready)
+app.get(
+  [
+    '/api/download-customer-apk',
+    '/downloads/Antalya-Kurye-Cagir.apk',
+    '/downloads/antalya-kurye-cagir.apk',
+    '/downloads/Antalya-Kurye-Cagir-PlayStore.apk',
+  ],
+  (req, res) => {
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'downloads', 'Antalya-Kurye-Cagir.apk'),
+      path.join(process.cwd(), 'dist', 'downloads', 'Antalya-Kurye-Cagir.apk'),
+    ];
+    let apkPath = '';
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        apkPath = p;
+        break;
+      }
+    }
+
+    if (!apkPath) {
+      return res.status(404).send('Antalya Kurye Çağır APK dosyası hazırlanıyor, lütfen birkaç saniye sonra tekrar deneyiniz.');
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="Antalya-Kurye-Cagir.apk"');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.sendFile(apkPath);
+  }
+);
+
+app.get('/api/customer-apk-info', (req, res) => {
+  const apkPath = path.join(process.cwd(), 'public', 'downloads', 'Antalya-Kurye-Cagir.apk');
+  let sizeMb = '0.30 MB';
+  let exists = false;
+  if (fs.existsSync(apkPath)) {
+    exists = true;
+    const stats = fs.statSync(apkPath);
+    sizeMb = (stats.size / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+  res.json({
+    success: true,
+    name: 'Antalya Kurye Çağır APK',
+    packageName: 'com.antalyakurye.cagir',
+    version: '1.0.0',
+    versionCode: 1,
+    size: sizeMb,
+    exists,
+    downloadUrl: '/downloads/Antalya-Kurye-Cagir.apk',
+    directApiUrl: '/api/download-customer-apk',
+    playStoreReady: true,
+    releaseDate: '2026-10-06',
+    permissions: [
+      'INTERNET (Canlı Kurye Çağırma ve Radar Takip)',
+      'ACCESS_NETWORK_STATE (Ağ Durumu Kontrolü)',
+      'POST_NOTIFICATIONS (Kurye Geldi ve Teslimat Durumu Bildirimleri)',
+      'ACCESS_FINE_LOCATION (Tek Dokunuşla Adres ve Konum Bulma)',
+      'VIBRATE (Durum Güncelleme Titreşimi)',
+    ],
+  });
+});
+
 app.get(
   [
     '/api/download-admin-apk',

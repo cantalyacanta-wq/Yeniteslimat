@@ -936,10 +936,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     speakText(resetText);
   };
 
-  // Kurye panelinde, kurye rolündeyken, /pakettalebi ekranında veya APK içindeyken Müşteri Hizmetleri butonu ASLA gösterilmez!
-  const isAndroidApk =
+  // Kurye panelinde, kurye rolündeyken veya Kurye Havuz APK'sindeyken (TalepHavuzu) Müşteri Hizmetleri asistanı gösterilmez.
+  // Müşteri APK'sinde (KuryeCagir) ve web müşterilerinde sesli kurye asistanı aktiftir.
+  const isCourierApk =
     typeof window !== 'undefined' &&
-    Boolean((window as any).AndroidApp || navigator.userAgent.includes('AntalyaKuryeApp'));
+    (navigator.userAgent.includes('TalepHavuzu') || (window as any).__antalyaIsCourierApk);
 
   const isPaketTalebi =
     typeof window !== 'undefined' &&
@@ -948,7 +949,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
   if (
     currentView === 'courier' ||
     currentUser?.role === 'courier' ||
-    isAndroidApk ||
+    isCourierApk ||
     isPaketTalebi
   ) {
     return null;

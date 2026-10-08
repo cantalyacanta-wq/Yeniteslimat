@@ -126,6 +126,8 @@ export const AdminManagement: React.FC = () => {
   }, [pendingAdminRequests.length, activeTab]);
   const [apkLinkCopied, setApkLinkCopied] = useState(false);
   const [adminApkLinkCopied, setAdminApkLinkCopied] = useState(false);
+  const [customerApkLinkCopied, setCustomerApkLinkCopied] = useState(false);
+  const [customerPlayGuidanceOpen, setCustomerPlayGuidanceOpen] = useState(false);
   const [apkTestSuccess, setApkTestSuccess] = useState<string | null>(null);
   const [searchOrderQuery, setSearchOrderQuery] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
@@ -1114,6 +1116,16 @@ export const AdminManagement: React.FC = () => {
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
               <span>Kurye APK'sı</span>
+            </a>
+
+            <a
+              href="/downloads/Antalya-Kurye-Cagir.apk"
+              download="Antalya-Kurye-Cagir.apk"
+              className="px-3 py-2.5 bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-400/50 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Müşteri Kurye Çağır APK'sını İndir (Google Play Store Hazır)"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-400" />
+              <span>🛍️ Müşteri APK (Play Store)</span>
             </a>
 
             {activeTab !== 'apk' && (
@@ -3190,6 +3202,164 @@ export const AdminManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Card 3: Antalya Kurye Çağır — Müşteri Sipariş APK'sı (Google Play Store Hazır) */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#051c2c] via-[#082a3d] to-[#041624] p-6 sm:p-8 border-2 border-sky-400/60 shadow-2xl text-white">
+            <div className="absolute -right-16 -top-16 w-64 h-64 bg-sky-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3.5 max-w-2xl">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-sky-500 to-cyan-500 text-white shadow-md shadow-sky-950/60 flex items-center gap-1.5">
+                    <ShoppingBag className="w-3.5 h-3.5" /> MÜŞTERİ SİPARİŞ UYGULAMASI
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/25 text-amber-300 border border-amber-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> GOOGLE PLAY STORE HAZIR
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-200 border border-sky-400/40">
+                    Sürüm: v1.0.0 (VersionCode 1)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> v1/v2/v3 Tam İmzalı
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2 flex-wrap">
+                  <span>📲 Antalya Kurye Çağır — Müşteri Sipariş APK'sı</span>
+                </h2>
+
+                <p className="text-xs sm:text-sm text-sky-100/90 leading-relaxed">
+                  Müşterilerinizin telefonlarına yükleyerek tek dokunuşla <strong className="text-sky-300">kurye talebi oluşturabileceği</strong>, <strong className="text-sky-300">canlı radar kurye takibi</strong> yapabileceği, acil teslimat fiyatı hesaplayabileceği ve <strong className="text-sky-300">panelvan parça eşya taşıma</strong> rezervasyonu yapabileceği resmi müşteri uygulamasıdır. Google Play Store Console'a yüklemek için tüm gereksinimleri karşılar.
+                </p>
+
+                {/* Download & Copy Buttons */}
+                <div className="flex items-center gap-3 flex-wrap pt-2">
+                  <a
+                    href="/downloads/Antalya-Kurye-Cagir.apk"
+                    download="Antalya-Kurye-Cagir.apk"
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 hover:from-sky-400 hover:to-teal-400 text-white font-black text-sm shadow-xl shadow-sky-950/70 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
+                  >
+                    <Download className="w-5 h-5" />
+                    <span>Müşteri APK İndir (.apk - 299 KB)</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = window.location.origin + '/downloads/Antalya-Kurye-Cagir.apk';
+                      navigator.clipboard.writeText(url);
+                      setCustomerApkLinkCopied(true);
+                      setTimeout(() => setCustomerApkLinkCopied(false), 3000);
+                    }}
+                    className="px-4 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-sky-200 hover:text-white border border-sky-400/50 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer"
+                  >
+                    {customerApkLinkCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{customerApkLinkCopied ? 'Müşteri APK Linki Kopyalandı!' : 'Linki Kopyala'}</span>
+                  </button>
+
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                      `🛵 Antalya Kurye Çağır Resmi Android Uygulaması: Antalya'da 30-45 dakikada acil moto kurye çağırmak, kuryenizi canlı haritada takip etmek ve panelvan parça eşya taşımak için uygulamamızı indirin:\n\n👉 İndirme Linki: ${
+                        typeof window !== 'undefined' ? window.location.origin : 'https://www.antalyateslimat.com'
+                      }/downloads/Antalya-Kurye-Cagir.apk\n\n⭐ Google Play Store yükleme paketi uyumludur.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition shadow-lg shadow-emerald-950/40 cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>WhatsApp ile Müşterilere Gönder</span>
+                  </a>
+
+                  <a
+                    href="/customer-app-logo.png"
+                    download="customer-app-logo-512x512.png"
+                    className="px-3.5 py-3.5 rounded-2xl bg-[#031c2e] hover:bg-[#06263e] text-sky-300 border border-sky-500/40 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+                    title="Google Play Store Mağaza İkonu (512x512)"
+                  >
+                    <Download className="w-4 h-4 text-sky-400" />
+                    <span>512x512 Play Store İkonu</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* QR Code Card */}
+              <div className="bg-[#02131e] p-4 rounded-3xl border border-sky-500/40 flex flex-col items-center text-center shrink-0 shadow-xl">
+                <span className="text-[11px] font-black text-sky-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <QrCode className="w-3.5 h-3.5 text-sky-400" /> Telefona Okut & İndir
+                </span>
+                <QRCodeView
+                  text={typeof window !== 'undefined' ? window.location.origin + '/downloads/Antalya-Kurye-Cagir.apk' : 'https://www.antalyateslimat.com/downloads/Antalya-Kurye-Cagir.apk'}
+                  size={160}
+                />
+                <span className="text-[10px] text-slate-300 mt-2 max-w-[170px] leading-tight font-medium">
+                  Müşteriler kamerayla okutup doğrudan telefonuna indirebilir
+                </span>
+              </div>
+            </div>
+
+            {/* Google Play Store Kılavuzu & Detaylar */}
+            <div className="mt-6 pt-5 border-t border-sky-700/50">
+              <button
+                type="button"
+                onClick={() => setCustomerPlayGuidanceOpen(!customerPlayGuidanceOpen)}
+                className="w-full flex items-center justify-between text-left text-xs sm:text-sm font-black text-sky-200 hover:text-white transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-400" />
+                  <span>Google Play Store Console Yükleme Rehberi & Teknik Bilgiler (Adım Adım)</span>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-lg bg-sky-900/60 border border-sky-500/40 text-sky-300">
+                  {customerPlayGuidanceOpen ? 'Gizle ▲' : 'Nasıl Yüklenir? ▼'}
+                </span>
+              </button>
+
+              {customerPlayGuidanceOpen && (
+                <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-[#021624] border border-sky-500/40 space-y-4 text-xs animate-in fade-in duration-200">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-[#042033] border border-sky-700/40">
+                      <span className="text-slate-400 text-[10px] block">Paket Kimliği</span>
+                      <span className="font-mono text-sky-300 font-bold">com.antalyakurye.cagir</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#042033] border border-sky-700/40">
+                      <span className="text-slate-400 text-[10px] block">Sürüm Kodu</span>
+                      <span className="font-mono text-sky-300 font-bold">1 (v1.0.0)</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#042033] border border-sky-700/40">
+                      <span className="text-slate-400 text-[10px] block">Hedef Android</span>
+                      <span className="text-sky-300 font-bold">SDK 33 (Android 13+)</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#042033] border border-sky-700/40">
+                      <span className="text-slate-400 text-[10px] block">İmza Türü</span>
+                      <span className="font-mono text-emerald-300 font-bold">v1 + v2 + v3 Scheme</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-slate-200 leading-relaxed">
+                    <h4 className="font-black text-amber-300 flex items-center gap-1.5">
+                      <span>🚀 Google Play Console'a Yükleme Adımları:</span>
+                    </h4>
+                    <ol className="list-decimal pl-5 space-y-1.5 text-slate-300">
+                      <li>
+                        <strong>Google Play Console</strong> hesabınıza (<a href="https://play.google.com/console" target="_blank" rel="noopener noreferrer" className="text-sky-400 underline">play.google.com/console</a>) giriş yapın.
+                      </li>
+                      <li>
+                        <strong>"Uygulama oluştur"</strong> butonuna basın; uygulama adı olarak <strong>"Antalya Kurye Çağır"</strong> yazın ve varsayılan dili <strong>Türkçe</strong> seçin.
+                      </li>
+                      <li>
+                        Sol menüden <strong>"Sürüm" → "Üretim" (veya "Dahili Test")</strong> bölümüne gidin ve <strong>"Yeni sürüm oluştur"</strong> deyin.
+                      </li>
+                      <li>
+                        Yukarıdaki <strong>"Müşteri APK İndir"</strong> butonundan indirdiğiniz <strong>Antalya-Kurye-Cagir.apk</strong> dosyasını sürükleyip bırakın.
+                      </li>
+                      <li>
+                        Mağaza listelemesi için yukarıdaki <strong>"512x512 Play Store İkonu"</strong> butonunu kullanarak uygulama ikonunu ekleyin ve uygulamanızı incelemeye gönderin.
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Grid: Bildirim İzinleri Test Laboratuvarı & Hızlı Kurulum Rehberi */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bildirim & Ses İzinleri Test Laboratuvarı */}
@@ -3372,25 +3542,25 @@ export const AdminManagement: React.FC = () => {
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 bg-[#03241d] rounded-xl border border-emerald-800/40">
-                <span className="text-slate-400 text-[10px] block">Paket Kimliği</span>
+                <span className="text-slate-400 text-[10px] block">Müşteri APK (Play Store)</span>
+                <span className="font-mono text-sky-300 font-bold text-[11px]">com.antalyakurye.cagir</span>
+              </div>
+              <div className="p-3 bg-[#03241d] rounded-xl border border-emerald-800/40">
+                <span className="text-slate-400 text-[10px] block">Kurye Havuz APK</span>
                 <span className="font-mono text-emerald-300 font-bold text-[11px]">com.antalyakurye.talep</span>
               </div>
               <div className="p-3 bg-[#03241d] rounded-xl border border-emerald-800/40">
                 <span className="text-slate-400 text-[10px] block">İmza Türü</span>
-                <span className="font-mono text-emerald-300 font-bold text-[11px]">v1 + v2 + v3 Scheme (Doğrulandı)</span>
+                <span className="font-mono text-emerald-300 font-bold text-[11px]">v1 + v2 + v3 Scheme</span>
               </div>
               <div className="p-3 bg-[#03241d] rounded-xl border border-emerald-800/40">
-                <span className="text-slate-400 text-[10px] block">Uyumlu Android</span>
-                <span className="text-emerald-300 font-bold text-[11px]">Android 5.0 - Android 15</span>
-              </div>
-              <div className="p-3 bg-[#03241d] rounded-xl border border-emerald-800/40">
-                <span className="text-slate-400 text-[10px] block">Doğrudan İndirme URL</span>
+                <span className="text-slate-400 text-[10px] block">Doğrudan İndirme</span>
                 <a
-                  href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+                  href="/downloads/Antalya-Kurye-Cagir.apk"
                   target="_blank"
-                  className="text-amber-300 font-bold text-[11px] underline truncate block"
+                  className="text-sky-300 font-bold text-[11px] underline truncate block"
                 >
-                  /downloads/Antalya-Kurye-Talep-Havuzu.apk
+                  /downloads/Antalya-Kurye-Cagir.apk
                 </a>
               </div>
             </div>

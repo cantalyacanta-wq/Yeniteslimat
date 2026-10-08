@@ -263,6 +263,13 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
     const handleUrlChange = () => {
       if (checkIsAdminRoute()) {
         setCurrentView('admin');
+      } else if (
+        typeof window !== 'undefined' &&
+        (window.location.hash.includes('kurye-cagir') || window.location.hash.includes('kuryecagir'))
+      ) {
+        if (currentUser.role !== 'courier') {
+          setCurrentView('home');
+        }
       }
       if (recordSiteVisit) {
         recordSiteVisit(window.location.pathname + window.location.hash);
@@ -286,11 +293,11 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
       <QuickCourierModal />
 
-      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde, APK'de veya /pakettalebi ekranında gösterilmez) */}
+      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde, Kurye Havuz APK'sinde veya /pakettalebi ekranında gösterilmez; Müşteri APK'sinde ve webde aktiftir) */}
       {!isPaketTalebiRoute &&
         currentView !== 'courier' &&
         currentUser.role !== 'courier' &&
-        !(typeof window !== 'undefined' && ((window as any).AndroidApp || navigator.userAgent.includes('AntalyaKuryeApp'))) && (
+        !(typeof window !== 'undefined' && (navigator.userAgent.includes('TalepHavuzu') || window.location.hash.includes('pakettalebi'))) && (
           <VoiceAIAssistantWidget />
         )}
 
