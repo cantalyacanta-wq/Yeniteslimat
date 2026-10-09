@@ -101,7 +101,10 @@ export const HeroIntro: React.FC = () => {
       return false;
     }
 
-    // Guest user (not logged in): strictly only orders created in this device / browser session
+    // Guest user (not logged in): strictly only CURRENT ACTIVE orders in progress
+    // Misafir müşteriler geçmiş (teslim edilmiş) talepleri kesinlikle görmez.
+    if (r.status === 'delivered') return false;
+
     const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
     return (
       (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||

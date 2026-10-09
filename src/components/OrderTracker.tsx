@@ -74,10 +74,16 @@ export const OrderTracker: React.FC = () => {
       if (userActive) return userActive;
     }
 
-    // 4. Session's last created order
+    // 4. Session's last created order (strictly active in-progress orders for guests)
     if (lastSavedOrderId) {
       const saved = requests.find((r) => r.id === lastSavedOrderId);
-      if (saved) return saved;
+      if (saved) {
+        // Misafir kullanıcılar tamamlanmış / geçmiş talepleri otomatik olarak görmez
+        if (currentUser.id === 'user-guest-01' && (saved.status === 'delivered' || saved.status === 'cancelled')) {
+          return null;
+        }
+        return saved;
+      }
     }
 
     // Admin fallback only

@@ -20,7 +20,7 @@ import { useDelivery } from '../context/DeliveryContext';
 import { ReceiptModal } from './ReceiptModal';
 
 export const OrderHistory: React.FC = () => {
-  const { requests, currentUser, setSelectedTrackingId, setCurrentView, cancelRequest, openQuickCourierModal } = useDelivery();
+  const { requests, currentUser, setSelectedTrackingId, setCurrentView, cancelRequest, openQuickCourierModal, openAuthModal } = useDelivery();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<DeliveryRequest | null>(null);
@@ -32,7 +32,8 @@ export const OrderHistory: React.FC = () => {
 
   // Strict data isolation:
   // - Couriers only see their own deliveries (assigned or delivered)
-  // - Customers only see their own placed orders
+  // - Registered customers only see their own placed orders
+  // - Guest customers: past requests are NOT shown (strictly isolated)
   // - Admin can inspect all orders
   const userSpecificRequests = React.useMemo(() => {
     if (currentUser.role === 'admin') {
@@ -54,7 +55,7 @@ export const OrderHistory: React.FC = () => {
       });
     }
 
-    // Customer or Guest:
+    // Registered Customer:
     if (currentUser.id !== 'user-guest-01') {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
@@ -76,14 +77,9 @@ export const OrderHistory: React.FC = () => {
       });
     }
 
-    // Guest user: strictly only orders created in this browser session
-    const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
-    return requests.filter(
-      (r) =>
-        (Boolean(lastSavedOrderId) && r.id === lastSavedOrderId) ||
-        (Boolean(pPhone) && r.sender?.contactPhone && r.sender.contactPhone.replace(/\D/g, '').slice(-10) === pPhone)
-    );
-  }, [requests, currentUser, lastSavedOrderId, lastSavedPhone]);
+    // Misafir müşteriler geçmiş taleplerini görmez.
+    return [];
+  }, [requests, currentUser]);
 
   const filtered = userSpecificRequests.filter((req) => {
     if (filterStatus !== 'all' && req.status !== filterStatus) return false;
@@ -117,6 +113,47 @@ export const OrderHistory: React.FC = () => {
         return <span className="text-[10px] font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-full">{status}</span>;
     }
   };
+
+  // Misafir müşteriler geçmiş taleplerini görmez
+  if (currentUser.id === 'user-guest-01') {
+    return (
+      <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
+          <History className="w-7 h-7" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-extrabold text-white">Geçmiş Talepler İçin Üye Girişi Gerekli</h3>
+          <p className="text-xs text-emerald-300/80 leading-relaxed">
+            Misafir olarak verilen kurye taleplerinin geçmiş kayıtları misafir oturumunda listelenmez. Geçmiş siparişlerinizi ve teslimat makbuzlarınızı görüntülemek için lütfen müşteri girişi yapınız.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2.5 pt-2">
+          <button
+            type="button"
+            onClick={() => openAuthModal('login', 'Geçmiş siparişlerinizi ve teslimat detaylarınızı görüntülemek için lütfen müşteri hesabınıza giriş yapın.')}
+            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+          >
+            <span>Müşteri Girişi Yap / Üye Ol</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openQuickCourierModal()}
+            className="w-full py-2.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-700/60 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4 text-emerald-400" />
+            <span>Yeni Kurye Çağır</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentView('home')}
+            className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+          >
+            Ana Sayfaya Dön
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">

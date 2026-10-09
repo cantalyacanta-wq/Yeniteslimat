@@ -2174,6 +2174,9 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
       if (uName && uName !== 'yeni müşteri' && uName !== 'müşteri' && r.sender?.contactName?.trim().toLowerCase() === uName) return true;
       return false;
     }
+    // Misafir kullanıcılar geçmiş (tamamlanmış / teslim edilmiş) talepleri görmez
+    if (r.status === 'delivered' || r.status === 'cancelled') return false;
+
     const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
     const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
     const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
