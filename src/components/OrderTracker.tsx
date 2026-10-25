@@ -18,7 +18,9 @@ import {
   RotateCcw,
   LogOut,
   Zap,
-  X
+  X,
+  History,
+  Plus
 } from 'lucide-react';
 import { DeliveryRequest, DeliveryStatus } from '../types';
 import { useDelivery } from '../context/DeliveryContext';
@@ -33,6 +35,7 @@ export const OrderTracker: React.FC = () => {
     rateDelivery,
     setCurrentView,
     cancelRequest,
+    openAuthModal,
     logout 
   } = useDelivery();
 
@@ -46,24 +49,38 @@ export const OrderTracker: React.FC = () => {
   // Restore last customer order ID from storage
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
 
+  // Is current user a guest
+  const isGuest = currentUser.id === 'user-guest-01' || !currentUser.email;
+
   // Active or selected order - safely scoped to the user's own orders or searched code
-  const currentOrder = React.useMemo(() => {
+  const { currentOrder, isGuestPastOrderBlocked } = React.useMemo(() => {
     // 1. Explicitly searched code
     if (searchQuery.trim()) {
       const found = requests.find(
         (r) => r.trackingCode.toLowerCase() === searchQuery.trim().toLowerCase() || r.id === searchQuery.trim()
       );
-      if (found) return found;
+      if (found) {
+        // Misafir kullanıcılar geçmiş/tamamlanmış talepleri göremez
+        if (isGuest && (found.status === 'delivered' || found.status === 'cancelled')) {
+          return { currentOrder: null, isGuestPastOrderBlocked: true };
+        }
+        return { currentOrder: found, isGuestPastOrderBlocked: false };
+      }
     }
 
     // 2. Explicitly selected tracking id
     if (selectedTrackingId) {
       const found = requests.find((r) => r.id === selectedTrackingId);
-      if (found) return found;
+      if (found) {
+        if (isGuest && (found.status === 'delivered' || found.status === 'cancelled')) {
+          return { currentOrder: null, isGuestPastOrderBlocked: true };
+        }
+        return { currentOrder: found, isGuestPastOrderBlocked: false };
+      }
     }
 
     // 3. Current user's own active order
-    if (currentUser.id !== 'user-guest-01') {
+    if (!isGuest) {
       const userActive = requests.find(
         (r) =>
           (r.senderUserId === currentUser.id ||
@@ -71,7 +88,7 @@ export const OrderTracker: React.FC = () => {
           r.status !== 'delivered' &&
           r.status !== 'cancelled'
       );
-      if (userActive) return userActive;
+      if (userActive) return { currentOrder: userActive, isGuestPastOrderBlocked: false };
     }
 
     // 4. Session's last created order (strictly active in-progress orders for guests)
@@ -79,20 +96,20 @@ export const OrderTracker: React.FC = () => {
       const saved = requests.find((r) => r.id === lastSavedOrderId);
       if (saved) {
         // Misafir kullanıcılar tamamlanmış / geçmiş talepleri otomatik olarak görmez
-        if (currentUser.id === 'user-guest-01' && (saved.status === 'delivered' || saved.status === 'cancelled')) {
-          return null;
+        if (isGuest && (saved.status === 'delivered' || saved.status === 'cancelled')) {
+          return { currentOrder: null, isGuestPastOrderBlocked: false };
         }
-        return saved;
+        return { currentOrder: saved, isGuestPastOrderBlocked: false };
       }
     }
 
     // Admin fallback only
     if (currentUser.role === 'admin' && requests.length > 0) {
-      return requests[0];
+      return { currentOrder: requests[0], isGuestPastOrderBlocked: false };
     }
 
-    return null;
-  }, [requests, selectedTrackingId, searchQuery, currentUser, lastSavedOrderId]);
+    return { currentOrder: null, isGuestPastOrderBlocked: false };
+  }, [requests, selectedTrackingId, searchQuery, currentUser, lastSavedOrderId, isGuest]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -558,6 +575,27 @@ export const OrderTracker: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      ) : isGuestPastOrderBlocked ? (
+        <div className="bg-[#021f19] rounded-3xl border border-emerald-800/80 p-8 text-center text-white space-y-4 max-w-lg mx-auto shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
+            <History className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-extrabold text-white">Geçmiş Sipariş İçin Üye Girişi Gerekli</h3>
+            <p className="text-xs text-emerald-300/80 leading-relaxed">
+              Aradığınız sipariş tamamlanmıştır. Misafir kullanıcılar tamamlanmış / geçmiş teslimat kayıtlarını ve fişlerini görüntüleyemez. Sipariş geçmişinizi incelemek için lütfen müşteri girişi yapınız.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => openAuthModal('login', 'Geçmiş teslimat kaydını ve makbuzu görüntülemek için lütfen müşteri hesabınıza giriş yapın.')}
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+            >
+              <span>Müşteri Girişi Yap / Üye Ol</span>
+            </button>
           </div>
         </div>
       ) : (

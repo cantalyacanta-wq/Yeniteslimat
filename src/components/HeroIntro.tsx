@@ -86,7 +86,7 @@ export const HeroIntro: React.FC = () => {
     if (currentUser.role === 'admin') return true;
 
     // If logged in as customer or user
-    if (currentUser.id !== 'user-guest-01') {
+    if (currentUser.id !== 'user-guest-01' && currentUser.email) {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
       const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';

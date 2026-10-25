@@ -56,7 +56,7 @@ export const OrderHistory: React.FC = () => {
     }
 
     // Registered Customer:
-    if (currentUser.id !== 'user-guest-01') {
+    if (currentUser.id !== 'user-guest-01' && currentUser.email) {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
       const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
@@ -115,7 +115,8 @@ export const OrderHistory: React.FC = () => {
   };
 
   // Misafir müşteriler geçmiş taleplerini görmez
-  if (currentUser.id === 'user-guest-01') {
+  const isGuest = currentUser.id === 'user-guest-01' || !currentUser.email;
+  if (isGuest) {
     return (
       <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
         <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">

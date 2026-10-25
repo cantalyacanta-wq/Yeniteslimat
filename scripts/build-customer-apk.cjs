@@ -148,15 +148,59 @@ function processClassesDex(rawDex) {
   }
 
   // 5. Completely disable native CourierForegroundService startup in Customer APK
+  // NOP out the 3 callers of startCourierForegroundService in MainActivity
+  const callers = [7986, 8320, 12234];
+  for (const callOff of callers) {
+    if (dex.length > callOff + 5) {
+      dex[callOff] = 0x00;
+      dex[callOff + 1] = 0x00;
+      dex[callOff + 2] = 0x00;
+      dex[callOff + 3] = 0x00;
+      dex[callOff + 4] = 0x00;
+      dex[callOff + 5] = 0x00;
+      console.log(`NOP'd out caller to startCourierForegroundService at offset ${callOff}`);
+    }
+  }
+
   // In MainActivity, startCourierForegroundService is at codeOff 12384.
   // Placing Dalvik opcode 0x0e 0x00 (return-void) at the method start (12384 + 16)
-  // ensures the native delayed handler (1.5s) and permission callbacks immediately return
-  // without starting any foreground service or displaying "Paket talep havuzu dinleniyor" in the notification bar.
   const codeOff = 12384;
   if (dex.length > codeOff + 17) {
     dex[codeOff + 16] = 0x0e;
     dex[codeOff + 17] = 0x00;
     console.log('Disabled native startCourierForegroundService with return-void at offset ' + (codeOff + 16));
+  }
+
+  // In CourierForegroundService, onStartCommand is at codeOff 6992 (code begins at 7008).
+  // Placing:
+  // 12 10              -> const/4 v0, 1
+  // 6e 20 71 00 0a 00  -> invoke-virtual {v10, v0}, stopForeground(Z)
+  // 6e 10 72 00 0a 00  -> invoke-virtual {v10}, stopSelf()
+  // 12 20              -> const/4 v0, 2
+  // 0f 00              -> return v0
+  // ensures if the service is ever triggered by system or intent, it immediately stops foreground,
+  // dismisses any status bar notification, and stops itself with START_NOT_STICKY.
+  const serviceCodeOff = 6992;
+  if (dex.length > serviceCodeOff + 32) {
+    const stopFgPatch = Buffer.from([
+      0x12, 0x10,
+      0x6e, 0x20, 0x71, 0x00, 0x0a, 0x00,
+      0x6e, 0x10, 0x72, 0x00, 0x0a, 0x00,
+      0x12, 0x20,
+      0x0f, 0x00
+    ]);
+    stopFgPatch.copy(dex, serviceCodeOff + 16);
+    console.log('Patched CourierForegroundService.onStartCommand with stopForeground/stopSelf/return at offset ' + (serviceCodeOff + 16));
+  }
+
+  // Replace any occurrence of the notification string "Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz"
+  const oldNotifText = Buffer.from('Paket talep havuzu 7/24 dinleniyor • Arka planda kesintisiz', 'utf8');
+  const newNotifText = Buffer.from('Antalya Kurye Cagir • Hizli Kurye & Paket Teslimat Servisi ', 'utf8');
+  idx = 0;
+  while ((idx = dex.indexOf(oldNotifText, idx)) !== -1) {
+    newNotifText.copy(dex, idx);
+    console.log(`Replaced notification string at offset ${idx}`);
+    idx += newNotifText.length;
   }
 
   // 6. Recompute DEX Checksums (SHA-1 at 12..32, Adler32 at 8..12)

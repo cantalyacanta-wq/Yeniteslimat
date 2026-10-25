@@ -2160,7 +2160,7 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
   // Orders created by THIS customer (strictly isolated for non-admin)
   const myCustomerOrders = requests.filter((r) => {
     if (currentUser.role === 'admin') return true;
-    if (currentUser.id !== 'user-guest-01') {
+    if (currentUser.id !== 'user-guest-01' && currentUser.email) {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
       const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';

@@ -50,6 +50,19 @@ const MainContent: React.FC = () => {
           if (typeof android.hideForegroundNotification === 'function') {
             android.hideForegroundNotification();
           }
+          // Arka plandaki zamanlayıcılar için ek güvence kontrolleri
+          setTimeout(() => {
+            try {
+              if (typeof android.stopForegroundService === 'function') android.stopForegroundService();
+              if (typeof android.hideForegroundNotification === 'function') android.hideForegroundNotification();
+            } catch (e) {}
+          }, 800);
+          setTimeout(() => {
+            try {
+              if (typeof android.stopForegroundService === 'function') android.stopForegroundService();
+              if (typeof android.hideForegroundNotification === 'function') android.hideForegroundNotification();
+            } catch (e) {}
+          }, 2000);
         } else if (currentUser.role === 'courier') {
           if (typeof android.startForegroundService === 'function') {
             android.startForegroundService(
