@@ -52,7 +52,11 @@
     <meta name="apple-mobile-web-app-title" content="Antalya Kurye" />
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://www.antalyateslimat.com/" />
+    <link rel="canonical" href="https://antalyateslimat.com/" />
+
+    <!-- Google Search Console Site Verification -->
+    <meta name="google-site-verification" content="google1ef8290a0908c9ac" />
+    <meta name="google-site-verification" content="google1ef8290a0908c9ac.html" />
 
     <!-- Primary SEO Title & Meta Tags -->
     <title>Antalya Teslimat 7/24 - Antalya Paket Gönder, Kurye Çağır, Acil Paket Gönder</title>
@@ -270,6 +274,41 @@
   <body class="bg-[#021814] text-slate-100 font-sans antialiased m-0 p-0 overflow-x-hidden min-h-screen">
     <div id="root" class="min-h-screen w-full"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Automatically hide / remove external host badges if present -->
+    <style>
+      #netlify-badge,
+      iframe[src*="netlify"],
+      [data-netlify-badge],
+      .netlify-badge,
+      div[style*="position: fixed"][style*="bottom"][style*="z-index: 1000"] a[href*="netlify.com"],
+      div[style*="position: fixed"][style*="bottom"][style*="z-index: 9999"] a[href*="netlify.com"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        width: 0 !important;
+      }
+    </style>
+    <script>
+      (function() {
+        function cleanBadges() {
+          try {
+            var badges = document.querySelectorAll('#netlify-badge, iframe[src*="netlify"], [data-netlify-badge], .netlify-badge');
+            for (var i = 0; i < badges.length; i++) {
+              if (badges[i] && badges[i].parentNode) {
+                badges[i].parentNode.removeChild(badges[i]);
+              }
+            }
+          } catch(e) {}
+        }
+        document.addEventListener('DOMContentLoaded', cleanBadges);
+        window.addEventListener('load', cleanBadges);
+        setTimeout(cleanBadges, 500);
+        setTimeout(cleanBadges, 1500);
+        setTimeout(cleanBadges, 3000);
+      })();
+    </script>
   </body>
 </html>
 

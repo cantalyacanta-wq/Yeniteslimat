@@ -638,8 +638,16 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         const toDistrict = finalState.destDistrict || 'Muratpaşa';
         const estimate = calculateDeliveryEstimate(fromDistrict, toDistrict, 'other', 'express_vip');
 
+        const isGuest =
+          currentUser?.id === 'user-guest-01' ||
+          !currentUser?.email ||
+          (currentUser?.email && currentUser.email.endsWith('@antalyakurye.com')) ||
+          (currentUser?.id && currentUser.id.startsWith('user-guest'));
+
         const newReq = createNewRequest({
-          senderUserId: currentUser?.id,
+          senderUserId: isGuest ? 'user-guest-01' : currentUser?.id,
+          isGuestOrder: isGuest,
+          isVoiceOrder: true,
           sender: {
             district: fromDistrict,
             neighborhood: '',

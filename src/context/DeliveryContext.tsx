@@ -290,6 +290,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const saved = localStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY) || sessionStorage.getItem(STORAGE_ACTIVE_USER_ID_KEY);
       if (saved && saved !== 'user-courier-01' && saved !== 'user-courier-02' && saved !== 'user-customer-sample-1') {
+        // Otomatik oluşturulmuş misafir hesaplarını temizle ve misafir oturumuna dön
+        if (saved.startsWith('user-cust-')) {
+          localStorage.removeItem(STORAGE_ACTIVE_USER_ID_KEY);
+          sessionStorage.removeItem(STORAGE_ACTIVE_USER_ID_KEY);
+          return INITIAL_USERS[0].id;
+        }
         return saved;
       }
     } catch (e) {
@@ -1445,35 +1451,15 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const trackingCode = `ANT-${randomNum}`;
 
-      // If user is guest or has no email, automatically establish an active customer profile
-      let effectiveUserId = currentUser.id;
-      if (effectiveUserId === 'user-guest-01' || !currentUser.email) {
-        effectiveUserId = `user-cust-${Date.now()}`;
-        const autoCustomer: UserAccount = {
-          id: effectiveUserId,
-          name: params.sender.contactName.trim() || 'Müşteri',
-          phone: params.sender.contactPhone.trim() || '0532 000 00 00',
-          email: `${params.sender.contactName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'musteri'}_${randomNum}@antalyakurye.com`,
-          password: '123',
-          role: 'customer',
-          district: params.sender.district || 'Muratpaşa',
-          createdAt: new Date().toISOString(),
-          totalOrders: 1,
-          totalEarnings: 0,
-        };
-        setUsers((prev) => [autoCustomer, ...prev.filter((u) => u.id !== autoCustomer.id)]);
-        setCurrentUserId(effectiveUserId);
-        try {
-          localStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
-          sessionStorage.setItem(STORAGE_ACTIVE_USER_ID_KEY, effectiveUserId);
-        } catch {}
+      // Misafir müşteriler (sesli asistan veya üyeliksiz sipariş oluşturanlar) misafir kalır.
+      // Asla sahte/otomatik kullanıcı hesabı açılıp sisteme üye gibi kaydedilmez.
+      const isGuestCustomer =
+        currentUser.id === 'user-guest-01' ||
+        !currentUser.email ||
+        currentUser.email.endsWith('@antalyakurye.com') ||
+        currentUser.id.startsWith('user-guest');
 
-        fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(autoCustomer),
-        }).catch(() => {});
-      }
+      const effectiveUserId = isGuestCustomer ? 'user-guest-01' : currentUser.id;
 
       const tip = Math.max(0, Math.round(Number(params.tipAmount) || 0));
       const totalPrice = estimate.price + tip;
@@ -1486,6 +1472,7 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         senderUserId: effectiveUserId,
+        isGuestOrder: isGuestCustomer,
         status: 'pending_admin', // Initial customer request starts in pending_admin waiting for management approval!
         estimatedDistanceKm: finalDistanceKm,
         estimatedDurationMins: finalDurationMins,
@@ -2160,7 +2147,12 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
   // Orders created by THIS customer (strictly isolated for non-admin)
   const myCustomerOrders = requests.filter((r) => {
     if (currentUser.role === 'admin') return true;
-    if (currentUser.id !== 'user-guest-01' && currentUser.email) {
+    if (
+      currentUser.id !== 'user-guest-01' &&
+      currentUser.email &&
+      !currentUser.email.endsWith('@antalyakurye.com') &&
+      !currentUser.id.startsWith('user-guest')
+    ) {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
       const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';

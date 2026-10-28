@@ -50,7 +50,11 @@ export const OrderTracker: React.FC = () => {
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
 
   // Is current user a guest
-  const isGuest = currentUser.id === 'user-guest-01' || !currentUser.email;
+  const isGuest =
+    currentUser.id === 'user-guest-01' ||
+    !currentUser.email ||
+    currentUser.email.endsWith('@antalyakurye.com') ||
+    currentUser.id.startsWith('user-guest');
 
   // Active or selected order - safely scoped to the user's own orders or searched code
   const { currentOrder, isGuestPastOrderBlocked } = React.useMemo(() => {

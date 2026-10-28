@@ -89,6 +89,8 @@ export interface DeliveryRequest {
   
   // Sender User info (if logged in)
   senderUserId?: string;
+  isGuestOrder?: boolean;
+  isVoiceOrder?: boolean;
   
   // Locations
   sender: LocationInfo;

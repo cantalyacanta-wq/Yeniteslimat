@@ -81,6 +81,12 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Google Search Console Site Verification File Endpoint
+app.get('/google1ef8290a0908c9ac.html', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send('google-site-verification: google1ef8290a0908c9ac.html');
+});
+
 // Storage directory & file setup
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'server-db.json');
@@ -4269,5 +4275,34 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 });
 
 server.on('error', (err: any) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.warn(`[SERVER WARNING] Port ${PORT} temporarily busy, retrying in 1000ms...`);
+    setTimeout(() => {
+      try {
+        server.close();
+      } catch {}
+      server.listen(PORT, '0.0.0.0');
+    }, 1000);
+    return;
+  }
   console.error('[SERVER ERROR]', err);
 });
+
+process.on('SIGTERM', () => {
+  console.log('[SERVER] SIGTERM received, closing server...');
+  try {
+    server.close(() => process.exit(0));
+  } catch {
+    process.exit(0);
+  }
+});
+
+process.on('SIGINT', () => {
+  console.log('[SERVER] SIGINT received, closing server...');
+  try {
+    server.close(() => process.exit(0));
+  } catch {
+    process.exit(0);
+  }
+});
+

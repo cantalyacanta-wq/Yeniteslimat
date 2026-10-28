@@ -80,13 +80,20 @@ export const HeroIntro: React.FC = () => {
   const lastSavedOrderId = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_order_id') : null;
   const lastSavedPhone = typeof window !== 'undefined' ? localStorage.getItem('ant_last_customer_phone') : null;
 
+  const isUserLoggedIn = 
+    currentUser.id !== 'user-guest-01' && 
+    Boolean(currentUser.email) && 
+    !currentUser.email.endsWith('@antalyakurye.com') && 
+    !currentUser.id.startsWith('user-guest') &&
+    currentUser.role === 'customer';
+
   // Active customer orders (strictly isolated to the current user's own orders)
   const customerOrders = requests.filter((r) => {
     if (!r || r.status === 'cancelled') return false;
     if (currentUser.role === 'admin') return true;
 
-    // If logged in as customer or user
-    if (currentUser.id !== 'user-guest-01' && currentUser.email) {
+    // Sadece gerçek üye girişi yapmış kayıtlı müşteriler geçmiş sipariş kayıtlarını görebilir
+    if (isUserLoggedIn) {
       const uPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '').slice(-10) : '';
       const uEmail = currentUser.email ? currentUser.email.trim().toLowerCase() : '';
       const uName = currentUser.name ? currentUser.name.trim().toLowerCase() : '';
@@ -101,8 +108,9 @@ export const HeroIntro: React.FC = () => {
       return false;
     }
 
-    // Guest user (not logged in): strictly only CURRENT ACTIVE orders in progress
-    // Misafir müşteriler geçmiş (teslim edilmiş) talepleri kesinlikle görmez.
+    // Misafir kullanıcılar ve sesli müşteri hizmetleriyle sipariş oluşturanlar:
+    // Sadece ve sadece DEVAM EDEN (aktif) siparişlerini takip edebilir.
+    // Teslim edilmiş (geçmiş) talepleri KESİNLİKLE göremezler.
     if (r.status === 'delivered') return false;
 
     const pPhone = lastSavedPhone ? lastSavedPhone.replace(/\D/g, '').slice(-10) : '';
@@ -113,7 +121,8 @@ export const HeroIntro: React.FC = () => {
   });
 
   const activeOrders = customerOrders.filter((r) => r.status !== 'delivered');
-  const deliveredOrders = customerOrders.filter((r) => r.status === 'delivered');
+  // Misafir müşteriler geçmiş siparişleri KESİNLİKLE görmez
+  const deliveredOrders = isUserLoggedIn ? customerOrders.filter((r) => r.status === 'delivered') : [];
 
   // Active order to display
   const activeCustomerOrder = 
@@ -121,9 +130,9 @@ export const HeroIntro: React.FC = () => {
     activeOrders[0] ||
     null;
 
-  // Delivered order to celebrate if no active order is in progress
+  // Delivered order to celebrate ONLY for logged-in registered customers
   const deliveredOrderToCelebrate =
-    !activeCustomerOrder && deliveredOrders.length > 0
+    isUserLoggedIn && !activeCustomerOrder && deliveredOrders.length > 0
       ? deliveredOrders[0]
       : null;
 
@@ -149,8 +158,6 @@ export const HeroIntro: React.FC = () => {
         return <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">{status}</span>;
     }
   };
-
-  const isUserLoggedIn = currentUser.id !== 'user-guest-01' && currentUser.role === 'customer';
 
   // Filter history items for logged-in customer
   const filteredDeliveredOrders = deliveredOrders.filter((req) => {
