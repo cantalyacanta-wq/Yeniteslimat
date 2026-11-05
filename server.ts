@@ -1319,9 +1319,13 @@ function initFirestoreSync() {
           const existingIdx = dbState.requests.findIndex(
             (r) => r.id === docId || (r.trackingCode && r.trackingCode === trackingCode)
           );
+          let previousStatus: string | undefined = undefined;
+          let wasEmailDispatched = false;
 
           if (existingIdx >= 0) {
             const currentReq = dbState.requests[existingIdx];
+            previousStatus = currentReq.status;
+            wasEmailDispatched = Boolean(currentReq.emailDispatched);
             dbState.requests[existingIdx] = { ...currentReq, ...fullOrder };
           } else {
             dbState.requests.unshift(fullOrder);
@@ -1330,20 +1334,41 @@ function initFirestoreSync() {
 
           // Check if email needs to be dispatched (ONLY for approved pool orders, never while pending_admin!)
           const isTest = isTestOrFakeOrder(fullOrder);
-          const orderAgeRef = fullOrder.approvedAt || fullOrder.createdAt;
-          const orderAgeMs = orderAgeRef ? (Date.now() - new Date(orderAgeRef).getTime()) : Infinity;
-          const isFresh = orderAgeMs <= MAX_ORDER_EMAIL_AGE_MS;
           const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled !== false;
           const isApprovedPool = fullOrder.status === 'pending_pool';
-          const needsEmail = isOrderEmailsActive && !isTest && isFresh && isApprovedPool && !fullOrder.emailDispatched && !dispatchedEmailOrderIds.has(docId) && !dispatchedEmailOrderIds.has(trackingCode);
+
+          // Detect manager approval event:
+          // 1. Explicit status change to pending_pool (from pending_admin or unassigned)
+          // 2. OR forceDispatchEmail flag set by manager in UI
+          // 3. OR modified event where approvedAt is recent (within 4 hours) and email is not yet dispatched
+          const approvedAtMs = fullOrder.approvedAt ? new Date(fullOrder.approvedAt).getTime() : 0;
+          const isRecentlyApproved = approvedAtMs > 0 && (Date.now() - approvedAtMs) <= (4 * 60 * 60 * 1000);
+          const isTransitionToPool = (previousStatus === 'pending_admin' || !previousStatus) && isApprovedPool;
+          const isForceEmail = fullOrder.forceDispatchEmail === true;
+
+          const needsEmail =
+            isApprovedPool &&
+            !isTest &&
+            isOrderEmailsActive &&
+            (isForceEmail || isTransitionToPool || (isRecentlyApproved && !fullOrder.emailDispatched && !wasEmailDispatched));
 
           if (needsEmail) {
-            console.log(`[FIRESTORE SYNC] 📦 Approved pool order from Firestore detected: #${trackingCode} (${docId}). Triggering email queue...`);
-            enqueueNewOrderEmail(fullOrder, undefined, false);
-          } else if (!isFresh && isApprovedPool) {
-            // ONLY mark stale in memory if it was an approved pool order that aged out
-            dispatchedEmailOrderIds.add(docId);
-            dispatchedEmailOrderIds.add(trackingCode);
+            console.log(`[FIRESTORE SYNC] 🎯 Manager APPROVED order #${trackingCode} (${docId})! Triggering courier email queue...`);
+            // Clear any stale suppression entries
+            dispatchedEmailOrderIds.delete(docId);
+            dispatchedEmailOrderIds.delete(trackingCode);
+            if (existingIdx >= 0) {
+              dbState.requests[existingIdx].emailDispatched = false;
+            }
+            fullOrder.emailDispatched = false;
+
+            enqueueNewOrderEmail(fullOrder, undefined, true);
+
+            // Clean up force flag in Firestore if present
+            if (isForceEmail && serverFirestoreDb) {
+              const reqRef = doc(serverFirestoreDb, 'delivery_requests', docId);
+              setDoc(reqRef, { forceDispatchEmail: false }, { merge: true }).catch(() => {});
+            }
           }
         });
 
@@ -1459,10 +1484,15 @@ setInterval(() => {
     dbState.requests.forEach((r) => {
       if (!r || !r.id || isTestOrFakeOrder(r)) return;
 
-      const orderAgeMs = r.createdAt ? (now - new Date(r.createdAt).getTime()) : Infinity;
-      // Stale orders get marked as dispatched so they never trigger
+      // DO NOT touch orders in pending_admin! They are awaiting manager review!
+      if (r.status === 'pending_admin') return;
+
+      const orderAgeRef = r.approvedAt || r.createdAt;
+      const orderAgeMs = orderAgeRef ? (now - new Date(orderAgeRef).getTime()) : Infinity;
+
+      // Only mark stale if it's pending_pool and older than 30 minutes
       if (orderAgeMs > MAX_ORDER_EMAIL_AGE_MS) {
-        if (!r.emailDispatched) {
+        if (!r.emailDispatched && r.status === 'pending_pool') {
           r.emailDispatched = true;
           r.emailDispatchedAt = r.emailDispatchedAt || 'stale_skipped';
           if (r.id) dispatchedEmailOrderIds.add(r.id);
@@ -1471,14 +1501,16 @@ setInterval(() => {
         return;
       }
 
-      const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled === true;
+      const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled !== false;
       if (!isOrderEmailsActive) return;
 
       const isApprovedPool = r.status === 'pending_pool';
       const isUnsent = isApprovedPool && !r.emailDispatched && !dispatchedEmailOrderIds.has(r.id) && (!r.trackingCode || !dispatchedEmailOrderIds.has(r.trackingCode));
       if (isUnsent) {
         console.log(`[AUTO SWEEP] 🚀 Auto-dispatching approved pool order #${r.trackingCode} (${r.id})...`);
-        enqueueNewOrderEmail(r, undefined, false);
+        dispatchedEmailOrderIds.delete(r.id);
+        if (r.trackingCode) dispatchedEmailOrderIds.delete(r.trackingCode);
+        enqueueNewOrderEmail(r, undefined, true);
       }
     });
   }
@@ -2530,6 +2562,7 @@ app.post('/api/requests/:id/approve-pool', (req, res) => {
       status: 'pending_pool',
       approvedAt: now,
       updatedAt: now,
+      emailDispatched: false,
     };
 
     dbState.requests[reqIndex] = updated;

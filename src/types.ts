@@ -134,6 +134,7 @@ export interface DeliveryRequest {
   // Email Notification
   emailDispatched?: boolean;
   emailDispatchedAt?: string;
+  forceDispatchEmail?: boolean;
 }
 
 export interface DistrictData {

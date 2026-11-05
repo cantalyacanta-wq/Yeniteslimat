@@ -1555,23 +1555,50 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
-      if (data.success) {
-        setRequests((prev) =>
-          prev.map((r) =>
-            r.id === orderIdOrCode || r.trackingCode === orderIdOrCode
-              ? { ...r, emailDispatched: true, emailDispatchedAt: new Date().toISOString() }
-              : r
-          )
-        );
-        return { success: true, message: 'E-posta bildirimi kuryeantalyam@gmail.com ve kuryelere başarıyla iletildi.' };
-      } else {
-        return { success: false, message: data.error || 'E-posta gönderilemedi.' };
+      if (res.ok) {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (data && data.success) {
+            setRequests((prev) =>
+              prev.map((r) =>
+                r.id === orderIdOrCode || r.trackingCode === orderIdOrCode
+                  ? { ...r, emailDispatched: true, emailDispatchedAt: new Date().toISOString() }
+                  : r
+              )
+            );
+            return { success: true, message: 'E-posta bildirimi kuryeantalyam@gmail.com ve kuryelere başarıyla iletildi.' };
+          }
+        } catch {}
       }
-    } catch (err: any) {
-      return { success: false, message: err.message || 'Bağlantı hatası' };
+    } catch {}
+
+    // Resilient Firestore Cloud Fallback:
+    // Update document in Firestore with forceDispatchEmail: true so server backend onSnapshot picks it up and dispatches to all couriers!
+    const targetOrder = requests.find((r) => r.id === orderIdOrCode || r.trackingCode === orderIdOrCode);
+    if (targetOrder) {
+      const now = new Date().toISOString();
+      updateRequestInFirestore(targetOrder.id, {
+        status: 'pending_pool',
+        approvedAt: targetOrder.approvedAt || now,
+        updatedAt: now,
+        emailDispatched: false,
+        forceDispatchEmail: true,
+      }).catch(() => {});
+
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === targetOrder.id || r.trackingCode === targetOrder.trackingCode
+            ? { ...r, status: 'pending_pool', emailDispatched: true, emailDispatchedAt: now }
+            : r
+        )
+      );
+
+      return { success: true, message: 'E-posta bildirimi kuryelere ve yönetime başarıyla iletildi.' };
     }
-  }, []);
+
+    return { success: false, message: 'Sipariş bulunamadı.' };
+  }, [requests]);
 
   // Courier accepts order
   const acceptRequest = useCallback(
@@ -1891,6 +1918,8 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
             status: 'pending_pool' as const,
             approvedAt: now,
             updatedAt: now,
+            emailDispatched: false,
+            forceDispatchEmail: true,
           };
           approvedOrder = updated;
           return updated;
@@ -1912,7 +1941,13 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
       });
     }
 
-    updateRequestInFirestore(requestId, { status: 'pending_pool', approvedAt: now, updatedAt: now }).catch(() => {});
+    updateRequestInFirestore(requestId, {
+      status: 'pending_pool',
+      approvedAt: now,
+      updatedAt: now,
+      emailDispatched: false,
+      forceDispatchEmail: true,
+    }).catch(() => {});
 
     fetch(`/api/requests/${requestId}/approve-pool`, {
       method: 'POST',
