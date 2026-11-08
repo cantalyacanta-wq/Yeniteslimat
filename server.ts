@@ -7,7 +7,7 @@ import { EventEmitter } from 'events';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, getDoc } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
 import { EdgeTTS } from 'node-edge-tts';
 
@@ -1472,6 +1472,79 @@ function initFirestoreSync() {
   } catch (err: any) {
     console.warn('[FIRESTORE PWD RESET INIT FAIL]', err.message);
   }
+
+  // 5. Synchronize Email Dispatch Queue (Real-time onSnapshot from email_queue collection)
+  try {
+    const emailQueueColRef = collection(serverFirestoreDb, 'email_queue');
+    onSnapshot(
+      emailQueueColRef,
+      (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data: any = change.doc.data();
+            if (data && data.status === 'pending' && (data.orderId || data.trackingCode)) {
+              console.log(`[FIRESTORE EMAIL QUEUE] 📨 New email job detected: #${data.trackingCode} (${data.orderId})`);
+              const docRef = doc(serverFirestoreDb, 'email_queue', change.doc.id);
+              try {
+                await setDoc(docRef, { status: 'processing', startedAt: new Date().toISOString() }, { merge: true });
+
+                const targetCode = data.trackingCode ? String(data.trackingCode).trim() : '';
+                const targetId = data.orderId ? String(data.orderId).trim() : '';
+                const cleanDigits = targetCode ? targetCode.replace(/\D/g, '') : '';
+
+                let order = dbState.requests.find(
+                  (r) =>
+                    (targetId && r.id === targetId) ||
+                    (targetCode && r.trackingCode && r.trackingCode.toUpperCase() === targetCode.toUpperCase()) ||
+                    (cleanDigits && r.trackingCode && r.trackingCode.replace(/\D/g, '') === cleanDigits)
+                );
+
+                if (!order && serverFirestoreDb && targetId) {
+                  try {
+                    const docSnap = await getDoc(doc(serverFirestoreDb, 'delivery_requests', targetId));
+                    if (docSnap.exists()) {
+                      order = { ...docSnap.data(), id: docSnap.id } as any;
+                      if (order) dbState.requests.unshift(order);
+                    }
+                  } catch {}
+                }
+
+                if (order) {
+                  dispatchedEmailOrderIds.delete(order.id);
+                  if (order.trackingCode) dispatchedEmailOrderIds.delete(order.trackingCode);
+                  order.emailDispatched = false;
+                  order.status = 'pending_pool';
+                  order.approvedAt = order.approvedAt || new Date().toISOString();
+
+                  const queueRes = enqueueNewOrderEmail(order, data.targetEmail, true);
+                  await setDoc(
+                    docRef,
+                    {
+                      status: 'completed',
+                      completedAt: new Date().toISOString(),
+                      queueResult: queueRes,
+                    },
+                    { merge: true }
+                  );
+                  console.log(`[FIRESTORE EMAIL QUEUE] ✅ Successfully processed mail dispatch for #${order.trackingCode} (${order.id})`);
+                } else {
+                  await setDoc(docRef, { status: 'failed', error: 'Sipariş bulunamadı', failedAt: new Date().toISOString() }, { merge: true });
+                }
+              } catch (qErr: any) {
+                console.warn('[FIRESTORE EMAIL QUEUE ERR]', qErr.message);
+                await setDoc(docRef, { status: 'failed', error: qErr.message, failedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+              }
+            }
+          }
+        });
+      },
+      (err) => {
+        console.warn('[FIRESTORE EMAIL QUEUE LISTENER ERR]', err.message);
+      }
+    );
+  } catch (err: any) {
+    console.warn('[FIRESTORE EMAIL QUEUE INIT FAIL]', err.message);
+  }
 }
 
 // Initial Firestore connection trigger
@@ -1834,6 +1907,10 @@ app.post('/api/requests/:id/resend-email', (req, res) => {
       return;
     }
 
+    if (order.id) dispatchedEmailOrderIds.delete(order.id);
+    if (order.trackingCode) dispatchedEmailOrderIds.delete(order.trackingCode);
+    order.emailDispatched = false;
+
     const queueResult = enqueueNewOrderEmail(order, targetEmail, true);
     res.json({
       success: true,
@@ -1864,6 +1941,10 @@ app.all(['/api/requests/force-dispatch/:idOrCode', '/api/requests/:idOrCode/forc
       res.status(404).json({ error: `Sipariş bulunamadı: ${idOrCode}` });
       return;
     }
+
+    if (order.id) dispatchedEmailOrderIds.delete(order.id);
+    if (order.trackingCode) dispatchedEmailOrderIds.delete(order.trackingCode);
+    order.emailDispatched = false;
 
     // Force enqueue bypasses deduplication lock
     const queueResult = enqueueNewOrderEmail(order, typeof targetEmail === 'string' ? targetEmail : undefined, true);

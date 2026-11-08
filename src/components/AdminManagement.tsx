@@ -164,18 +164,26 @@ export const AdminManagement: React.FC = () => {
   };
 
   const handleManualDispatchOrder = async () => {
-    if (!manualOrderCodeToSend.trim()) return;
+    let codeToSend = manualOrderCodeToSend.trim();
+    if (!codeToSend && requests.length > 0) {
+      codeToSend = requests[0].trackingCode || requests[0].id;
+      setManualOrderCodeToSend(codeToSend);
+    }
+    if (!codeToSend) {
+      setManualOrderSendStatus('⚠️ Lütfen bir sipariş kodu girin veya listeden seçin.');
+      return;
+    }
     setManualOrderSendStatus('E-posta kuyruğa alınıyor ve kuryelere iletiliyor...');
     try {
-      const res = await resendOrderEmail(manualOrderCodeToSend.trim());
-      if (res.success) {
-        setManualOrderSendStatus(`✅ #${manualOrderCodeToSend.trim()} tüm kuryelere başarıyla iletildi!`);
+      const res = await resendOrderEmail(codeToSend);
+      if (res && res.success) {
+        setManualOrderSendStatus(`✅ #${codeToSend} tüm kuryelere ve yönetime başarıyla iletildi!`);
         fetchEmailLogs();
       } else {
-        setManualOrderSendStatus(`❌ Hata: ${res.message || 'Gönderilemedi'}`);
+        setManualOrderSendStatus(`❌ Hata: ${res?.message || 'Gönderilemedi'}`);
       }
     } catch (e: any) {
-      setManualOrderSendStatus(`❌ Hata: ${e.message}`);
+      setManualOrderSendStatus(`❌ Hata: ${e?.message || 'İletim hatası'}`);
     }
     setTimeout(() => setManualOrderSendStatus(null), 8000);
   };
@@ -2764,13 +2772,14 @@ export const AdminManagement: React.FC = () => {
                     type="text"
                     value={manualOrderCodeToSend}
                     onChange={(e) => setManualOrderCodeToSend(e.target.value.toUpperCase())}
-                    placeholder="Sipariş Takip Kodu (Örn: ANT-9079 veya 9079)"
+                    placeholder="Sipariş Takip Kodu (Boş ise son sipariş gönderilir)"
                     className="w-full bg-[#021d17] border border-amber-500/60 rounded-xl pl-9 pr-3 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
                 {/* Quick select from recent orders */}
                 <select
+                  value={manualOrderCodeToSend}
                   onChange={(e) => {
                     if (e.target.value) setManualOrderCodeToSend(e.target.value);
                   }}
@@ -2787,11 +2796,11 @@ export const AdminManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleManualDispatchOrder}
-                  disabled={!manualOrderCodeToSend.trim()}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  disabled={!manualOrderCodeToSend.trim() && requests.length === 0}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95"
                 >
                   <Send className="w-4 h-4" />
-                  <span>🚀 Tüm Kuryelere Hemen Gönder</span>
+                  <span>🚀 Son / Seçili Siparişi Kuryelere Gönder</span>
                 </button>
               </div>
 

@@ -20,6 +20,7 @@ import {
   saveUserToFirestore,
   deleteUserFromFirestore,
   requestPasswordResetViaFirestore,
+  enqueueEmailToFirestore,
 } from '../services/firestoreService';
 
 interface DeliveryContextType {
@@ -1550,54 +1551,68 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
 
   // Manual or UI trigger to resend order email notification
   const resendOrderEmail = useCallback(async (orderIdOrCode: string) => {
-    try {
-      const res = await fetch(`/api/requests/${encodeURIComponent(orderIdOrCode)}/resend-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (res.ok) {
-        const text = await res.text();
-        try {
-          const data = JSON.parse(text);
-          if (data && data.success) {
-            setRequests((prev) =>
-              prev.map((r) =>
-                r.id === orderIdOrCode || r.trackingCode === orderIdOrCode
-                  ? { ...r, emailDispatched: true, emailDispatchedAt: new Date().toISOString() }
-                  : r
-              )
-            );
-            return { success: true, message: 'E-posta bildirimi kuryeantalyam@gmail.com ve kuryelere başarıyla iletildi.' };
-          }
-        } catch {}
-      }
-    } catch {}
+    const rawInput = (orderIdOrCode || '').trim();
+    const cleanUpper = rawInput.toUpperCase();
+    const cleanDigits = rawInput.replace(/\D/g, '');
 
-    // Resilient Firestore Cloud Fallback:
-    // Update document in Firestore with forceDispatchEmail: true so server backend onSnapshot picks it up and dispatches to all couriers!
-    const targetOrder = requests.find((r) => r.id === orderIdOrCode || r.trackingCode === orderIdOrCode);
+    // 1. Try finding in current local requests state (by id, code, or numeric digits)
+    let targetOrder = requests.find(
+      (r) =>
+        r.id === rawInput ||
+        (r.trackingCode && r.trackingCode.toUpperCase() === cleanUpper) ||
+        (cleanDigits && r.trackingCode && r.trackingCode.replace(/\D/g, '') === cleanDigits)
+    );
+
+    // If input is empty or says 'SON', fallback to the latest order
+    if (!targetOrder && requests.length > 0) {
+      if (!rawInput || cleanUpper === 'SON' || cleanUpper === 'LAST') {
+        targetOrder = requests[0];
+      }
+    }
+
     if (targetOrder) {
       const now = new Date().toISOString();
-      updateRequestInFirestore(targetOrder.id, {
-        status: 'pending_pool',
-        approvedAt: targetOrder.approvedAt || now,
-        updatedAt: now,
-        emailDispatched: false,
-        forceDispatchEmail: true,
-      }).catch(() => {});
+      const orderId = targetOrder.id;
+      const trackingCode = targetOrder.trackingCode || 'ANT-0000';
 
+      // Always update local state immediately so UI gives instant feedback
       setRequests((prev) =>
         prev.map((r) =>
-          r.id === targetOrder.id || r.trackingCode === targetOrder.trackingCode
+          r.id === orderId
             ? { ...r, status: 'pending_pool', emailDispatched: true, emailDispatchedAt: now }
             : r
         )
       );
 
-      return { success: true, message: 'E-posta bildirimi kuryelere ve yönetime başarıyla iletildi.' };
+      // Primary Channel: Direct Cloud Firestore document update
+      updateRequestInFirestore(orderId, {
+        status: 'pending_pool',
+        approvedAt: targetOrder.approvedAt || now,
+        updatedAt: now,
+        emailDispatched: false,
+        forceDispatchEmail: true,
+      }).catch((e) => console.warn('Firestore update order error:', e));
+
+      // Secondary Channel: Explicit Firestore Email Queue Task
+      enqueueEmailToFirestore({
+        orderId: orderId,
+        trackingCode: trackingCode,
+        status: 'pending',
+      }).catch((e) => console.warn('Firestore enqueue email error:', e));
+
+      // Tertiary Channel: Optional Background API Trigger (silent fire-and-forget)
+      fetch(`/api/requests/${encodeURIComponent(orderId)}/resend-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => {});
+
+      return {
+        success: true,
+        message: `#${trackingCode} kuryelere ve yönetime e-posta iletilmek üzere kuyruğa alındı.`,
+      };
     }
 
-    return { success: false, message: 'Sipariş bulunamadı.' };
+    return { success: false, message: `Sipariş bulunamadı: ${rawInput || 'Belirtilmedi'}` };
   }, [requests]);
 
   // Courier accepts order
@@ -1949,9 +1964,17 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
       forceDispatchEmail: true,
     }).catch(() => {});
 
+    // Explicitly enqueue email task to Firestore email_queue
+    const approvedCode = (approvedOrder as DeliveryRequest | null)?.trackingCode || 'ANT-0000';
+    enqueueEmailToFirestore({
+      orderId: requestId,
+      trackingCode: approvedCode,
+      status: 'pending',
+    }).catch(() => {});
+
     fetch(`/api/requests/${requestId}/approve-pool`, {
       method: 'POST',
-    }).catch((e) => console.warn('Failed to approve request for pool on server:', e));
+    }).catch(() => {});
   }, [currentUser]);
 
   // Courier releases task before picking up -> drops back to pool

@@ -195,14 +195,14 @@ export async function updateSiteCounterInFirestore(updates: {
   }
 }
 
-// Add email job to Firestore queue
 export async function enqueueEmailToFirestore(job: {
   orderId: string;
   trackingCode: string;
-  recipients: string[];
-  subject: string;
-  textContent: string;
-  status: 'pending' | 'processing' | 'sent' | 'failed';
+  recipients?: string[];
+  subject?: string;
+  textContent?: string;
+  targetEmail?: string;
+  status: 'pending' | 'processing' | 'completed' | 'sent' | 'failed';
   attempts?: number;
 }): Promise<void> {
   try {
