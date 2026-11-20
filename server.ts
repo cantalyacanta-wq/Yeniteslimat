@@ -4374,11 +4374,20 @@ if (process.env.NODE_ENV !== 'production') {
   });
 } else {
   const distPath = path.join(process.cwd(), 'dist');
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html') || filePath.endsWith('sw.js') || filePath.endsWith('registerSW.js')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    })
+  );
   app.all('*', (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/api')) {
       return res.redirect(303, '/');
     }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

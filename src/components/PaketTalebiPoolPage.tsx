@@ -27,7 +27,6 @@ import {
   Volume2,
   Bell,
   Download,
-  Smartphone,
 } from 'lucide-react';
 import { playAcceptSound, playNewOrderSound, unlockAudioContext } from '../utils/audio';
 import { triggerHapticVibration, dismissApkForegroundNotificationOnLogout } from '../services/notificationService';

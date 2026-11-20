@@ -22,7 +22,6 @@ import {
   Lock,
   AlertCircle,
   Download,
-  Smartphone,
   LogOut,
 } from 'lucide-react';
 import { DeliveryRequest } from '../types';
