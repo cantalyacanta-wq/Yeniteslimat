@@ -155,7 +155,7 @@ export const UnassignedOrderTipModal: React.FC = () => {
   // If no order is waiting, do not render modal
   if (!activeWaitingOrder) return null;
 
-  const currentPrice = activeWaitingOrder.price || 150;
+  const currentPrice = activeWaitingOrder.price || 200;
   const currentCourierEarnings = activeWaitingOrder.courierEarnings || currentPrice;
   const numericTip = Number(customTipInput) || selectedTip || 0;
   const newTotalPrice = currentPrice + numericTip;

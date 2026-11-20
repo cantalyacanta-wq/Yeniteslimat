@@ -213,7 +213,12 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
   onOpenTerms,
   onOpenKvkk,
 }) => {
-  const { setCurrentView } = useDelivery();
+  const { currentView, setCurrentView, currentUser } = useDelivery();
+  const isRegisteredCustomer =
+    currentUser.role === 'customer' &&
+    currentUser.id !== 'user-guest-01' &&
+    !currentUser.id.startsWith('user-guest');
+  const showPanelvanLink = currentView !== 'history' && !isRegisteredCustomer;
 
   return (
     <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
@@ -254,21 +259,25 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Yönetim</span>
             </button>
-            <span className="text-emerald-800">•</span>
-            <button
-              type="button"
-              onClick={() => {
-                setCurrentView('home');
-                setTimeout(() => {
-                  const el = document.getElementById('panelvan-nakliye');
-                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-              }}
-              className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer"
-              title="Konyaaltı Panelvan Parça Eşya Taşıma (900 ₺) Bilgilendirmesini Gör"
-            >
-              <span>🚚 Panelvan Nakliye (900 ₺)</span>
-            </button>
+            {showPanelvanLink && (
+              <>
+                <span className="text-emerald-800">•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentView('home');
+                    setTimeout(() => {
+                      const el = document.getElementById('panelvan-nakliye');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                  }}
+                  className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer"
+                  title="Konyaaltı Panelvan Parça Eşya Taşıma (900 ₺) Bilgilendirmesini Gör"
+                >
+                  <span>🚚 Panelvan Nakliye (900 ₺)</span>
+                </button>
+              </>
+            )}
             <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />

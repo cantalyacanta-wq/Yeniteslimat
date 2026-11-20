@@ -3495,9 +3495,8 @@ function parseTurkishPhoneNumber(text: string): string | null {
   return null;
 }
 
-function calculateEstimatedPrice(fromDist: string, toDist: string): number {
-  if (fromDist === toDist) return 150;
-  return 180;
+function calculateEstimatedPrice(_fromDist: string, _toDist: string): number {
+  return 200;
 }
 
 app.post('/api/ai-voice/chat', async (req, res) => {
@@ -3514,7 +3513,7 @@ app.post('/api/ai-voice/chat', async (req, res) => {
       packageContent: state.packageContent || '',
       phone: state.phone || '',
       customerName: state.customerName || 'Değerli Müşterimiz',
-      estimatedPrice: state.estimatedPrice || 150,
+      estimatedPrice: state.estimatedPrice || 200,
       estimatedDistanceKm: state.estimatedDistanceKm || 8,
       estimatedDurationMins: state.estimatedDurationMins || 35,
     };
@@ -3772,7 +3771,7 @@ app.post('/api/ai-voice/send-code', async (req, res) => {
         <div style="background: #011611; border-radius: 10px; padding: 14px; font-size: 13px; margin-bottom: 16px; color: #cbd5e1;">
           <div style="margin-bottom: 6px;"><strong style="color: #34d399;">📍 Alış:</strong> ${orderSummary.pickup || 'Belirtildi'}</div>
           <div style="margin-bottom: 6px;"><strong style="color: #fbbf24;">🏁 Teslim:</strong> ${orderSummary.destination || 'Belirtildi'}</div>
-          <div><strong style="color: #a7f3d0;">💰 Ücret:</strong> ${orderSummary.price || 150} TL</div>
+          <div><strong style="color: #a7f3d0;">💰 Ücret:</strong> ${orderSummary.price || 200} TL</div>
         </div>` : ''}
         <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">Bu işlemi siz başlatmadıysanız bu e-postayı dikkate almayınız.</p>
       </div>
@@ -3811,7 +3810,7 @@ app.post('/api/ai-voice/send-code', async (req, res) => {
 // Endpoint to directly create order from Voice AI Assistant
 app.post('/api/ai-voice/create-order', (req, res) => {
   try {
-    const { pickupAddress, pickupDistrict, destAddress, destDistrict, packageContent, phone, customerName, price = 150 } = req.body;
+    const { pickupAddress, pickupDistrict, destAddress, destDistrict, packageContent, phone, customerName, price = 200 } = req.body;
 
     if (!pickupAddress || !destAddress) {
       return res.status(400).json({ error: 'Alım ve teslim adresleri zorunludur.' });
@@ -3853,8 +3852,8 @@ app.post('/api/ai-voice/create-order', (req, res) => {
       packageName: packageContent ? `Sesli Kurye: ${packageContent}` : 'Sesli Asistan Acil Paket',
       packageWeightKg: 1,
       urgency: 'express_vip',
-      price: Number(price) || 150,
-      courierEarnings: Number(price) || 150,
+      price: Number(price) || 200,
+      courierEarnings: Number(price) || 200,
       paymentMethod: 'gonderici_odemeli',
       isPaid: false,
       status: 'pending_admin',

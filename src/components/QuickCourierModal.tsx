@@ -35,11 +35,11 @@ export const QUICK_PACKAGE_OPTIONS: {
   icon: string;
   basePrice: number;
 }[] = [
-  { id: 'food', title: 'Yemek & Restoran', desc: 'Restoran & Paket Sipariş', icon: '🍔', basePrice: 100 },
-  { id: 'petshop', title: 'Petshop Ürünleri', desc: 'Evcil Hayvan / Kedi-Köpek Maması', icon: '🐾', basePrice: 150 },
-  { id: 'market', title: 'Market & Bakkal', desc: 'Market Alışverişi & İhtiyaçlar', icon: '🛒', basePrice: 150 },
-  { id: 'flower', title: 'Çiçek & Hediye', desc: 'Buket, Çiçek & Sürpriz Hediye', icon: '💐', basePrice: 150 },
-  { id: 'other', title: 'Diğer (Evrak / Koli)', desc: 'Evrak, Dosya, Koli, Eşya', icon: '📦', basePrice: 150 },
+  { id: 'food', title: 'Yemek & Restoran', desc: 'Restoran & Paket Sipariş', icon: '🍔', basePrice: 200 },
+  { id: 'petshop', title: 'Petshop Ürünleri', desc: 'Evcil Hayvan / Kedi-Köpek Maması', icon: '🐾', basePrice: 200 },
+  { id: 'market', title: 'Market & Bakkal', desc: 'Market Alışverişi & İhtiyaçlar', icon: '🛒', basePrice: 200 },
+  { id: 'flower', title: 'Çiçek & Hediye', desc: 'Buket, Çiçek & Sürpriz Hediye', icon: '💐', basePrice: 200 },
+  { id: 'other', title: 'Diğer (Evrak / Koli)', desc: 'Evrak, Dosya, Koli, Eşya', icon: '📦', basePrice: 200 },
 ];
 
 export const QuickCourierModal: React.FC = () => {

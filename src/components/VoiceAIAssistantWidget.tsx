@@ -126,7 +126,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     phone: currentUser?.phone || '',
     email: currentUser?.email || '',
     customerName: currentUser?.name || 'Değerli Müşterimiz',
-    estimatedPrice: 150,
+    estimatedPrice: 200,
     estimatedDurationMins: 35,
   });
 
@@ -811,7 +811,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           'other',
           'express_vip'
         );
-        nextState.estimatedPrice = estimate.price || 150;
+        nextState.estimatedPrice = estimate.price || 200;
         nextState.step = 'confirm';
         nextReply = 'Bilgilerinizi aldım. Onaylıyorsanız adresinize hemen en yakın kuryeyi yönlendireceğim.';
       } else if (current.step === 'confirm') {
@@ -928,7 +928,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       phone: currentUser?.phone || '',
       email: currentUser?.email || '',
       customerName: currentUser?.name || 'Değerli Müşterimiz',
-      estimatedPrice: 150,
+      estimatedPrice: 200,
       estimatedDurationMins: 35,
     });
     const resetText = 'Bilgileri sıfırladım. Paketiniz nereden, hangi adresten veya mahalleden alınacak?';

@@ -759,11 +759,11 @@ export const CustomerRequestForm: React.FC = () => {
                   onChange={(e) => setPackageType(e.target.value as PackageType)}
                   className="w-full bg-[#06120d] border border-emerald-700/60 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:border-emerald-400 outline-none"
                 >
-                  <option value="food" className="bg-[#0c1f19] text-white">🍔 Yemek & Restoran Siparişi (Taban 100 ₺)</option>
-                  <option value="petshop" className="bg-[#0c1f19] text-white">🐾 Petshop Ürünleri (Taban 150 ₺)</option>
-                  <option value="market" className="bg-[#0c1f19] text-white">🛒 Market / Bakkal Siparişi (Taban 150 ₺)</option>
-                  <option value="flower" className="bg-[#0c1f19] text-white">💐 Çiçek & Hediye (Taban 150 ₺)</option>
-                  <option value="other" className="bg-[#0c1f19] text-white">📦 Diğer (Evrak, Koli, Eşya) (Taban 150 ₺)</option>
+                  <option value="food" className="bg-[#0c1f19] text-white">🍔 Yemek & Restoran Siparişi (Sabit 200 ₺)</option>
+                  <option value="petshop" className="bg-[#0c1f19] text-white">🐾 Petshop Ürünleri (Sabit 200 ₺)</option>
+                  <option value="market" className="bg-[#0c1f19] text-white">🛒 Market / Bakkal Siparişi (Sabit 200 ₺)</option>
+                  <option value="flower" className="bg-[#0c1f19] text-white">💐 Çiçek & Hediye (Sabit 200 ₺)</option>
+                  <option value="other" className="bg-[#0c1f19] text-white">📦 Diğer (Evrak, Koli, Eşya) (Sabit 200 ₺)</option>
                 </select>
               </div>
 
@@ -958,11 +958,11 @@ export const CustomerRequestForm: React.FC = () => {
               <div className="text-right">
                 {estimate.isSameDistrict ? (
                   <span className="text-[11px] text-emerald-300 font-semibold px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-lg inline-block">
-                    Aynı İlçe İçi Teslimat (Baz Fiyat)
+                    Aynı İlçe İçi Teslimat (Sabit {estimate.basePrice} ₺)
                   </span>
                 ) : (
-                  <span className="text-[11px] text-amber-300 font-semibold px-2.5 py-1 bg-amber-950/80 border border-amber-600/60 rounded-lg inline-block">
-                    Farklı İlçe Teslimatı (+{estimate.districtDiffExtra} ₺)
+                  <span className="text-[11px] text-emerald-300 font-semibold px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-lg inline-block">
+                    Farklı İlçe Teslimatı (Sabit {estimate.basePrice} ₺)
                   </span>
                 )}
               </div>
@@ -979,13 +979,9 @@ export const CustomerRequestForm: React.FC = () => {
                     <span className="text-xs text-amber-300 bg-amber-950/80 border border-amber-600/60 px-2.5 py-0.5 rounded-lg font-medium">
                       Tarife {estimate.price} ₺ + Bahşiş {tipAmount} ₺
                     </span>
-                  ) : estimate.isSameDistrict ? (
-                    <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg font-medium">
-                      Aynı ilçe ({senderDistrict}) • Baz Fiyat ({estimate.basePrice} ₺)
-                    </span>
                   ) : (
-                    <span className="text-xs text-amber-300 bg-amber-950/70 border border-amber-600/60 px-2.5 py-0.5 rounded-lg font-medium">
-                      Taban {estimate.basePrice} ₺ + Farklı ilçe farkı (+{estimate.districtDiffExtra} ₺)
+                    <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg font-medium">
+                      Tüm İlçeler Sabit Tarife ({estimate.basePrice} ₺)
                     </span>
                   )}
                 </div>

@@ -575,7 +575,7 @@ export const HeroIntro: React.FC = () => {
                   10 km'ye Kadar
                 </span>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-black">
-                  Sadece 100 ₺'den Başlayan Fiyatlar!
+                  Sadece 200 ₺'den Başlayan Fiyatlar!
                 </span>
               </div>
             </div>
@@ -977,9 +977,6 @@ export const HeroIntro: React.FC = () => {
           </div>
         )}
 
-        {/* Konyaaltı Panelvan Parça Eşya Taşıma (900 TL) Bölümü */}
-        <PanelvanNakliyeSection className="mt-6" />
-
       </div>
     );
   }
@@ -1011,7 +1008,7 @@ export const HeroIntro: React.FC = () => {
                   10 km'ye Kadar
                 </span>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-black">
-                  Sadece 100 ₺'den Başlayan Fiyatlar!
+                  Sadece 200 ₺'den Başlayan Fiyatlar!
                 </span>
                 <span className="text-[10px] text-emerald-300/80 hidden md:inline font-semibold">
                   • 30-45 Dk Jet Kurye
