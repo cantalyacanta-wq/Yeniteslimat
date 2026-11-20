@@ -305,6 +305,38 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
         )}
 
+        {/* COURIER ANDROID APK DOWNLOAD BANNER */}
+        {!isRunningInApk() && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#02241c] via-[#032d22] to-[#021d17] border border-amber-500/50 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400 shrink-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-black text-white">
+                    Kurye Android Uygulaması (.apk)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-extrabold">
+                    Anlık Bildirim
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-200/85 mt-0.5">
+                  Yeni paket çağrılarını ekran kapalıyken bile siren sesi ve titreşimle anında almak için kurye APK'sını indirin.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/downloads/Antalya-Kurye-Talep-Havuzu.apk"
+              download="Antalya-Kurye-Talep-Havuzu.apk"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/25 shrink-0 active:scale-95"
+            >
+              <Download className="w-4 h-4" />
+              <span>Kurye APK İndir</span>
+            </a>
+          </div>
+        )}
+
         {/* RECENTLY ACCEPTED ORDER VIEW (FULL UNMASKED CONTACT DETAILS) */}
         {acceptedOrder && (
           <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#022820] to-[#011612] border-2 border-emerald-400 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
