@@ -1617,7 +1617,7 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
 
       return {
         success: true,
-        message: `#${trackingCode} kuryelere ve yönetime e-posta iletilmek üzere kuyruğa alındı.`,
+        message: `#${trackingCode} kuryelere e-posta iletilmek üzere kuyruğa alındı.`,
       };
     }
 

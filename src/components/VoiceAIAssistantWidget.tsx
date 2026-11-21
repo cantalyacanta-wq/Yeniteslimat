@@ -199,11 +199,11 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     }, 320); // 320ms natural pause after assistant speaks so speaker echo does not feed back
   }, []);
 
-  // Preload initial greeting audio with male voice (Ahmet) and initialize audio element
+  // Preload initial greeting audio with natural male voice (v9) and initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const preloadAudio = new Audio(
-        `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(initialGreeting)}`
+        `/api/ai-voice/tts?voice=male&v=9&text=${encodeURIComponent(initialGreeting)}`
       );
       preloadAudio.preload = 'auto';
       sharedAudioRef.current = preloadAudio;
@@ -337,7 +337,54 @@ export const VoiceAIAssistantWidget: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Fallback Web Speech Synthesis (Always Male Voice Tone)
+  // Select best available natural Turkish male voice from browser speechSynthesis
+  const findBestLocalTurkishMaleVoice = useCallback((): SpeechSynthesisVoice | null => {
+    if (!synthRef.current) return null;
+    const voices =
+      availableVoicesRef.current.length > 0
+        ? availableVoicesRef.current
+        : synthRef.current.getVoices();
+
+    const trVoices = voices.filter((v) => v.lang.toLowerCase().startsWith('tr'));
+    if (trVoices.length === 0) return null;
+
+    const maleKeywords = [
+      'ahmet',
+      'tolga',
+      'cem',
+      'emre',
+      'kerem',
+      'baris',
+      'barış',
+      'can',
+      'sinan',
+      'yusuf',
+      'onur',
+      'mert',
+      'male',
+      'erkek',
+      'tr-tr-x-dfz',
+      'tr-tr-x-efz',
+      'tr-tr-x-ama',
+      'tr-tr-x-mfm',
+    ];
+
+    const scoreVoice = (v: SpeechSynthesisVoice): number => {
+      const name = v.name.toLowerCase();
+      let score = 0;
+      if (maleKeywords.some((kw) => name.includes(kw))) score += 100;
+      if (name.includes('natural') || name.includes('online') || name.includes('neural')) score += 40;
+      if (name.includes('google') || name.includes('microsoft')) score += 20;
+      if (name.includes('emel') || name.includes('yelda') || name.includes('female') || name.includes('kadın')) score -= 80;
+      if (name.includes('espeak') || name.includes('compact')) score -= 50;
+      return score;
+    };
+
+    const sorted = [...trVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+    return scoreVoice(sorted[0]) >= 50 ? sorted[0] : null;
+  }, []);
+
+  // Fallback Web Speech Synthesis (Natural, brisk Turkish male cadence without robotic pitch warping)
   const speakWithLocalSynthesis = useCallback(
     (cleanSpeech: string) => {
       if (isAudioMuted || !synthRef.current || typeof window === 'undefined') return;
@@ -346,45 +393,26 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanSpeech);
         utterance.lang = 'tr-TR';
-        utterance.rate = 1.05; // Natural, authoritative customer service cadence
+        // Brisk, natural conversational Turkish cadence (never sluggish)
+        utterance.rate = 1.18;
 
-        const voices =
-          availableVoicesRef.current.length > 0
-            ? availableVoicesRef.current
-            : synthRef.current.getVoices();
-
-        const trMaleKeywords = [
-          'tolga',
-          'cem',
-          'ahmet',
-          'baris',
-          'can',
-          'sinan',
-          'yusuf',
-          'onur',
-          'mert',
-          'male',
-          'erkek',
-          'x-dfz#male',
-          'x-efz#male',
-        ];
-
-        const trMaleVoice = voices.find(
-          (v) =>
-            (v.lang.includes('tr') || v.lang.includes('TR')) &&
-            trMaleKeywords.some((kw) => v.name.toLowerCase().includes(kw))
-        );
+        const trMaleVoice = findBestLocalTurkishMaleVoice();
 
         if (trMaleVoice) {
           utterance.voice = trMaleVoice;
-          utterance.pitch = 0.88; // Natural, authoritative male tone
+          // Keep natural 1.0 pitch for genuine male voices to prevent robotic formant distortion
+          utterance.pitch = 1.0;
         } else {
-          // If only a default voice is available, use clean natural frequency without robotic pitch distortion
-          const trVoice = voices.find((v) => v.lang.includes('tr') || v.lang.includes('TR'));
+          const voices =
+            availableVoicesRef.current.length > 0
+              ? availableVoicesRef.current
+              : synthRef.current.getVoices();
+          const trVoice = voices.find((v) => v.lang.toLowerCase().startsWith('tr'));
           if (trVoice) {
             utterance.voice = trVoice;
           }
-          utterance.pitch = 0.80; // Calm and smooth
+          // Subtle, natural pitch adjustment only (never 0.80 which sounds robotic)
+          utterance.pitch = 0.95;
         }
 
         utterance.onstart = () => {
@@ -412,10 +440,10 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         autoStartListening();
       }
     },
-    [isAudioMuted, autoStartListening]
+    [isAudioMuted, autoStartListening, findBestLocalTurkishMaleVoice]
   );
 
-  // High-Definition Neural Realistic Fast Male Voice (Ahmet) with robust credentialed fetch
+  // High-Definition Natural Brisk Male Voice (Gemini 3.8 TTS 'Puck' primary -> Edge Neural -> Local Male)
   const speakText = useCallback(
     async (textToSpeak: string) => {
       if (isAudioMuted || typeof window === 'undefined') return;
@@ -440,7 +468,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
       if (!cleanSpeech) return;
 
       try {
-        const audioUrl = `/api/ai-voice/tts?voice=male&text=${encodeURIComponent(cleanSpeech)}`;
+        const audioUrl = `/api/ai-voice/tts?voice=male&v=9&text=${encodeURIComponent(cleanSpeech)}`;
 
         if (!sharedAudioRef.current && typeof Audio !== 'undefined') {
           sharedAudioRef.current = new Audio();
@@ -452,12 +480,14 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           return;
         }
 
-        // Fetch Neural Male MP3 directly with 2-attempt retry
+        // Fetch Neural Male audio directly with 2-attempt retry
         let audioBlobUrl: string | null = null;
+        let ttsEngine = '';
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
             const res = await fetch(audioUrl, { credentials: 'include' });
             const contentType = res.headers.get('content-type') || '';
+            ttsEngine = (res.headers.get('x-tts-engine') || '').toLowerCase();
             if (res.ok && !contentType.includes('html')) {
               const blob = await res.blob();
               if (blob.type.includes('audio') || contentType.includes('audio')) {
@@ -467,14 +497,37 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             }
           } catch (fetchErr) {
             if (attempt === 0) {
-              await new Promise((r) => setTimeout(r, 200));
+              await new Promise((r) => setTimeout(r, 150));
             }
           }
         }
 
+        // If server only returned Google Translate's robotic fallback AND browser has a native Turkish male voice, use the native male voice!
+        if (ttsEngine === 'google-fallback' && findBestLocalTurkishMaleVoice()) {
+          if (audioBlobUrl) {
+            URL.revokeObjectURL(audioBlobUrl);
+          }
+          speakWithLocalSynthesis(cleanSpeech);
+          return;
+        }
+
         if (audioBlobUrl) {
+          const prevSrc = audio.src;
           audio.src = audioBlobUrl;
           audio.preload = 'auto';
+          // Preserve natural voice timbre while ensuring brisk, lively pacing
+          if ('preservesPitch' in audio) {
+            (audio as any).preservesPitch = true;
+          }
+          if ('webkitPreservesPitch' in audio) {
+            (audio as any).webkitPreservesPitch = true;
+          }
+          audio.playbackRate =
+            ttsEngine === 'gemini' ? 1.05 : ttsEngine === 'edge' ? 1.02 : 1.18;
+
+          if (prevSrc && prevSrc.startsWith('blob:')) {
+            URL.revokeObjectURL(prevSrc);
+          }
 
           audio.onplay = () => {
             setIsSpeaking(true);
@@ -484,7 +537,6 @@ export const VoiceAIAssistantWidget: React.FC = () => {
           audio.onended = () => {
             setIsSpeaking(false);
             isSpeakingRef.current = false;
-            // When assistant finishes speaking, automatically start listening hands-free!
             autoStartListening();
           };
 
@@ -501,7 +553,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
             });
           }
         } else {
-          // If server Neural audio cannot be fetched, fall back to pitch-adjusted local male speech
+          // If server Neural audio cannot be fetched (e.g. static hosting), use clean natural local male speech
           speakWithLocalSynthesis(cleanSpeech);
         }
       } catch (err) {
@@ -509,7 +561,7 @@ export const VoiceAIAssistantWidget: React.FC = () => {
         speakWithLocalSynthesis(cleanSpeech);
       }
     },
-    [isAudioMuted, speakWithLocalSynthesis, autoStartListening]
+    [isAudioMuted, speakWithLocalSynthesis, autoStartListening, findBestLocalTurkishMaleVoice]
   );
 
   // Open Fullscreen Widget

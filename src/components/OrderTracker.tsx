@@ -164,7 +164,7 @@ export const OrderTracker: React.FC = () => {
   const steps = [
     {
       title: 'Talep Alındı',
-      desc: currentOrder?.status === 'pending_admin' ? 'Yönetici onayında' : 'Kurye havuzunda eşleşiyor',
+      desc: currentOrder?.status === 'pending_admin' ? 'Onay aşamasında' : 'Kurye havuzunda eşleşiyor',
     },
     { title: 'Kurye Atandı', desc: 'Paketi almaya gidiyor' },
     { title: 'Paket Alındı', desc: 'Teslimat adresine yolda' },
@@ -241,7 +241,7 @@ export const OrderTracker: React.FC = () => {
                     )}
                     {currentOrder.status === 'pending_admin' && (
                       <span className="text-xs font-bold bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full animate-pulse">
-                        ⏳ Yönetici Onayı Bekleniyor
+                        ⏳ Talep Onay Aşamasında
                       </span>
                     )}
                     {currentOrder.status === 'pending_pool' && (

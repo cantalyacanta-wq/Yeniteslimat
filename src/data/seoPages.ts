@@ -517,7 +517,7 @@ export const SEO_PAGES: SeoPageData[] = [
       {
         question: "Hukuk büromuz veya muhasebe ofisimiz düzenli evrak çıkışı için üye olabilir mi?",
         answer:
-          "Evet. Ücretsiz müşteri üyeliği oluşturduğunuzda adresleriniz kayıtlı kalır, girdiğiniz tüm evrak talepleri yönetici onayına takılmadan anında kurye havuzuna düşer ve geçmiş fişlerinize her zaman erişebilirsiniz.",
+          "Evet. Ücretsiz müşteri üyeliği oluşturduğunuzda adresleriniz kayıtlı kalır, girdiğiniz tüm evrak talepleri beklemeden anında kurye havuzuna düşer ve geçmiş fişlerinize her zaman erişebilirsiniz.",
       },
     ],
     serviceType: 'Evrak ve Sözleşme Gönderme Platformu',
@@ -582,7 +582,7 @@ export const SEO_PAGES: SeoPageData[] = [
         number: '02.',
         title: 'Taleplerinizi Doğrudan Havuza Yayınlayın',
         description:
-          "Kayıtlı hesapların oluşturduğu gönderiler yönetici onayı beklemeden saniyeler içinde Antalya genelindeki kurye havuzuna düşer.",
+          "Kayıtlı hesapların oluşturduğu gönderiler ekstra bekleme olmadan saniyeler içinde Antalya genelindeki kurye havuzuna düşer.",
       },
       {
         number: '03.',
@@ -652,7 +652,7 @@ export const SEO_PAGES: SeoPageData[] = [
       {
         question: "İşletmelerin oluşturduğu talepler neden daha hızlı kuryeye ulaşır?",
         answer:
-          "Kayıtlı müşteri hesaplarından web paneli üzerinden girilen gönderiler yönetici onay adımına takılmadan doğrudan canlı kurye havuzunda yayınlanır, böylece ekstra bekleme süresi oluşmaz.",
+          "Kayıtlı müşteri hesaplarından web paneli üzerinden girilen gönderiler ekstra onay adımına takılmadan doğrudan canlı kurye havuzunda yayınlanır, böylece bekleme süresi oluşmaz.",
       },
       {
         question: "Müşterime teslimat ücretini kapıda ödetebilir miyim?",

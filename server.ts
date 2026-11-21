@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -9,7 +10,7 @@ import nodemailer from 'nodemailer';
 import { initializeApp as initFirebaseApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, getDoc } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
-import { EdgeTTS } from 'node-edge-tts';
+import { EdgeTTS } from '@andresaya/edge-tts';
 
 process.on('uncaughtException', (err) => {
   console.error('[UNCAUGHT EXCEPTION]', err);
@@ -3966,10 +3967,11 @@ async function fetchGoogleTts(text: string): Promise<Buffer> {
 async function generateGeminiTtsAudio(
   text: string,
   voiceParam: string
-): Promise<{ buffer: Buffer; mimeType: string } | null> {
+): Promise<{ buffer: Buffer; mimeType: string; engine: string } | null> {
   if (!geminiClient) return null;
   try {
-    const voiceName = voiceParam === 'female' ? 'Kore' : 'Fenrir';
+    // 'Puck' delivers a warm, lively, natural conversational male tone (unlike heavy/slow 'Fenrir')
+    const voiceName = voiceParam === 'female' ? 'Kore' : 'Puck';
     const response = await geminiClient.models.generateContent({
       model: 'gemini-3.8-flash-lite-tts',
       contents: [
@@ -3981,8 +3983,8 @@ async function generateGeminiTtsAudio(
               speechMetadata: {
                 style:
                   voiceParam === 'female'
-                    ? 'Warm, clear, and professional female Turkish customer service voice'
-                    : 'Deep, clear, and professional male Turkish customer service voice',
+                    ? 'Warm, natural, friendly Turkish female customer service representative speaking fluently at a brisk, lively everyday conversational pace.'
+                    : 'Warm, natural, friendly Turkish male customer service representative speaking fluently at a brisk, lively everyday conversational pace with natural intonation, never slow or robotic.',
               },
             },
           ],
@@ -3998,47 +4000,51 @@ async function generateGeminiTtsAudio(
       },
     });
 
-    const base64Audio =
-      response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    const audioPart = parts.find((p: any) => p?.inlineData?.data);
+    const base64Audio = audioPart?.inlineData?.data;
     if (base64Audio) {
+      const mimeType = audioPart?.inlineData?.mimeType || 'audio/wav';
       return {
         buffer: Buffer.from(base64Audio, 'base64'),
-        mimeType: 'audio/wav',
+        mimeType,
+        engine: 'gemini',
       };
     }
   } catch (err: any) {
-    console.debug('[GEMINI TTS] Fallback to secondary TTS engine:', err?.message);
+    console.warn('[GEMINI TTS] Fallback to secondary TTS engine:', err?.message || err);
   }
   return null;
 }
 
-// Engine 2: Edge TTS with graceful error recovery
+// Engine 2: Edge Neural TTS (@andresaya/edge-tts with v2 endpoint, Sec-MS-GEC, and 1 transient retry)
 async function generateEdgeTtsAudio(
   text: string,
   voiceName: string,
-  pitch: string = '-8Hz',
-  rate: string = '+6%'
+  pitch: string = '+0Hz',
+  rate: string = '+14%'
 ): Promise<Buffer | null> {
-  const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
-  const tmpPath = path.join(os.tmpdir(), tmpId);
-  try {
-    const tts = new EdgeTTS({
-      voice: voiceName,
-      lang: 'tr-TR',
-      outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate,
-      pitch,
-      timeout: 8000,
-    });
-    await tts.ttsPromise(text, tmpPath);
-    const buf = await fs.promises.readFile(tmpPath);
-    fs.promises.unlink(tmpPath).catch(() => {});
-    return buf;
-  } catch (err: any) {
-    fs.promises.unlink(tmpPath).catch(() => {});
-    console.debug('[EDGE TTS NOTICE] EdgeTTS unavailable (will use Google Neural TTS):', err?.message);
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const tts = new EdgeTTS();
+      await tts.synthesize(text, voiceName, {
+        rate,
+        pitch,
+        outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
+      });
+      const buf = tts.toBuffer();
+      if (buf && buf.length > 100) {
+        return buf;
+      }
+    } catch (err: any) {
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 420));
+        continue;
+      }
+      console.debug('[EDGE TTS NOTICE] EdgeTTS unavailable (will use fallback TTS):', err?.message);
+    }
   }
+  return null;
 }
 
 app.get('/api/ai-voice/tts', async (req, res) => {
@@ -4046,8 +4052,9 @@ app.get('/api/ai-voice/tts', async (req, res) => {
     const rawText = String(req.query.text || '').trim();
     const voiceParam = String(req.query.voice || '').toLowerCase();
     const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural';
-    const pitch = voiceParam === 'female' ? '+0Hz' : '-8Hz';
-    const rate = voiceParam === 'female' ? '+10%' : '+6%';
+    // Keep pitch at +0Hz to avoid metallic robotic distortion; use brisk +14% conversational pace
+    const pitch = '+0Hz';
+    const rate = voiceParam === 'female' ? '+13%' : '+14%';
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
@@ -4074,18 +4081,19 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       return res.status(400).send('No speakable text');
     }
 
-    const cacheKey = `${voiceName}:${pitch}:${rate}:${cleanSpeech.toLowerCase()}:v6_resilient`;
+    const cacheKey = `${voiceName}:${pitch}:${rate}:${cleanSpeech.toLowerCase()}:v9_natural_male_ahmet`;
     if (ttsAudioCache.has(cacheKey)) {
       const cached = ttsAudioCache.get(cacheKey)!;
       res.setHeader('Content-Type', cached.mimeType);
       res.setHeader('Content-Length', cached.buffer.length);
+      res.setHeader('X-TTS-Engine', (cached as any).engine || 'edge');
       res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
       return res.send(cached.buffer);
     }
 
-    let audioResult: CachedTtsAudio | null = null;
+    let audioResult: (CachedTtsAudio & { engine?: string }) | null = null;
 
-    // 1. Try Gemini 3.8 Flash Lite TTS if server API key is configured
+    // 1. Primary: Gemini 3.8 Flash Lite TTS (natural brisk Turkish male voice: Puck)
     if (geminiClient) {
       const geminiResult = await generateGeminiTtsAudio(cleanSpeech, voiceParam);
       if (geminiResult) {
@@ -4093,19 +4101,19 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       }
     }
 
-    // 2. Try Edge TTS if still needed
+    // 2. Secondary: Edge Neural TTS (tr-TR-AhmetNeural, natural pitch +0Hz, brisk +14%)
     if (!audioResult) {
       const edgeBuf = await generateEdgeTtsAudio(cleanSpeech, voiceName, pitch, rate);
       if (edgeBuf) {
-        audioResult = { buffer: edgeBuf, mimeType: 'audio/mpeg' };
+        audioResult = { buffer: edgeBuf, mimeType: 'audio/mpeg', engine: 'edge' };
       }
     }
 
-    // 3. Ultra-reliable Google Neural Speech fallback (Zero 403 errors, high performance)
+    // 3. Last-resort fallback: Google TTS
     if (!audioResult) {
       const googleBuf = await fetchGoogleTts(cleanSpeech);
       if (googleBuf && googleBuf.length > 0) {
-        audioResult = { buffer: googleBuf, mimeType: 'audio/mpeg' };
+        audioResult = { buffer: googleBuf, mimeType: 'audio/mpeg', engine: 'google-fallback' };
       }
     }
 
@@ -4113,16 +4121,21 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       throw new Error('All TTS generation providers returned empty audio');
     }
 
-    // Update memory cache
-    if (ttsAudioCache.size > 300) {
-      const firstKey = ttsAudioCache.keys().next().value;
-      if (firstKey) ttsAudioCache.delete(firstKey);
+    // Only cache high-quality neural audio (gemini or edge), never permanently cache google-fallback
+    if (audioResult.engine !== 'google-fallback') {
+      if (ttsAudioCache.size > 300) {
+        const firstKey = ttsAudioCache.keys().next().value;
+        if (firstKey) ttsAudioCache.delete(firstKey);
+      }
+      ttsAudioCache.set(cacheKey, audioResult);
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
     }
-    ttsAudioCache.set(cacheKey, audioResult);
 
     res.setHeader('Content-Type', audioResult.mimeType);
     res.setHeader('Content-Length', audioResult.buffer.length);
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('X-TTS-Engine', audioResult.engine || 'unknown');
     res.send(audioResult.buffer);
   } catch (err: any) {
     console.warn('[AI VOICE TTS NOTICE] Using fallback synthesis:', err?.message);
@@ -4131,6 +4144,8 @@ app.get('/api/ai-voice/tts', async (req, res) => {
       const emergencyBuf = await fetchGoogleTts('Tamam, sizi dinliyorum.');
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Content-Length', emergencyBuf.length);
+      res.setHeader('X-TTS-Engine', 'google-fallback');
+      res.setHeader('Cache-Control', 'no-store');
       return res.send(emergencyBuf);
     } catch {
       res.status(200).json({ error: 'TTS audio could not be generated' });

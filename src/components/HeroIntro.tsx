@@ -309,7 +309,7 @@ export const HeroIntro: React.FC = () => {
               {activeCustomerOrder.status === 'pending_admin' && (
                 <div className="flex items-center gap-2 px-3.5 py-1.5 bg-rose-950/80 text-rose-300 border border-rose-600/60 rounded-xl text-xs font-extrabold shadow-sm animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
-                  <span>Yönetici Onayı Bekleniyor</span>
+                  <span>Talep Onay Aşamasında</span>
                 </div>
               )}
               {activeCustomerOrder.status === 'pending_pool' && (

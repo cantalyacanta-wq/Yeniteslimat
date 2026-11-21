@@ -255,7 +255,7 @@ export function playAdminVoiceAlert(order?: {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(speechText);
       utter.lang = 'tr-TR';
-      utter.rate = 1.0;
+      utter.rate = 1.15;
       utter.pitch = 1.0;
       window.speechSynthesis.speak(utter);
       return; // Yerel ses başarıyla tetiklendi, ikinci bir medya sesi başlatılmaz!
@@ -266,7 +266,7 @@ export function playAdminVoiceAlert(order?: {
 
   // B. Web Audio API Edge-TTS Fallback (HTML5 Audio yerine Web Audio API kullanılır - Android durum çubuğunda bildirim oluşturmaz)
   try {
-    const audioUrl = `/api/ai-voice/tts?text=${encodeURIComponent(speechText)}&voice=male`;
+    const audioUrl = `/api/ai-voice/tts?text=${encodeURIComponent(speechText)}&voice=male&v=9`;
     const ctx = getAudioContext();
     if (ctx) {
       fetch(audioUrl)

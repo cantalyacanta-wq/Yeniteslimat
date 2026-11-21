@@ -193,7 +193,7 @@ const MainContent: React.FC<{ activeSeoPage: SeoPageData | null }> = ({ activeSe
                   <div className="space-y-1.5">
                     <h3 className="text-lg font-extrabold text-white">Kurye Yetkisi Gerekli</h3>
                     <p className="text-xs text-emerald-300/80">
-                      Kurye havuzu ve anlık görevler kayıtlı moto kuryelerimiz ve yöneticiler içindir.
+                      Kurye havuzu ve anlık görevler kayıtlı moto kuryelerimiz içindir.
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 pt-2">
@@ -349,15 +349,6 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
                     KVKK Aydınlatma Metni
                   </button>
                 </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('admin')}
-                    className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4 cursor-pointer"
-                  >
-                    Yönetim Paneli
-                  </button>
-                </li>
               </ul>
             </div>
           </div>
@@ -390,16 +381,6 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
             >
               <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
               <span>KVKK Aydınlatma Metni</span>
-            </button>
-            <span className="text-emerald-800">•</span>
-            <button
-              type="button"
-              onClick={() => setCurrentView('admin')}
-              className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
-              title="Yönetim Paneli Girişi"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Yönetim</span>
             </button>
             <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
