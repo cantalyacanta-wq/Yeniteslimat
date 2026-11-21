@@ -1461,6 +1461,13 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         currentUser.id.startsWith('user-guest');
 
       const effectiveUserId = isGuestCustomer ? 'user-guest-01' : currentUser.id;
+      const isVoiceOrder = Boolean(params.isVoiceOrder);
+
+      // Kural:
+      // - Kayıtlı müşterilerin (üyelikli) normal formlardan girdiği talepler yönetici onayına düşmeden doğrudan kurye havuzunda ('pending_pool') yayınlanır.
+      // - Sesli asistan ile verilen tüm talepler (ve misafir talepleri) yönetici onayına ('pending_admin') düşmeye devam eder.
+      const initialStatus: DeliveryStatus = !isGuestCustomer && !isVoiceOrder ? 'pending_pool' : 'pending_admin';
+      const nowIso = new Date().toISOString();
 
       const tip = Math.max(0, Math.round(Number(params.tipAmount) || 0));
       const totalPrice = estimate.price + tip;
@@ -1470,11 +1477,13 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
         ...params,
         id: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         trackingCode,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        ...(initialStatus === 'pending_pool' ? { approvedAt: nowIso } : {}),
         senderUserId: effectiveUserId,
         isGuestOrder: isGuestCustomer,
-        status: 'pending_admin', // Initial customer request starts in pending_admin waiting for management approval!
+        isVoiceOrder,
+        status: initialStatus,
         estimatedDistanceKm: finalDistanceKm,
         estimatedDurationMins: finalDurationMins,
         tipAmount: tip,
@@ -1514,7 +1523,7 @@ const mergeOrderLists = (existingList: DeliveryRequest[], incomingList: Delivery
 
       dispatchOrderStatusNotification({
         order: newRequest,
-        newStatus: 'pending_admin',
+        newStatus: initialStatus,
         currentUserId: effectiveUserId,
         userRole: currentUser.role,
       });

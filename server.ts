@@ -1332,37 +1332,53 @@ function initFirestoreSync() {
             newOrUpdatedCount++;
           }
 
-          // Check if email needs to be dispatched (ONLY for approved pool orders, never while pending_admin!)
+          // Check if email needs to be dispatched (ONLY for pool orders, never while pending_admin!)
           const isTest = isTestOrFakeOrder(fullOrder);
           const isOrderEmailsActive = dbState.smtpConfig?.newOrderEmailsEnabled !== false;
           const isApprovedPool = fullOrder.status === 'pending_pool';
 
-          // Detect manager approval event:
-          // 1. Explicit status change to pending_pool (from pending_admin or unassigned)
-          // 2. OR forceDispatchEmail flag set by manager in UI
-          // 3. OR modified event where approvedAt is recent (within 4 hours) and email is not yet dispatched
+          // Detect email-eligible pool publish events:
+          // 1. Explicit manager approval transition: pending_admin -> pending_pool
+          // 2. Brand-new registered customer order published directly into pending_pool (within 4 hours, not yet emailed)
+          // 3. Explicit forceDispatchEmail flag set by manager in UI
+          // 4. Recently approved pool order whose email has not yet been dispatched
           const approvedAtMs = fullOrder.approvedAt ? new Date(fullOrder.approvedAt).getTime() : 0;
-          const isRecentlyApproved = approvedAtMs > 0 && (Date.now() - approvedAtMs) <= (4 * 60 * 60 * 1000);
-          const isTransitionToPool = (previousStatus === 'pending_admin' || !previousStatus) && isApprovedPool;
+          const createdAtMs = fullOrder.createdAt ? new Date(fullOrder.createdAt).getTime() : 0;
+          const referenceMs = Math.max(approvedAtMs, createdAtMs);
+          const isRecent = referenceMs > 0 && (Date.now() - referenceMs) <= (4 * 60 * 60 * 1000);
+          const isManagerApprovalTransition = previousStatus === 'pending_admin' && isApprovedPool;
+          const isNewDirectPoolOrder =
+            !previousStatus &&
+            isApprovedPool &&
+            isRecent &&
+            !fullOrder.emailDispatched &&
+            !wasEmailDispatched;
           const isForceEmail = fullOrder.forceDispatchEmail === true;
 
           const needsEmail =
             isApprovedPool &&
             !isTest &&
             isOrderEmailsActive &&
-            (isForceEmail || isTransitionToPool || (isRecentlyApproved && !fullOrder.emailDispatched && !wasEmailDispatched));
+            (isForceEmail ||
+              isManagerApprovalTransition ||
+              isNewDirectPoolOrder ||
+              (isRecent && !fullOrder.emailDispatched && !wasEmailDispatched));
 
           if (needsEmail) {
-            console.log(`[FIRESTORE SYNC] 🎯 Manager APPROVED order #${trackingCode} (${docId})! Triggering courier email queue...`);
-            // Clear any stale suppression entries
-            dispatchedEmailOrderIds.delete(docId);
-            dispatchedEmailOrderIds.delete(trackingCode);
-            if (existingIdx >= 0) {
-              dbState.requests[existingIdx].emailDispatched = false;
+            const shouldForceDispatch = isForceEmail || isManagerApprovalTransition;
+            if (shouldForceDispatch) {
+              console.log(`[FIRESTORE SYNC] 🎯 Manager APPROVED/FORCED order #${trackingCode} (${docId})! Triggering courier email queue...`);
+              dispatchedEmailOrderIds.delete(docId);
+              dispatchedEmailOrderIds.delete(trackingCode);
+              if (existingIdx >= 0) {
+                dbState.requests[existingIdx].emailDispatched = false;
+              }
+              fullOrder.emailDispatched = false;
+            } else {
+              console.log(`[FIRESTORE SYNC] 🚀 New registered customer pool order #${trackingCode} (${docId}) detected! Triggering courier email queue...`);
             }
-            fullOrder.emailDispatched = false;
 
-            enqueueNewOrderEmail(fullOrder, undefined, true);
+            enqueueNewOrderEmail(fullOrder, undefined, shouldForceDispatch);
 
             // Clean up force flag in Firestore if present
             if (isForceEmail && serverFirestoreDb) {
@@ -1830,9 +1846,18 @@ app.post('/api/requests', (req, res) => {
       return;
     }
 
-    // Ensure status is pending_admin for new customer order (requires manager approval before hitting courier pool)
+    // Registered non-voice customer orders go directly into pending_pool; voice & guest orders require admin approval
     if (!newRequest.status) {
-      newRequest.status = 'pending_admin';
+      const isGuest =
+        newRequest.isGuestOrder === true ||
+        !newRequest.senderUserId ||
+        newRequest.senderUserId === 'user-guest-01' ||
+        String(newRequest.senderUserId).startsWith('user-guest');
+      const isVoice = newRequest.isVoiceOrder === true;
+      newRequest.status = !isGuest && !isVoice ? 'pending_pool' : 'pending_admin';
+    }
+    if (newRequest.status === 'pending_pool' && !newRequest.approvedAt) {
+      newRequest.approvedAt = new Date().toISOString();
     }
     if (!newRequest.createdAt) {
       newRequest.createdAt = new Date().toISOString();
@@ -3856,6 +3881,7 @@ app.post('/api/ai-voice/create-order', (req, res) => {
       courierEarnings: Number(price) || 200,
       paymentMethod: 'gonderici_odemeli',
       isPaid: false,
+      isVoiceOrder: true,
       status: 'pending_admin',
       noteForCourier: `[🎙️ Sesli Kurye Talebi] İçerik: ${packageContent || 'Belirtilmedi'}. 30-45 Dk Acil Kurye. Müşteri Tel: ${cleanPhone}`,
       estimatedDistanceKm: 10,
