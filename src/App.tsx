@@ -1,22 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { Navbar } from './components/Navbar';
 import { HeroIntro } from './components/HeroIntro';
-import { CustomerRequestForm } from './components/CustomerRequestForm';
-import { CourierPool } from './components/CourierPool';
-import { OrderTracker } from './components/OrderTracker';
-import { OrderHistory } from './components/OrderHistory';
-import { AdminManagement } from './components/AdminManagement';
-import { AdminLoginGate } from './components/AdminLoginGate';
-import { PaketTalebiPoolPage } from './components/PaketTalebiPoolPage';
 import { AuthModal } from './components/AuthModal';
 import { QuickCourierModal } from './components/QuickCourierModal';
 import { VoiceAIAssistantWidget } from './components/VoiceAIAssistantWidget';
-import { TermsOfUseModal } from './components/TermsOfUseModal';
-import { KvkkModal } from './components/KvkkModal';
 import { UnassignedOrderTipModal } from './components/UnassignedOrderTipModal';
 import { isCustomerApk } from './utils/apkDetection';
+import {
+  DISTRICT_SEO_PAGES,
+  SERVICE_SEO_PAGES,
+  SeoPageData,
+  getSeoPageByPath,
+} from './data/seoPages';
+import { applyPageSeo, handleSpaLinkClick, navigateToPath } from './utils/seoManager';
 import { Bike, ShieldCheck, Zap, FileText } from 'lucide-react';
+
+// Code-split heavy panels & secondary views to maximize mobile Core Web Vitals (LCP / INP / TBT)
+const CourierPool = lazy(() =>
+  import('./components/CourierPool').then((m) => ({ default: m.CourierPool }))
+);
+const OrderTracker = lazy(() =>
+  import('./components/OrderTracker').then((m) => ({ default: m.OrderTracker }))
+);
+const OrderHistory = lazy(() =>
+  import('./components/OrderHistory').then((m) => ({ default: m.OrderHistory }))
+);
+const AdminManagement = lazy(() =>
+  import('./components/AdminManagement').then((m) => ({ default: m.AdminManagement }))
+);
+const AdminLoginGate = lazy(() =>
+  import('./components/AdminLoginGate').then((m) => ({ default: m.AdminLoginGate }))
+);
+const PaketTalebiPoolPage = lazy(() =>
+  import('./components/PaketTalebiPoolPage').then((m) => ({ default: m.PaketTalebiPoolPage }))
+);
+const TermsOfUseModal = lazy(() =>
+  import('./components/TermsOfUseModal').then((m) => ({ default: m.TermsOfUseModal }))
+);
+const KvkkModal = lazy(() =>
+  import('./components/KvkkModal').then((m) => ({ default: m.KvkkModal }))
+);
+const SeoLandingPage = lazy(() =>
+  import('./components/SeoLandingPage').then((m) => ({ default: m.SeoLandingPage }))
+);
+
+const RouteFallback: React.FC = () => (
+  <div className="w-full max-w-5xl mx-auto px-4 py-12 flex items-center justify-center">
+    <div className="w-8 h-8 rounded-full border-2 border-emerald-500/30 border-t-emerald-400 animate-spin" aria-label="Yükleniyor" />
+  </div>
+);
 
 const checkIsAdminRoute = (): boolean => {
   if (typeof window === 'undefined') return false;
@@ -27,8 +60,8 @@ const checkIsAdminRoute = (): boolean => {
   return keywords.some((k) => p.includes(k) || s.includes(k) || h.includes(k));
 };
 
-const MainContent: React.FC = () => {
-  const { currentView, currentUser, setCurrentView, openAuthModal, switchUser, activeCourierDeliveries, openQuickCourierModal } = useDelivery();
+const MainContent: React.FC<{ activeSeoPage: SeoPageData | null }> = ({ activeSeoPage }) => {
+  const { currentView, currentUser, setCurrentView, openAuthModal, openQuickCourierModal } = useDelivery();
 
   // Automatically trigger Android permissions & start Foreground Service hook for continuous background connection
   React.useEffect(() => {
@@ -105,7 +138,6 @@ const MainContent: React.FC = () => {
     };
   }, []);
 
-
   // If customer view is triggered anywhere, directly open the quick courier modal
   React.useEffect(() => {
     if (currentView === 'customer') {
@@ -118,71 +150,92 @@ const MainContent: React.FC = () => {
     }
   }, [currentView, currentUser.role, openQuickCourierModal, setCurrentView]);
 
+  // Render dedicated SEO Landing Page when visiting a service or district URL (except for active courier role)
+  const shouldRenderSeoPage =
+    Boolean(activeSeoPage) &&
+    currentView === 'home' &&
+    currentUser.role !== 'courier';
+
   return (
     <div className="w-full max-w-full overflow-hidden">
-      {/* Home View - If courier, always show CourierPool */}
+      {/* Home / SEO View - If courier, always show CourierPool */}
       {currentView === 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          {currentUser.role === 'courier' ? <CourierPool /> : <HeroIntro />}
+          {currentUser.role === 'courier' ? (
+            <Suspense fallback={<RouteFallback />}>
+              <CourierPool />
+            </Suspense>
+          ) : shouldRenderSeoPage && activeSeoPage ? (
+            <Suspense fallback={<RouteFallback />}>
+              <SeoLandingPage page={activeSeoPage} />
+            </Suspense>
+          ) : (
+            <HeroIntro />
+          )}
         </main>
       )}
 
       {/* Dynamic Tab Views */}
       {currentView !== 'home' && (
         <main className="w-full max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6">
-          {currentView === 'customer' && (
-            currentUser.role === 'courier' ? <CourierPool /> : <HeroIntro />
-          )}
-          {currentView === 'courier' && (
-            currentUser.role === 'courier' || currentUser.role === 'admin' ? (
-              <CourierPool />
-            ) : (
-              <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
-                  <Bike className="w-7 h-7" />
+          <Suspense fallback={<RouteFallback />}>
+            {currentView === 'customer' && (
+              currentUser.role === 'courier' ? <CourierPool /> : <HeroIntro />
+            )}
+            {currentView === 'courier' && (
+              currentUser.role === 'courier' || currentUser.role === 'admin' ? (
+                <CourierPool />
+              ) : (
+                <div className="max-w-md mx-auto my-12 p-8 bg-[#021f19] border border-emerald-800/80 rounded-3xl text-center space-y-4 text-white shadow-2xl">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 mx-auto flex items-center justify-center">
+                    <Bike className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-lg font-extrabold text-white">Kurye Yetkisi Gerekli</h3>
+                    <p className="text-xs text-emerald-300/80">
+                      Kurye havuzu ve anlık görevler kayıtlı moto kuryelerimiz ve yöneticiler içindir.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('courier_login')}
+                      className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Bike className="w-4 h-4" />
+                      <span>Kurye Girişi Yap (Kayıtlı Şifrenizle)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('courier_register')}
+                      className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <span>Yeni Kurye Başvurusu / Kayıt Ol</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentView('home');
+                        navigateToPath('/');
+                      }}
+                      className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
+                    >
+                      Ana Sayfaya Dön
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-lg font-extrabold text-white">Kurye Yetkisi Gerekli</h3>
-                  <p className="text-xs text-emerald-300/80">
-                    Kurye havuzu ve anlık görevler kayıtlı moto kuryelerimiz ve yöneticiler içindir.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('courier_login')}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-extrabold text-xs rounded-xl transition shadow-md cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Bike className="w-4 h-4" />
-                    <span>Kurye Girişi Yap (Kayıtlı Şifrenizle)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal('courier_register')}
-                    className="w-full py-2.5 bg-emerald-800/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-600/50 font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <span>Yeni Kurye Başvurusu / Kayıt Ol</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView('home')}
-                    className="w-full py-2 bg-[#011410] hover:bg-[#02241d] text-emerald-400 font-medium text-xs rounded-xl transition border border-emerald-800/60 cursor-pointer"
-                  >
-                    Ana Sayfaya Dön
-                  </button>
-                </div>
-              </div>
-            )
-          )}
-          {currentView === 'tracker' && <OrderTracker />}
-          {currentView === 'admin' && (
-            currentUser.role === 'admin' ? (
-              <AdminManagement />
-            ) : (
-              <AdminLoginGate />
-            )
-          )}
-          {currentView === 'history' && <OrderHistory />}
+              )
+            )}
+            {currentView === 'tracker' && <OrderTracker />}
+            {currentView === 'admin' && (
+              currentUser.role === 'admin' ? (
+                <AdminManagement />
+              ) : (
+                <AdminLoginGate />
+              )
+            )}
+            {currentView === 'history' && <OrderHistory />}
+          </Suspense>
         </main>
       )}
     </div>
@@ -202,23 +255,123 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
   onOpenTerms,
   onOpenKvkk,
 }) => {
-  const { currentView, setCurrentView, currentUser } = useDelivery();
-  const isRegisteredCustomer =
-    currentUser.role === 'customer' &&
-    currentUser.id !== 'user-guest-01' &&
-    !currentUser.id.startsWith('user-guest');
-  const showPanelvanLink = currentView !== 'history' && !isRegisteredCustomer;
+  const { setCurrentView, currentUser } = useDelivery();
+  const showSeoDirectory = currentUser.role !== 'courier' && currentUser.role !== 'admin' && !isCustomerApk();
 
   return (
-    <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-6 text-xs text-emerald-400/70 w-full max-w-full">
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-          <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
-            <Bike className="w-3.5 h-3.5" />
+    <footer className="border-t border-emerald-900/40 bg-[#011410] mt-12 py-8 text-xs text-emerald-400/75 w-full max-w-full">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 space-y-8">
+        {/* Crawlable SEO Internal Links Directory for Web Visitors */}
+        {showSeoDirectory && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-6 border-b border-emerald-900/40">
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0">
+                  <Bike className="w-3.5 h-3.5" aria-hidden="true" />
+                </div>
+                <span className="font-bold text-sm text-white">Antalya Teslimat</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Antalya'da göndericileri çevresindeki uygun kuryelerle anında buluşturan 7/24 dijital kurye talep platformu.
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <p className="font-semibold text-white text-xs">Kurye Hizmetleri</p>
+              <ul className="space-y-1.5">
+                {SERVICE_SEO_PAGES.map((s) => (
+                  <li key={s.slug}>
+                    <a
+                      href={s.path}
+                      onClick={(e) => {
+                        setCurrentView('home');
+                        handleSpaLinkClick(e, s.path);
+                      }}
+                      className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4"
+                    >
+                      Antalya {s.navLabel}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="space-y-2.5">
+              <p className="font-semibold text-white text-xs">Antalya Kurye Bölgeleri</p>
+              <ul className="space-y-1.5">
+                {DISTRICT_SEO_PAGES.map((d) => (
+                  <li key={d.slug}>
+                    <a
+                      href={d.path}
+                      onClick={(e) => {
+                        setCurrentView('home');
+                        handleSpaLinkClick(e, d.path);
+                      }}
+                      className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4"
+                    >
+                      {d.navLabel}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="space-y-2.5">
+              <p className="font-semibold text-white text-xs">Platform & Kurumsal</p>
+              <ul className="space-y-1.5">
+                <li>
+                  <a
+                    href="/"
+                    onClick={(e) => {
+                      setCurrentView('home');
+                      handleSpaLinkClick(e, '/');
+                    }}
+                    className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4"
+                  >
+                    Ana Sayfa — Online Kurye Çağır
+                  </a>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenTerms}
+                    className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4 cursor-pointer"
+                  >
+                    Kullanım Koşulları
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={onOpenKvkk}
+                    className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4 cursor-pointer"
+                  >
+                    KVKK Aydınlatma Metni
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView('admin')}
+                    className="text-emerald-300/80 hover:text-white transition-colors hover:underline underline-offset-4 cursor-pointer"
+                  >
+                    Yönetim Paneli
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
-          <span className="font-bold text-white">Antalya Şehir İçi Teslimat 7/24</span>
-          <span className="text-emerald-500/80">© 2026 Antalya İçi 30-45 Dk Moto Kurye & Havuz</span>
-        </div>
+        )}
+
+        {/* Bottom Copyright & Utility Strip */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <div className="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-[11px] shrink-0 shadow-xs shadow-emerald-500/30">
+              <Bike className="w-3.5 h-3.5" aria-hidden="true" />
+            </div>
+            <span className="font-bold text-white">Antalya Teslimat 7/24</span>
+            <span className="text-emerald-500/80">© 2026 Dijital Kurye Talep Platformu · Antalya</span>
+          </div>
 
           <div className="flex items-center gap-3 sm:gap-4 text-emerald-300/80 flex-wrap justify-center sm:justify-end text-[11px] sm:text-xs">
             <button
@@ -226,7 +379,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               onClick={onOpenTerms}
               className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Kullanım Koşulları</span>
             </button>
             <span className="text-emerald-800">•</span>
@@ -235,7 +388,7 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               onClick={onOpenKvkk}
               className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
               <span>KVKK Aydınlatma Metni</span>
             </button>
             <span className="text-emerald-800">•</span>
@@ -245,43 +398,35 @@ const AppFooter: React.FC<{ onOpenTerms: () => void; onOpenKvkk: () => void }> =
               className="text-emerald-400 hover:text-emerald-200 underline font-semibold transition cursor-pointer flex items-center gap-1"
               title="Yönetim Paneli Girişi"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Yönetim</span>
             </button>
-            {showPanelvanLink && (
-              <>
-                <span className="text-emerald-800">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCurrentView('home');
-                    setTimeout(() => {
-                      const el = document.getElementById('panelvan-nakliye');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 100);
-                  }}
-                  className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer"
-                  title="Konyaaltı Panelvan Parça Eşya Taşıma (900 ₺) Bilgilendirmesini Gör"
-                >
-                  <span>🚚 Panelvan Nakliye (900 ₺)</span>
-                </button>
-              </>
-            )}
             <span className="text-emerald-800">•</span>
             <span className="flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>30-45 Dk Moto Kurye</span>
+              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+              <span>30–45 Dk Moto Kurye</span>
             </span>
           </div>
         </div>
+      </div>
     </footer>
   );
 };
 
-const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTalebiRoute }) => {
+const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean; activeSeoPage: SeoPageData | null }> = ({
+  isPaketTalebiRoute,
+  activeSeoPage,
+}) => {
   const { currentView, setCurrentView, recordSiteVisit, isImpersonating, returnToAdmin, currentUser } = useDelivery();
   const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
   const [isKvkkModalOpen, setIsKvkkModalOpen] = useState<boolean>(false);
+
+  // Sync dynamic page title, meta description, canonical URL & Schema.org JSON-LD per route
+  useEffect(() => {
+    if (!isPaketTalebiRoute) {
+      applyPageSeo(currentView === 'home' ? activeSeoPage : null);
+    }
+  }, [activeSeoPage, currentView, isPaketTalebiRoute]);
 
   useEffect(() => {
     const handleUrlChange = () => {
@@ -307,7 +452,7 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
     };
-  }, [setCurrentView, recordSiteVisit]);
+  }, [setCurrentView, recordSiteVisit, currentUser.role]);
 
   return (
     <>
@@ -317,7 +462,7 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       {/* Global Quick Courier Modal (Acil Kurye Çağır) */}
       <QuickCourierModal />
 
-      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı (Kurye panelinde, Kurye Havuz APK'sinde veya /pakettalebi ekranında gösterilmez; Müşteri APK'sinde ve webde aktiftir) */}
+      {/* 7/24 Sesli Yapay Zeka Müşteri Temsilcisi Asistanı */}
       {!isPaketTalebiRoute &&
         currentView !== 'courier' &&
         currentUser.role !== 'courier' &&
@@ -331,7 +476,9 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
       {/* Dedicated Standalone /pakettalebi Route View */}
       {isPaketTalebiRoute ? (
         <div className="flex-1 w-full">
-          <PaketTalebiPoolPage />
+          <Suspense fallback={<RouteFallback />}>
+            <PaketTalebiPoolPage />
+          </Suspense>
         </div>
       ) : (
         <>
@@ -363,10 +510,10 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
 
           {/* Dynamic Views */}
           <div className="flex-1 w-full max-w-full">
-            <MainContent />
+            <MainContent activeSeoPage={activeSeoPage} />
           </div>
 
-          {/* Minimal Responsive Footer */}
+          {/* Structured SEO Footer */}
           <AppFooter
             onOpenTerms={() => setIsTermsModalOpen(true)}
             onOpenKvkk={() => setIsKvkkModalOpen(true)}
@@ -374,27 +521,37 @@ const AppViewRouter: React.FC<{ isPaketTalebiRoute: boolean }> = ({ isPaketTaleb
         </>
       )}
 
-      {/* Global Terms of Use Modal */}
-      <TermsOfUseModal
-        isOpen={isTermsModalOpen}
-        onClose={() => setIsTermsModalOpen(false)}
-      />
-
-      {/* Global KVKK Modal */}
-      <KvkkModal
-        isOpen={isKvkkModalOpen}
-        onClose={() => setIsKvkkModalOpen(false)}
-      />
+      {/* Lazy-Loaded Legal Modals */}
+      <Suspense fallback={null}>
+        {isTermsModalOpen && (
+          <TermsOfUseModal
+            isOpen={isTermsModalOpen}
+            onClose={() => setIsTermsModalOpen(false)}
+          />
+        )}
+        {isKvkkModalOpen && (
+          <KvkkModal
+            isOpen={isKvkkModalOpen}
+            onClose={() => setIsKvkkModalOpen(false)}
+          />
+        )}
+      </Suspense>
     </>
   );
 };
 
 export default function App() {
   const [isPaketTalebiRoute, setIsPaketTalebiRoute] = useState<boolean>(checkIsPaketTalebiRoute);
+  const [activeSeoPage, setActiveSeoPage] = useState<SeoPageData | null>(() =>
+    typeof window !== 'undefined' ? getSeoPageByPath(window.location.pathname) : null
+  );
 
   useEffect(() => {
     const checkRoute = () => {
       setIsPaketTalebiRoute(checkIsPaketTalebiRoute());
+      if (typeof window !== 'undefined') {
+        setActiveSeoPage(getSeoPageByPath(window.location.pathname));
+      }
     };
 
     checkRoute();
@@ -409,7 +566,7 @@ export default function App() {
   return (
     <DeliveryProvider>
       <div className="min-h-screen bg-gradient-to-b from-[#021814] via-[#03241e] to-[#011410] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden m-0 p-0">
-        <AppViewRouter isPaketTalebiRoute={isPaketTalebiRoute} />
+        <AppViewRouter isPaketTalebiRoute={isPaketTalebiRoute} activeSeoPage={activeSeoPage} />
       </div>
     </DeliveryProvider>
   );

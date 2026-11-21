@@ -48,6 +48,13 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/sitemap\.xml$/,
+            /^\/robots\.txt$/,
+            /^\/google.*\.html$/,
+            /^\/downloads\//,
+          ],
           skipWaiting: true,
           clientsClaim: true,
           cleanupOutdatedCaches: true,
@@ -60,6 +67,18 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            'icons-vendor': ['lucide-react'],
+            'maps-vendor': ['leaflet', '@vis.gl/react-google-maps'],
+          },
+        },
       },
     },
     server: {

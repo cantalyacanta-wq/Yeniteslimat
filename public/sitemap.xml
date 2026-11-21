@@ -3,19 +3,61 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://antalyateslimat.com/</loc>
-    <lastmod>2026-10-28</lastmod>
+    <lastmod>2026-11-21</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://antalyateslimat.com/app-logo.png</image:loc>
-      <image:title>Antalya Paket Gönder &amp; Kurye Çağır</image:title>
-      <image:caption>Antalya 7/24 Şehir İçi Acil Moto Kurye ve Paket Gönderim Servisi</image:caption>
+      <image:title>Antalya Teslimat — Dijital Kurye Talep Platformu</image:title>
+      <image:caption>Antalya şehir içi online kurye çağırma ve adresten adrese paket gönderme platformu</image:caption>
     </image:image>
   </url>
   <url>
-    <loc>https://www.antalyateslimat.com/</loc>
-    <lastmod>2026-10-28</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://antalyateslimat.com/antalya-paket-gonderme</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/antalya-acil-kurye</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/antalya-evrak-gonderme</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/isletmelere-kurye-antalya</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/konyaalti-kurye</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/kepez-kurye</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/muratpasa-kurye</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://antalyateslimat.com/lara-kurye</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 </urlset>

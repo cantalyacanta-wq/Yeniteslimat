@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+
     <!-- Ignore Vite HMR / WebSocket connection errors in preview iframe per guidelines -->
     <script>
       (function() {
@@ -36,8 +36,8 @@
         }, true);
       })();
     </script>
-    
-    <!-- Favicon & App Icons matching the uploaded red pin badge -->
+
+    <!-- Favicon & App Icons -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
     <link rel="shortcut icon" href="/favicon.png" />
@@ -45,177 +45,215 @@
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Mobile & PWA Settings -->
-    <meta name="theme-color" content="#dc2626" />
+    <meta name="theme-color" content="#021814" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Antalya Kurye" />
+    <meta name="apple-mobile-web-app-title" content="Antalya Teslimat" />
 
-    <!-- Canonical URL -->
+    <!-- Canonical URL (Single non-www canonical root) -->
     <link rel="canonical" href="https://antalyateslimat.com/" />
 
     <!-- Google Search Console Site Verification -->
     <meta name="google-site-verification" content="google1ef8290a0908c9ac" />
-    <meta name="google-site-verification" content="google1ef8290a0908c9ac.html" />
 
-    <!-- Primary SEO Title & Meta Tags -->
-    <title>Antalya Teslimat 7/24 - Antalya Paket Gönder, Kurye Çağır, Acil Paket Gönder</title>
-    <meta name="title" content="Antalya Teslimat 7/24 - Antalya Paket Gönder, Kurye Çağır, Acil Paket Gönder" />
-    <meta name="description" content="Antalya paket gönder ve kurye çağır: Muratpaşa, Konyaaltı, Kepez ve tüm Antalya genelinde 30-45 dakikada acil paket gönder, nöbetçi moto kurye, evrak taşıma ve 7/24 canlı teslimat takibi." />
-    <meta name="keywords" content="antalya paket gonder, antalya paket gönder, kurye cagir, kurye çağır, acil paket gonder, acil paket gönder, antalya kurye cagir, antalya kurye çağır, antalya acil kurye, antalya moto kurye, antalya kurye, antalya sehir ici teslimat, antalya teslimat, konyaaltı kurye çağır, muratpaşa kurye çağır, kepez kurye çağır, lara kurye, nöbetçi kurye antalya, hızlı paket gönderimi antalya" />
+    <!-- Primary SEO Title & Meta Tags (Optimized for Search Intent & Snippet Length) -->
+    <title>Antalya Kurye & Paket Gönderme | Dijital Kurye Platformu</title>
+    <meta name="title" content="Antalya Kurye & Paket Gönderme | Dijital Kurye Platformu" />
+    <meta name="description" content="Antalya'da çevrenizdeki uygun kuryelere anında ulaşın. Online kurye çağırma, acil kurye ve adresten adrese şehir içi paket gönderme 200 TL sabit fiyatla 7/24." />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-    <meta name="author" content="Antalya Teslimat 7/24" />
+    <meta name="author" content="Antalya Teslimat" />
     <meta name="language" content="Turkish" />
-    <meta name="rating" content="General" />
-    <meta name="revisit-after" content="1 days" />
-    
+
     <!-- Geo-Targeting for Google Local SEO (Antalya, TR-07) -->
     <meta name="geo.region" content="TR-07" />
-    <meta name="geo.placename" content="Antalya, Muratpaşa, Konyaaltı, Kepez" />
+    <meta name="geo.placename" content="Antalya, Konyaaltı, Kepez, Muratpaşa, Lara" />
     <meta name="geo.position" content="36.8969;30.7133" />
     <meta name="ICBM" content="36.8969, 30.7133" />
 
-    <!-- Open Graph / Facebook / WhatsApp / Telegram -->
+    <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.antalyateslimat.com/" />
+    <meta property="og:url" content="https://antalyateslimat.com/" />
     <meta property="og:locale" content="tr_TR" />
-    <meta property="og:site_name" content="Antalya Teslimat 7/24" />
-    <meta property="og:title" content="Antalya Teslimat 7/24 - Antalya Paket Gönder, Kurye Çağır, Acil Paket Gönder" />
-    <meta property="og:description" content="Antalya paket gönder ve kurye çağır: Muratpaşa, Konyaaltı, Kepez ve tüm Antalya'ya 30-45 dakikada jet moto kurye ile anında teslimat ve canlı radar takibi." />
-    <meta property="og:image" content="/app-logo.png" />
-    
-    <!-- Twitter Cards -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Antalya Teslimat 7/24 - Antalya Paket Gönder, Kurye Çağır, Acil Paket Gönder" />
-    <meta name="twitter:description" content="Antalya'da acil paket gönder ve kurye çağır: 30-45 dakikada acil moto kurye, hızlı paket gönderimi ve canlı teslimat takibi." />
-    <meta name="twitter:image" content="/app-logo.png" />
+    <meta property="og:site_name" content="Antalya Teslimat" />
+    <meta property="og:title" content="Antalya Kurye & Paket Gönderme | Dijital Kurye Platformu" />
+    <meta property="og:description" content="Antalya'da çevrenizdeki uygun kuryelere anında ulaşın. Online kurye çağırma, acil kurye ve adresten adrese şehir içi paket gönderme 200 TL sabit fiyatla 7/24." />
+    <meta property="og:image" content="https://antalyateslimat.com/app-logo.png" />
+    <meta property="og:image:alt" content="Antalya Teslimat — Dijital Kurye Talep Platformu" />
 
-    <!-- Google Fonts Preconnect -->
+    <!-- Twitter / X Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Antalya Kurye & Paket Gönderme | Dijital Kurye Platformu" />
+    <meta name="twitter:description" content="Antalya'da çevrenizdeki uygun kuryelere anında ulaşın. Online kurye çağırma, acil kurye ve adresten adrese paket gönderme 7/24." />
+    <meta name="twitter:image" content="https://antalyateslimat.com/app-logo.png" />
+
+    <!-- Non-Render-Blocking Google Fonts for Optimal Mobile Core Web Vitals (FCP / LCP) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
-    <!-- Schema.org JSON-LD Structured Data for Google Site Name (WebSite), LocalBusiness & FAQPage -->
-    <script type="application/ld+json">
+    <!-- Schema.org JSON-LD Structured Data: WebSite, Organization, WebApplication, Service & FAQPage -->
+    <script id="antalya-seo-jsonld" type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@graph": [
         {
           "@type": "WebSite",
-          "@id": "https://www.antalyateslimat.com/#website",
+          "@id": "https://antalyateslimat.com/#website",
           "name": "Antalya Teslimat",
           "alternateName": [
             "Antalya Teslimat 7/24",
-            "Antalya Şehir İçi Teslimat 7/24",
-            "Antalya Kurye",
-            "Antalya Moto Kurye"
+            "Antalya Kurye Talep Platformu",
+            "Antalya Şehir İçi Teslimat",
+            "Antalya Kurye"
           ],
-          "url": "https://www.antalyateslimat.com/",
+          "url": "https://antalyateslimat.com/",
           "inLanguage": "tr-TR",
-          "description": "Antalya Şehir İçi Teslimat 7/24: Muratpaşa, Konyaaltı, Kepez, Lara ve tüm ilçelere 30-45 dakikada acil moto kurye, hızlı paket gönderimi ve canlı kurye takip sistemi.",
+          "description": "Antalya'da çevrenizdeki uygun kuryelere anında ulaşın. Online kurye çağırma, acil kurye ve adresten adrese şehir içi paket gönderme 200 TL sabit fiyatla 7/24.",
           "publisher": {
-            "@id": "https://www.antalyateslimat.com/#localbusiness"
+            "@id": "https://antalyateslimat.com/#organization"
           }
         },
         {
-          "@type": "LocalBusiness",
-          "@id": "https://www.antalyateslimat.com/#localbusiness",
-          "name": "Antalya Teslimat 7/24",
-          "alternateName": ["Antalya Teslimat", "Antalya Kurye", "Antalya Şehir İçi Teslimat", "Antalya Moto Kurye"],
-          "url": "https://www.antalyateslimat.com/",
-          "logo": "https://www.antalyateslimat.com/app-logo.png",
-          "image": "https://www.antalyateslimat.com/app-logo.png",
-          "description": "Antalya Şehir İçi Teslimat 7/24: Muratpaşa, Konyaaltı, Kepez, Lara ve tüm ilçelere 30-45 dakikada acil moto kurye, hızlı paket gönderimi ve evrak taşıma hizmeti.",
+          "@type": "Organization",
+          "@id": "https://antalyateslimat.com/#organization",
+          "name": "Antalya Teslimat",
+          "alternateName": ["Antalya Teslimat 7/24", "Antalya Dijital Kurye Talep Platformu"],
+          "url": "https://antalyateslimat.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://antalyateslimat.com/app-logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "image": "https://antalyateslimat.com/app-logo.png",
+          "description": "Antalya'da göndericilerle çevredeki uygun kuryeleri anında buluşturan 7/24 dijital kurye talep platformu.",
           "telephone": "+905550007724",
           "email": "kuryeantalyam@gmail.com",
-          "priceRange": "₺₺",
-          "currenciesAccepted": "TRY",
-          "paymentAccepted": "Nakit, Alıcı Ödemeli, Gönderici Ödemeli, Kredi Kartı",
           "areaServed": [
             { "@type": "City", "name": "Antalya" },
-            { "@type": "AdministrativeArea", "name": "Muratpaşa" },
             { "@type": "AdministrativeArea", "name": "Konyaaltı" },
             { "@type": "AdministrativeArea", "name": "Kepez" },
+            { "@type": "AdministrativeArea", "name": "Muratpaşa" },
             { "@type": "AdministrativeArea", "name": "Lara" }
           ],
           "address": {
             "@type": "PostalAddress",
-            "streetAddress": "Muratpaşa & Konyaaltı Şehir İçi Dağıtım Merkezi",
-            "addressLocality": "Muratpaşa",
+            "addressLocality": "Antalya",
             "addressRegion": "Antalya",
             "postalCode": "07100",
             "addressCountry": "TR"
           },
-          "geo": {
-            "@type": "GeoCoordinates",
-            "latitude": 36.8969,
-            "longitude": 30.7133
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+905550007724",
+            "email": "kuryeantalyam@gmail.com",
+            "contactType": "customer service",
+            "areaServed": "TR",
+            "availableLanguage": ["Turkish"]
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://antalyateslimat.com/#platform",
+          "name": "Antalya Teslimat — Dijital Kurye Talep Platformu",
+          "url": "https://antalyateslimat.com/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All",
+          "inLanguage": "tr-TR",
+          "description": "Antalya'da çevrenizdeki uygun moto kuryelere anında talep yayınlayabileceğiniz, canlı takip ve alıcı/gönderici ödeme destekli online kurye çağırma platformu.",
+          "provider": {
+            "@id": "https://antalyateslimat.com/#organization"
           },
-          "openingHoursSpecification": [
-            {
-              "@type": "OpeningHoursSpecification",
-              "dayOfWeek": [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday"
-              ],
-              "opens": "00:00",
-              "closes": "23:59"
-            }
+          "offers": {
+            "@type": "Offer",
+            "price": "200",
+            "priceCurrency": "TRY",
+            "availability": "https://schema.org/InStock",
+            "description": "Antalya şehir içi standart moto kurye gönderi ücreti"
+          }
+        },
+        {
+          "@type": "Service",
+          "@id": "https://antalyateslimat.com/#service",
+          "name": "Antalya Online Kurye Çağırma ve Paket Gönderme Platformu",
+          "serviceType": "Dijital Kurye Talep Platformu",
+          "provider": {
+            "@id": "https://antalyateslimat.com/#organization"
+          },
+          "areaServed": [
+            { "@type": "City", "name": "Antalya" },
+            { "@type": "AdministrativeArea", "name": "Konyaaltı" },
+            { "@type": "AdministrativeArea", "name": "Kepez" },
+            { "@type": "AdministrativeArea", "name": "Muratpaşa" },
+            { "@type": "AdministrativeArea", "name": "Lara" }
           ],
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.9",
-            "reviewCount": "394",
-            "bestRating": "5",
-            "worstRating": "1"
-          },
           "hasOfferCatalog": {
             "@type": "OfferCatalog",
-            "name": "Antalya Paket Gönder & Kurye Çağır Hizmetleri",
+            "name": "Antalya Dijital Kurye Talep Hizmetleri",
             "itemListElement": [
               {
                 "@type": "Offer",
+                "url": "https://antalyateslimat.com/antalya-paket-gonderme",
+                "price": "200",
+                "priceCurrency": "TRY",
                 "itemOffered": {
                   "@type": "Service",
-                  "name": "Antalya Paket Gönder",
-                  "description": "Antalya şehir içi hızlı ve güvenli paket gönderimi. Muratpaşa, Konyaaltı, Kepez kapıdan kapıya teslimat."
+                  "name": "Antalya Paket Gönderme",
+                  "url": "https://antalyateslimat.com/antalya-paket-gonderme",
+                  "description": "Adresten adrese şehir içi paket gönderme ve canlı takip."
                 }
               },
               {
                 "@type": "Offer",
+                "url": "https://antalyateslimat.com/antalya-acil-kurye",
+                "price": "200",
+                "priceCurrency": "TRY",
                 "itemOffered": {
                   "@type": "Service",
-                  "name": "Kurye Çağır (Jet Moto Kurye)",
-                  "description": "Antalya'da tek tıkla acil motorlu kurye çağırın, kuryeniz 15-20 dakikada adresinize gelsin."
+                  "name": "Antalya Acil Kurye",
+                  "url": "https://antalyateslimat.com/antalya-acil-kurye",
+                  "description": "7/24 online kurye çağırma havuzu ile en yakın müsait kuryeye anında ulaşım."
                 }
               },
               {
                 "@type": "Offer",
+                "url": "https://antalyateslimat.com/antalya-evrak-gonderme",
+                "price": "200",
+                "priceCurrency": "TRY",
                 "itemOffered": {
                   "@type": "Service",
-                  "name": "Acil Paket Gönder",
-                  "description": "30-45 dakikada jet ekspres acil paket teslimatı, acil evrak, medikal ve özel eşya gönderimi."
+                  "name": "Antalya Evrak Gönderme",
+                  "url": "https://antalyateslimat.com/antalya-evrak-gonderme",
+                  "description": "Islak imzalı sözleşme, noter, hukuk ve muhasebe evraklarının elden ele transferi."
                 }
               },
               {
                 "@type": "Offer",
+                "url": "https://antalyateslimat.com/isletmelere-kurye-antalya",
+                "price": "200",
+                "priceCurrency": "TRY",
                 "itemOffered": {
                   "@type": "Service",
-                  "name": "Alıcı Ödemeli Paket Teslimatı",
-                  "description": "Alıcıdan tahsilatlı güvenli şehir içi kargo ve paket taşıma."
-                }
-              },
-              {
-                "@type": "Offer",
-                "itemOffered": {
-                  "@type": "Service",
-                  "name": "Evrak & Sözleşme Kuryesi",
-                  "description": "Gizli, güvenli ve imzalı dosya/belge taşımacılığı."
+                  "name": "İşletmelere Kurye Antalya",
+                  "url": "https://antalyateslimat.com/isletmelere-kurye-antalya",
+                  "description": "E-ticaret, butik, optik, eczane ve ofisler için sabit maliyetsiz dijital kurye ağı."
                 }
               }
             ]
@@ -223,46 +261,54 @@
         },
         {
           "@type": "FAQPage",
-          "@id": "#faq",
+          "@id": "https://antalyateslimat.com/#faq",
           "mainEntity": [
             {
               "@type": "Question",
-              "name": "Antalya'da nasıl paket gönderilir? (Antalya Paket Gönder)",
+              "name": "Antalya Teslimat klasik bir kurye şirketinden nasıl farklı çalışır?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Antalya Teslimat 7/24 üzerinden gönderici ve alıcı ilçe, adres ve telefon bilgilerini girerek anında paket gönderebilirsiniz. Kuryemiz paketinizi kapınızdan teslim alarak alıcıya jet hızında ulaştırır."
+                "text": "Antalya Teslimat, tek bir çağrı merkezinin sıraya koyduğu klasik bir kurye ofisi değil; göndericilerle çevredeki müsait kuryeleri doğrudan buluşturan dijital bir kurye talep platformudur. Talebinizi oluşturduğunuzda bölgenizdeki aktif kuryeler çağrıyı anında görür ve en uygun konumdaki kurye görevi doğrudan üstlenir."
               }
             },
             {
               "@type": "Question",
-              "name": "Antalya'da acil kurye nasıl çağrılır? (Kurye Çağır)",
+              "name": "Antalya'da online kurye çağırma ve adresten adrese paket gönderme nasıl yapılır?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Antalya Teslimat 7/24 web sitemizden 'Hemen Yeni Kurye Çağır' butonuna tıklayarak talebinizi oluşturabilirsiniz. Talebiniz en yakın moto kurye havuzuna anında iletilir ve dakikalar içinde kurye yönlendirilir."
+                "text": "Kayıtlı kullanıcılar giriş yaparak adreslerini girip taleplerini anında kurye havuzunda yayınlayabilir. Üyelik oluşturmak istemeyen ziyaretçiler ise 7/24 aktif sesli asistan üzerinden adres ve alıcı bilgilerini konuşarak kurye çağrısı başlatabilir."
               }
             },
             {
               "@type": "Question",
-              "name": "Acil paket gönderimi kaç dakikada teslim edilir? (Acil Paket Gönder)",
+              "name": "Antalya şehir içi paket gönderme ücreti ne kadardır?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Muratpaşa, Konyaaltı ve Kepez için acil paket teslimat süremiz ortalama 30 ile 45 dakikadır. Canlı GPS radar üzerinden kuryenizin anlık konumunu haritadan izleyebilirsiniz."
+                "text": "Antalya şehir içi standart moto kurye gönderilerinde tüm kategorilerde ve hizmet verilen merkez ilçeler arasında şeffaf 200 TL ücret politikası uygulanır. Ödeme tercihinize göre gönderici ödemeli veya alıcı ödemeli olarak tamamlanır."
               }
             },
             {
               "@type": "Question",
-              "name": "Alıcı ödemeli paket gönderebilir miyim?",
+              "name": "Acil kurye talebi kaç dakikada adresime ulaşır?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Evet. Sipariş oluştururken 'Alıcı Ödemeli' seçeneğini seçtiğinizde kuryemiz paketi alıcıya teslim ederken teslimat ücretini alıcıdan tahsil eder."
+                "text": "Talebiniz havuza düştükten sonra bulunduğunuz mahalleye en yakın müsait kurye tarafından kabul edilir. Muratpaşa, Konyaaltı, Kepez ve Lara hattında ortalama kapıdan kapıya teslimat süresi yoğunluğa bağlı olarak 30 ile 45 dakika arasındadır."
               }
             },
             {
               "@type": "Question",
-              "name": "Antalya'da 7/24 gece nöbetçi kurye var mı?",
+              "name": "Gece saatlerinde veya hafta sonu Antalya'da kurye bulabilir miyim?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Evet. Antalya genelinde 7 gün 24 saat kesintisiz nöbetçi moto kurye ağımız aktiftir. Gece saatlerinde de acil paket ve evrak gönderimi yapabilirsiniz."
+                "text": "Evet. Dijital talep havuzu 7 gün 24 saat kesintisiz açıktır. Akşam, gece veya hafta sonu saatlerinde sahada aktif bulunan nöbetçi moto kuryeler talebinizi görerek adresten adrese teslimatı gerçekleştirir."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Gönderimin durumunu canlı takip edebilir miyim?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Her talep için benzersiz bir takip kodu oluşturulur. Kurye atandığı andan paketin teslim alınmasına ve alıcıya ulaşmasına kadar tüm aşamaları ekranınızdan canlı olarak izleyebilir, gerektiğinde kuryenizle doğrudan iletişim kurabilirsiniz."
               }
             }
           ]
@@ -273,8 +319,27 @@
   </head>
   <body class="bg-[#021814] text-slate-100 font-sans antialiased m-0 p-0 overflow-x-hidden min-h-screen">
     <div id="root" class="min-h-screen w-full"></div>
+    <noscript>
+      <main style="max-width:960px;margin:0 auto;padding:32px 16px;font-family:system-ui,sans-serif;color:#f1f5f9;">
+        <h1>Antalya Kurye &amp; Online Paket Gönderme Platformu</h1>
+        <p>Antalya Teslimat, müşterilerin çevresindeki uygun kuryeleri anında bulabildiği 7/24 dijital kurye talep platformudur. Antalya şehir içi paket gönderme, acil kurye ve adresten adrese teslimat 200 TL sabit ücretle.</p>
+        <h2>Hizmet Sayfaları</h2>
+        <ul>
+          <li><a href="/antalya-paket-gonderme" style="color:#34d399;">Antalya Paket Gönderme</a></li>
+          <li><a href="/antalya-acil-kurye" style="color:#34d399;">Antalya Acil Kurye</a></li>
+          <li><a href="/antalya-evrak-gonderme" style="color:#34d399;">Antalya Evrak Gönderme</a></li>
+          <li><a href="/isletmelere-kurye-antalya" style="color:#34d399;">İşletmelere Kurye Antalya</a></li>
+        </ul>
+        <h2>Antalya Yerel Kurye Bölgeleri</h2>
+        <ul>
+          <li><a href="/konyaalti-kurye" style="color:#34d399;">Konyaaltı Kurye</a></li>
+          <li><a href="/kepez-kurye" style="color:#34d399;">Kepez Kurye</a></li>
+          <li><a href="/muratpasa-kurye" style="color:#34d399;">Muratpaşa Kurye</a></li>
+          <li><a href="/lara-kurye" style="color:#34d399;">Lara Kurye</a></li>
+        </ul>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Automatically hide / remove external host badges if present -->
     <style>
       #netlify-badge,
       iframe[src*="netlify"],
@@ -290,25 +355,5 @@
         width: 0 !important;
       }
     </style>
-    <script>
-      (function() {
-        function cleanBadges() {
-          try {
-            var badges = document.querySelectorAll('#netlify-badge, iframe[src*="netlify"], [data-netlify-badge], .netlify-badge');
-            for (var i = 0; i < badges.length; i++) {
-              if (badges[i] && badges[i].parentNode) {
-                badges[i].parentNode.removeChild(badges[i]);
-              }
-            }
-          } catch(e) {}
-        }
-        document.addEventListener('DOMContentLoaded', cleanBadges);
-        window.addEventListener('load', cleanBadges);
-        setTimeout(cleanBadges, 500);
-        setTimeout(cleanBadges, 1500);
-        setTimeout(cleanBadges, 3000);
-      })();
-    </script>
   </body>
 </html>
-

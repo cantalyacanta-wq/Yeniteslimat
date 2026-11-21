@@ -16,6 +16,7 @@ import {
   unlockAudioContext,
 } from '../utils/audio';
 import { isCustomerApk } from '../utils/apkDetection';
+import { handleSpaLinkClick, navigateToPath } from '../utils/seoManager';
 
 export const Navbar: React.FC = () => {
   const {
@@ -31,11 +32,17 @@ export const Navbar: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(isSoundAlertsEnabled);
   const [soundFeedback, setSoundFeedback] = useState<string | null>(null);
   const [isCustomerApp, setIsCustomerApp] = useState<boolean>(() => isCustomerApk());
+  const [currentPath, setCurrentPath] = useState<string>(() =>
+    typeof window !== 'undefined' ? window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/' : '/'
+  );
 
   useEffect(() => {
     const handleSync = () => {
       setSoundEnabled(isSoundAlertsEnabled());
       setIsCustomerApp(isCustomerApk());
+      if (typeof window !== 'undefined') {
+        setCurrentPath(window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/');
+      }
     };
     window.addEventListener('antalya_sound_toggle', handleSync);
     window.addEventListener('hashchange', handleSync);
@@ -107,20 +114,50 @@ export const Navbar: React.FC = () => {
     return [];
   }, [currentUser.role, activeStats.poolCount, hasActiveCourierDelivery, activeCourierDeliveries.length]);
 
+  const showPublicSeoNav =
+    !isCustomerApp && currentUser.role !== 'courier' && currentUser.role !== 'admin';
+
+  const publicSeoLinks = [
+    { path: '/antalya-paket-gonderme', label: 'Paket Gönderme' },
+    { path: '/antalya-acil-kurye', label: 'Acil Kurye' },
+    { path: '/antalya-evrak-gonderme', label: 'Evrak' },
+    { path: '/isletmelere-kurye-antalya', label: 'İşletmelere' },
+  ];
+
+  const handleDistrictsNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    if (currentPath !== '/') {
+      setCurrentView('home');
+      navigateToPath('/', { scrollToTop: false });
+      setTimeout(() => {
+        const el = document.getElementById('antalya-bolgeler');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    } else {
+      const el = document.getElementById('antalya-bolgeler');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-[#021c17]/95 backdrop-blur-md border-b border-emerald-900/60 shadow-lg w-full max-w-full text-white">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
           
           {/* Logo and Brand Title */}
-          <div
-            onClick={() => {
+          <a
+            href="/"
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
               if (currentUser.role === 'courier') {
                 setCurrentView('courier');
               } else if (currentUser.role === 'admin') {
                 setCurrentView('admin');
               } else {
                 setCurrentView('home');
+                navigateToPath('/');
               }
             }}
             className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none group min-w-0 shrink"
@@ -131,15 +168,52 @@ export const Navbar: React.FC = () => {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                 <span className="font-extrabold text-xs sm:text-sm md:text-base text-white tracking-tight whitespace-nowrap">
-                  Antalya <span className="text-emerald-400">Şehir İçi Teslimat</span>
+                  Antalya <span className="text-emerald-400">Teslimat</span>
                 </span>
                 <span className="inline-block text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.2 sm:py-0.5 rounded bg-emerald-600 text-white shadow-xs">
                   7/24
                 </span>
               </div>
-              <p className="text-[10px] text-emerald-400/80 hidden md:block truncate">Acil Moto Kurye & Hızlı Paket Havuzu</p>
+              <p className="text-[10px] text-emerald-400/80 hidden md:block truncate">Dijital Kurye Talep Platformu</p>
             </div>
-          </div>
+          </a>
+
+          {/* Public Web SEO Navigation Links (hidden in Courier/Admin/Customer APK modes) */}
+          {showPublicSeoNav && (
+            <nav aria-label="Ana Menü" className="hidden lg:flex items-center gap-5 text-xs font-semibold text-emerald-100/80">
+              {publicSeoLinks.map((item) => {
+                const active = currentPath === item.path;
+                return (
+                  <a
+                    key={item.path}
+                    href={item.path}
+                    onClick={(e) => {
+                      setCurrentView('home');
+                      handleSpaLinkClick(e, item.path);
+                    }}
+                    className={`py-1 transition-colors whitespace-nowrap shrink-0 underline-offset-4 ${
+                      active
+                        ? 'text-white underline decoration-emerald-400 decoration-2'
+                        : 'hover:text-white hover:underline decoration-emerald-500/60'
+                    }`}
+                  >
+                    {item.label}
+                  </a>
+                );
+              })}
+              <a
+                href="/konyaalti-kurye"
+                onClick={handleDistrictsNavClick}
+                className={`py-1 transition-colors whitespace-nowrap shrink-0 underline-offset-4 ${
+                  ['/konyaalti-kurye', '/kepez-kurye', '/muratpasa-kurye', '/lara-kurye'].includes(currentPath)
+                    ? 'text-white underline decoration-emerald-400 decoration-2'
+                    : 'hover:text-white hover:underline decoration-emerald-500/60'
+                }`}
+              >
+                Bölgeler
+              </a>
+            </nav>
+          )}
 
           {/* Navigation Items (for courier / admin) */}
           {navItems.length > 0 && (

@@ -3236,7 +3236,7 @@ export const AdminManagement: React.FC = () => {
                 </h2>
 
                 <p className="text-xs sm:text-sm text-sky-100/90 leading-relaxed">
-                  Müşterilerinizin telefonlarına yükleyerek tek dokunuşla <strong className="text-sky-300">kurye talebi oluşturabileceği</strong>, <strong className="text-sky-300">canlı radar kurye takibi</strong> yapabileceği, acil teslimat fiyatı hesaplayabileceği ve <strong className="text-sky-300">panelvan parça eşya taşıma</strong> rezervasyonu yapabileceği resmi müşteri uygulamasıdır. Google Play Store Console'a yüklemek için tüm gereksinimleri karşılar.
+                  Müşterilerinizin telefonlarına yükleyerek tek dokunuşla <strong className="text-sky-300">kurye talebi oluşturabileceği</strong>, <strong className="text-sky-300">canlı radar kurye takibi</strong> yapabileceği ve 7/24 şehir içi paket gönderebileceği resmi müşteri uygulamasıdır. Google Play Store Console'a yüklemek için tüm gereksinimleri karşılar.
                 </p>
 
                 {/* Download & Copy Buttons */}
@@ -3266,8 +3266,8 @@ export const AdminManagement: React.FC = () => {
 
                   <a
                     href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                      `🛵 Antalya Kurye Çağır Resmi Android Uygulaması: Antalya'da 30-45 dakikada acil moto kurye çağırmak, kuryenizi canlı haritada takip etmek ve panelvan parça eşya taşımak için uygulamamızı indirin:\n\n👉 İndirme Linki: ${
-                        typeof window !== 'undefined' ? window.location.origin : 'https://www.antalyateslimat.com'
+                      `🛵 Antalya Kurye Çağır Resmi Android Uygulaması: Antalya'da 30-45 dakikada acil moto kurye çağırmak ve kuryenizi canlı haritada takip etmek için uygulamamızı indirin:\n\n👉 İndirme Linki: ${
+                        typeof window !== 'undefined' ? window.location.origin : 'https://antalyateslimat.com'
                       }/downloads/Antalya-Kurye-Cagir.apk\n\n⭐ Google Play Store yükleme paketi uyumludur.`
                     )}`}
                     target="_blank"
