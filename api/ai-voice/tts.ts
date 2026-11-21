@@ -1,10 +1,7 @@
-import { EdgeTTS } from 'node-edge-tts';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import { GoogleGenAI } from '@google/genai';
+import { EdgeTTS } from '@andresaya/edge-tts';
 
 export default async function handler(req: any, res: any) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -15,10 +12,10 @@ export default async function handler(req: any, res: any) {
 
   try {
     const rawText = String(req.query?.text || '').trim();
-    // Tok ve karizmatik Türkçe erkek ses tonu (Microsoft Ahmet Neural)
-    const voiceName = 'tr-TR-AhmetNeural';
-    const pitch = '-8Hz';
-    const rate = '+6%';
+    const voiceParam = String(req.query?.voice || '').toLowerCase();
+    const voiceName = voiceParam === 'female' ? 'tr-TR-EmelNeural' : 'tr-TR-AhmetNeural';
+    const pitch = '+0Hz';
+    const rate = voiceParam === 'female' ? '+13%' : '+14%';
 
     if (!rawText) {
       return res.status(400).send('Text parameter is required');
@@ -44,26 +41,83 @@ export default async function handler(req: any, res: any) {
       return res.status(400).send('No speakable text');
     }
 
-    const tmpId = `tts_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.mp3`;
-    const tmpPath = path.join(os.tmpdir(), tmpId);
+    // 1. Primary: Gemini 3.8 Flash Lite TTS (Puck natural Turkish male)
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+        });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash-lite-tts',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: cleanSpeech,
+                  speechMetadata: {
+                    style:
+                      voiceParam === 'female'
+                        ? 'Warm, natural, friendly Turkish female customer service representative speaking fluently at a brisk conversational pace.'
+                        : 'Warm, natural, friendly Turkish male customer service representative speaking fluently at a brisk conversational pace with natural intonation, never slow or robotic.',
+                  },
+                },
+              ],
+            },
+          ] as any,
+          config: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voiceParam === 'female' ? 'Kore' : 'Puck' },
+              },
+            },
+          },
+        });
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        const audioPart = parts.find((p: any) => p?.inlineData?.data);
+        const base64Audio = audioPart?.inlineData?.data;
+        if (base64Audio) {
+          const buf = Buffer.from(base64Audio, 'base64');
+          res.setHeader('Content-Type', audioPart?.inlineData?.mimeType || 'audio/wav');
+          res.setHeader('Content-Length', buf.length);
+          res.setHeader('X-TTS-Engine', 'gemini');
+          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+          return res.status(200).send(buf);
+        }
+      } catch (e: any) {
+        console.warn('[SERVERLESS GEMINI TTS FALLBACK]', e?.message);
+      }
+    }
 
-    const tts = new EdgeTTS({
-      voice: voiceName,
-      lang: 'tr-TR',
-      outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
-      rate,
-      pitch,
-      timeout: 12000,
-    });
+    // 2. Secondary: Edge Neural TTS (@andresaya/edge-tts AhmetNeural, +0Hz, +14%)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const tts = new EdgeTTS();
+        await tts.synthesize(cleanSpeech, voiceName, {
+          rate,
+          pitch,
+          outputFormat: 'audio-24khz-96kbitrate-mono-mp3',
+        });
+        const audioBuffer = tts.toBuffer();
+        if (audioBuffer && audioBuffer.length > 100) {
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('Content-Length', audioBuffer.length);
+          res.setHeader('X-TTS-Engine', 'edge');
+          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+          return res.status(200).send(audioBuffer);
+        }
+      } catch (e: any) {
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 400));
+          continue;
+        }
+        throw e;
+      }
+    }
 
-    await tts.ttsPromise(cleanSpeech, tmpPath);
-    const audioBuffer = await fs.promises.readFile(tmpPath);
-    fs.promises.unlink(tmpPath).catch(() => {});
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', audioBuffer.length);
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    return res.status(200).send(audioBuffer);
+    return res.status(500).json({ error: 'TTS audio could not be generated' });
   } catch (err: any) {
     console.error('[VERCEL TTS ERROR]', err?.message);
     return res.status(500).json({ error: 'TTS audio could not be generated' });

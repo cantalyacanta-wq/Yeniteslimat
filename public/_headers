@@ -13,5 +13,17 @@
   Cache-Control: public, max-age=3600
   Content-Type: text/plain; charset=utf-8
 
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/registerSW.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
   Cache-Control: no-cache, no-store, must-revalidate
