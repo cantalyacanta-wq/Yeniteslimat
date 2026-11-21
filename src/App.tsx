@@ -105,17 +105,6 @@ const MainContent: React.FC = () => {
     };
   }, []);
 
-  // If courier has an active delivery in progress, lock them strictly to the courier panel until delivered!
-  React.useEffect(() => {
-    if (
-      currentUser.role === 'courier' &&
-      activeCourierDeliveries &&
-      activeCourierDeliveries.length > 0 &&
-      currentView !== 'courier'
-    ) {
-      setCurrentView('courier');
-    }
-  }, [currentUser.role, activeCourierDeliveries, currentView, setCurrentView]);
 
   // If customer view is triggered anywhere, directly open the quick courier modal
   React.useEffect(() => {

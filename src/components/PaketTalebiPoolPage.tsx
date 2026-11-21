@@ -121,12 +121,6 @@ export const PaketTalebiPoolPage: React.FC = () => {
       return;
     }
 
-    // ENFORCE ACTIVE ORDER LOCK: Üzerinde aktif siparişi olan kurye yeni sipariş alamaz!
-    if (activeUserDeliveries.length > 0) {
-      alert(`Üzerinizde henüz teslimatı yapılmamış aktif bir sipariş bulunmaktadır (#${activeUserDeliveries[0].trackingCode}). Teslimatı gerçekleştirene kadar havuzdan yeni sipariş kabul edemezsiniz.`);
-      return;
-    }
-
     setAcceptingOrderId(order.id);
     try {
       playAcceptSound();
@@ -315,132 +309,157 @@ export const PaketTalebiPoolPage: React.FC = () => {
           </div>
         )}
 
-        {/* RECENTLY ACCEPTED ORDER VIEW (FULL UNMASKED CONTACT DETAILS) */}
-        {acceptedOrder && (
-          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#022820] to-[#011612] border-2 border-emerald-400 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-emerald-700/60 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-500 text-white shadow-sm">
-                  GÖREV ÜZERİNİZE ALINDI
-                </span>
-                <span className="font-mono text-xs font-bold text-amber-400">
-                  #{acceptedOrder.trackingCode}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[11px] text-emerald-300 block">Kurye Kazancınız</span>
-                <span className="text-base font-black text-emerald-300">+{acceptedOrder.courierEarnings} ₺</span>
-              </div>
-            </div>
+        {/* ACTIVE ACCEPTED ORDERS VIEW (MULTIPLE ORDERS SUPPORTED WITH FULL UNMASKED CONTACTS) */}
+        {(() => {
+          const displayedActiveOrders: DeliveryRequest[] = [...activeUserDeliveries];
+          if (
+            acceptedOrder &&
+            acceptedOrder.status !== 'delivered' &&
+            acceptedOrder.status !== 'cancelled' &&
+            !displayedActiveOrders.some((o) => o.id === acceptedOrder.id)
+          ) {
+            displayedActiveOrders.unshift(acceptedOrder);
+          }
 
-            {/* Unmasked Full Contacts */}
-            <div className="space-y-3">
-              {/* Sender */}
-              <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/80 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-emerald-400" />
-                    1. Gönderici (Alış Adresi):
-                  </span>
-                  <span className="font-black text-amber-300">{acceptedOrder.sender.district}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white font-extrabold text-sm">{acceptedOrder.sender.contactName}</span>
+          if (displayedActiveOrders.length === 0) return null;
+
+          return (
+            <div className="space-y-4">
+              {displayedActiveOrders.map((activeOrd) => (
+                <div
+                  key={activeOrd.id}
+                  className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#022820] to-[#011612] border-2 border-emerald-400 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200"
+                >
+                  <div className="flex items-center justify-between border-b border-emerald-700/60 pb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-500 text-white shadow-sm">
+                        GÖREV ÜZERİNİZE ALINDI
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400">
+                        #{activeOrd.trackingCode}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] text-emerald-300 block">Kurye Kazancınız</span>
+                      <span className="text-base font-black text-emerald-300">+{activeOrd.courierEarnings} ₺</span>
+                    </div>
+                  </div>
+
+                  {/* Unmasked Full Contacts */}
+                  <div className="space-y-3">
+                    {/* Sender */}
+                    <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/80 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-emerald-400" />
+                          1. Gönderici (Alış Adresi):
+                        </span>
+                        <span className="font-black text-amber-300">{activeOrd.sender.district}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-extrabold text-sm">{activeOrd.sender.contactName}</span>
+                        <a
+                          href={`tel:${activeOrd.sender.contactPhone}`}
+                          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" />
+                          {activeOrd.sender.contactPhone}
+                        </a>
+                      </div>
+                      <p className="text-emerald-200 font-medium">{activeOrd.sender.addressDetail}</p>
+                      <a
+                        href={getNavUrl(activeOrd.sender.district, activeOrd.sender.addressDetail)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Haritada Alış Adresine Git
+                      </a>
+                    </div>
+
+                    {/* Receiver */}
+                    <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/80 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-teal-400 font-bold flex items-center gap-1.5">
+                          <Navigation className="w-4 h-4 text-teal-400" />
+                          2. Alıcı (Teslim Adresi):
+                        </span>
+                        <span className="font-black text-teal-300">{activeOrd.receiver.district}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-extrabold text-sm">{activeOrd.receiver.contactName}</span>
+                        <a
+                          href={`tel:${activeOrd.receiver.contactPhone}`}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" />
+                          {activeOrd.receiver.contactPhone}
+                        </a>
+                      </div>
+                      <p className="text-emerald-200 font-medium">{activeOrd.receiver.addressDetail}</p>
+                      <a
+                        href={getNavUrl(activeOrd.receiver.district, activeOrd.receiver.addressDetail)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-400 hover:text-teal-300 underline"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Haritada Teslim Adresine Git
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Direct Call Button */}
                   <a
-                    href={`tel:${acceptedOrder.sender.contactPhone}`}
-                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition"
+                    href={`tel:${activeOrd.sender.contactPhone}`}
+                    className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-white font-black text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 text-center"
                   >
-                    <PhoneCall className="w-3.5 h-3.5" />
-                    {acceptedOrder.sender.contactPhone}
+                    <PhoneCall className="w-5 h-5 animate-pulse" />
+                    <span>Göndericiyi Hemen Ara ({activeOrd.sender.contactPhone})</span>
                   </a>
-                </div>
-                <p className="text-emerald-200 font-medium">{acceptedOrder.sender.addressDetail}</p>
-                <a
-                  href={getNavUrl(acceptedOrder.sender.district, acceptedOrder.sender.addressDetail)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> Haritada Alış Adresine Git
-                </a>
-              </div>
 
-              {/* Receiver */}
-              <div className="p-3.5 bg-[#011410] rounded-2xl border border-emerald-800/80 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-teal-400 font-bold flex items-center gap-1.5">
-                    <Navigation className="w-4 h-4 text-teal-400" />
-                    2. Alıcı (Teslim Adresi):
-                  </span>
-                  <span className="font-black text-teal-300">{acceptedOrder.receiver.district}</span>
+                  {/* Status Steps Buttons */}
+                  <div className="pt-2 flex items-center gap-2">
+                    {activeOrd.status === 'courier_assigned' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateStatus(activeOrd.id, 'picked_up');
+                          if (acceptedOrder?.id === activeOrd.id) {
+                            setAcceptedOrder({ ...activeOrd, status: 'picked_up' });
+                          }
+                        }}
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer"
+                      >
+                        📦 Paketi Adresten Teslim Aldım
+                      </button>
+                    )}
+
+                    {activeOrd.status === 'picked_up' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateStatus(activeOrd.id, 'delivered');
+                          if (acceptedOrder?.id === activeOrd.id) {
+                            setAcceptedOrder(null);
+                          }
+                        }}
+                        className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-black text-xs sm:text-sm rounded-xl transition shadow-lg shadow-teal-500/30 cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Teslimatı Tamamla (Paket Teslim Edildi)</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white font-extrabold text-sm">{acceptedOrder.receiver.contactName}</span>
-                  <a
-                    href={`tel:${acceptedOrder.receiver.contactPhone}`}
-                    className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5" />
-                    {acceptedOrder.receiver.contactPhone}
-                  </a>
-                </div>
-                <p className="text-emerald-200 font-medium">{acceptedOrder.receiver.addressDetail}</p>
-                <a
-                  href={getNavUrl(acceptedOrder.receiver.district, acceptedOrder.receiver.addressDetail)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-400 hover:text-teal-300 underline"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> Haritada Teslim Adresine Git
-                </a>
-              </div>
+              ))}
             </div>
-
-            {/* Direct Call Button */}
-            <a
-              href={`tel:${acceptedOrder.sender.contactPhone}`}
-              className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-white font-black text-sm rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/30 text-center"
-            >
-              <PhoneCall className="w-5 h-5 animate-pulse" />
-              <span>Göndericiyi Hemen Ara ({acceptedOrder.sender.contactPhone})</span>
-            </a>
-
-            {/* Status Steps Buttons */}
-            <div className="pt-2 flex items-center gap-2">
-              {acceptedOrder.status === 'courier_assigned' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateStatus(acceptedOrder.id, 'picked_up');
-                    setAcceptedOrder({ ...acceptedOrder, status: 'picked_up' });
-                  }}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md cursor-pointer"
-                >
-                  📦 Paketi Adresten Teslim Aldım
-                </button>
-              )}
-
-              {acceptedOrder.status === 'picked_up' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateStatus(acceptedOrder.id, 'delivered');
-                    setAcceptedOrder(null);
-                  }}
-                  className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-black text-xs sm:text-sm rounded-xl transition shadow-lg shadow-teal-500/30 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Teslimatı Tamamla (Paket Teslim Edildi)</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* PENDING POOL REQUESTS LIST (ONLY TALEP & TALEBİ KABUL ET BUTTON) */}
         <div className="space-y-4">
           {poolRequests.length === 0 ? (
-            !acceptedOrder && (
+            activeUserDeliveries.length === 0 && !acceptedOrder && (
               <div className="p-10 rounded-3xl bg-[#021f19] border border-emerald-800/80 text-center space-y-3 shadow-xl">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-900/50 border border-emerald-700/60 text-emerald-400 mx-auto flex items-center justify-center">
                   <Bike className="w-7 h-7 opacity-70" />
@@ -577,27 +596,16 @@ export const PaketTalebiPoolPage: React.FC = () => {
                   {/* TALEBİ KABUL ET BUTONU (MAIN CTA) */}
                   <div className="pt-2">
                     {isCourier ? (
-                      activeUserDeliveries.length > 0 ? (
-                        <button
-                          type="button"
-                          disabled
-                          className="w-full py-4 bg-emerald-950/60 border border-emerald-800/40 text-emerald-400/60 font-bold text-sm rounded-2xl cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                          <Lock className="w-4 h-4 text-amber-400" />
-                          <span>Önce Aktif Siparişinizi Teslim Ediniz</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={acceptingOrderId === req.id}
-                          onClick={() => handleAcceptJob(req)}
-                          className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
-                        >
-                          <Bike className="w-5 h-5" />
-                          <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      )
+                      <button
+                        type="button"
+                        disabled={acceptingOrderId === req.id}
+                        onClick={() => handleAcceptJob(req)}
+                        className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 disabled:opacity-50 text-white font-black text-base rounded-2xl transition shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 cursor-pointer"
+                      >
+                        <Bike className="w-5 h-5" />
+                        <span>{acceptingOrderId === req.id ? 'Talep Kabul Ediliyor...' : 'TALEBİ KABUL ET'}</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
                     ) : (
                       <button
                         type="button"

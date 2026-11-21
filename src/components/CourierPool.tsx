@@ -63,19 +63,11 @@ export const CourierPool: React.FC = () => {
   const [confirmDeliverOrder, setConfirmDeliverOrder] = useState<DeliveryRequest | null>(null);
   const [confirmReleaseOrder, setConfirmReleaseOrder] = useState<DeliveryRequest | null>(null);
 
-  // Active delivery enforcement & 30-minute delivery check
+  // Active delivery check & 30-minute delivery reminder
   const hasActiveDelivery = Array.isArray(activeCourierDeliveries) && activeCourierDeliveries.length > 0;
-  const [lockedTabNotice, setLockedTabNotice] = useState<string | null>(null);
   const [deliveryCheckModalOrder, setDeliveryCheckModalOrder] = useState<DeliveryRequest | null>(null);
   const [snoozed30Reminders, setSnoozed30Reminders] = useState<{ [orderId: string]: number }>({});
   const [notified30Orders, setNotified30Orders] = useState<{ [orderId: string]: boolean }>({});
-
-  // If courier has an active delivery in progress, lock them to the active tab!
-  useEffect(() => {
-    if (hasActiveDelivery && activeTab !== 'active') {
-      setActiveTab('active');
-    }
-  }, [hasActiveDelivery, activeTab]);
 
   // Helper: calculate elapsed minutes since acceptance
   const getElapsedMinutes = (order: DeliveryRequest): number => {
@@ -246,68 +238,19 @@ export const CourierPool: React.FC = () => {
         </div>
       </div>
 
-      {/* ACTIVE COURIER DELIVERY LOCK BANNER */}
-      {hasActiveDelivery && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/95 via-[#032a21] to-amber-950/95 border-2 border-amber-500/90 text-white shadow-2xl flex items-start gap-3.5 animate-in fade-in duration-200">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
-            <Lock className="w-5 h-5 animate-pulse" />
-          </div>
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-black text-amber-300">
-                Aktif Teslimat Kilidi Devrede
-              </h4>
-              <span className="px-2 py-0.5 bg-amber-500/30 text-amber-200 text-[10px] font-black rounded-md border border-amber-400/40 uppercase tracking-wide">
-                Diğer Menüler Kilitli
-              </span>
-            </div>
-            <p className="text-xs text-amber-100/90 leading-relaxed">
-              Üzerinizde aktif bir teslimat görevi bulunmaktadır (<strong className="text-white font-mono">#{activeCourierDeliveries[0]?.trackingCode}</strong>). Teslimatı gerçekleştirip siparişi tamamlayana kadar talep havuzuna ve kurye panelindeki diğer menülere giriş kilitlenmiştir.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Locked Tab Notification Toast */}
-      {lockedTabNotice && (
-        <div className="p-3 bg-rose-950/95 border-2 border-rose-500/90 rounded-2xl text-rose-200 text-xs font-bold flex items-center gap-2.5 shadow-xl animate-in fade-in slide-in-from-top-2">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{lockedTabNotice}</span>
-        </div>
-      )}
-
       {/* Tabs Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           type="button"
-          onClick={() => {
-            if (hasActiveDelivery) {
-              setLockedTabNotice('🔒 Üzerinizde aktif teslimat görevi bulunmaktadır. Teslimatı gerçekleştirene kadar talep havuzuna geçiş yapamazsınız. Lütfen önce mevcut paketinizi teslim ediniz.');
-              setTimeout(() => setLockedTabNotice(null), 5000);
-              return;
-            }
-            setActiveTab('pool');
-          }}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 ${
-            hasActiveDelivery
-              ? 'bg-emerald-950/20 text-emerald-500/40 border-emerald-900/30 cursor-not-allowed opacity-60'
-              : activeTab === 'pool'
-              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md cursor-pointer'
-              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d] cursor-pointer'
+          onClick={() => setActiveTab('pool')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 cursor-pointer ${
+            activeTab === 'pool'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
           }`}
-          title={hasActiveDelivery ? 'Aktif sipariş teslim edilene kadar kilitlidir' : ''}
         >
-          {hasActiveDelivery ? (
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-          ) : (
-            <Radio className="w-3.5 h-3.5 animate-pulse" />
-          )}
+          <Radio className="w-3.5 h-3.5 animate-pulse" />
           <span>Bekleyen Talep Havuzu ({poolRequests.length})</span>
-          {hasActiveDelivery && (
-            <span className="ml-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-              Kilitli
-            </span>
-          )}
         </button>
 
         <button
@@ -323,41 +266,22 @@ export const CourierPool: React.FC = () => {
           <span>Üzerimdeki Aktif Görevler ({activeCourierDeliveries.length})</span>
           {hasActiveDelivery && (
             <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black animate-pulse">
-              Aktif
+              {activeCourierDeliveries.length} Aktif
             </span>
           )}
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            if (hasActiveDelivery) {
-              setLockedTabNotice('🔒 Üzerinizde aktif teslimat görevi bulunmaktadır. Geçmiş siparişler menüsüne girebilmek için lütfen önce mevcut siparişinizi teslim ediniz.');
-              setTimeout(() => setLockedTabNotice(null), 5000);
-              return;
-            }
-            setActiveTab('completed');
-          }}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 ${
-            hasActiveDelivery
-              ? 'bg-emerald-950/20 text-emerald-500/40 border-emerald-900/30 cursor-not-allowed opacity-60'
-              : activeTab === 'completed'
-              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md cursor-pointer'
-              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d] cursor-pointer'
+          onClick={() => setActiveTab('completed')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition flex items-center gap-2 border shrink-0 cursor-pointer ${
+            activeTab === 'completed'
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+              : 'bg-[#021813] text-emerald-300 border-emerald-800/60 hover:bg-[#03241d]'
           }`}
-          title={hasActiveDelivery ? 'Aktif sipariş teslim edilene kadar kilitlidir' : ''}
         >
-          {hasActiveDelivery ? (
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-          ) : (
-            <CheckCircle2 className="w-3.5 h-3.5" />
-          )}
+          <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Tamamlananlar ({completedDeliveries.length})</span>
-          {hasActiveDelivery && (
-            <span className="ml-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-              Kilitli
-            </span>
-          )}
         </button>
       </div>
 

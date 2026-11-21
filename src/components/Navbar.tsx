@@ -5,7 +5,6 @@ import {
   LogOut,
   Package,
   User,
-  Lock,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -79,22 +78,12 @@ export const Navbar: React.FC = () => {
   // Dynamic Navigation Items tailored by Role
   const navItems: NavItem[] = React.useMemo(() => {
     if (currentUser.role === 'courier') {
-      if (hasActiveCourierDelivery) {
-        const currentActiveOrder = activeCourierDeliveries[0];
-        return [
-          {
-            id: 'courier',
-            label: `Aktif Siparişim (#${currentActiveOrder?.trackingCode || 'Görev'})`,
-            icon: Lock,
-            badge: 'Kilitli',
-            badgeColor: 'bg-amber-400 text-slate-950 font-black animate-pulse',
-          },
-        ];
-      }
       return [
         {
           id: 'courier',
-          label: 'Bekleyen Talep Havuzu',
+          label: hasActiveCourierDelivery
+            ? `Kurye Paneli (${activeCourierDeliveries.length} Aktif)`
+            : 'Bekleyen Talep Havuzu',
           icon: Bike,
           badge: activeStats.poolCount > 0 ? activeStats.poolCount : null,
           badgeColor: 'bg-amber-500 text-white font-extrabold animate-pulse',
@@ -116,7 +105,7 @@ export const Navbar: React.FC = () => {
     }
 
     return [];
-  }, [currentUser.role, activeStats.poolCount]);
+  }, [currentUser.role, activeStats.poolCount, hasActiveCourierDelivery, activeCourierDeliveries.length]);
 
   return (
     <header className="sticky top-0 z-40 bg-[#021c17]/95 backdrop-blur-md border-b border-emerald-900/60 shadow-lg w-full max-w-full text-white">
